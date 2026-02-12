@@ -15,7 +15,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string, role: UserRole) => void;
+  login: (email: string, password: string) => void;
   logout: () => void;
 }
 
@@ -49,8 +49,15 @@ const mockUsers: Record<UserRole, User> = {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = useCallback((_email: string, _password: string, role: UserRole) => {
-    setUser(mockUsers[role]);
+  const login = useCallback((email: string, _password: string) => {
+    // Determine role from email for mock auth
+    if (email.includes("admin")) {
+      setUser(mockUsers.Admin);
+    } else if (email.includes("supervisor") || email.includes("sup")) {
+      setUser(mockUsers.Supervisor);
+    } else {
+      setUser(mockUsers.Student);
+    }
   }, []);
 
   const logout = useCallback(() => {

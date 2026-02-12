@@ -12,9 +12,9 @@ import {
   Eye,
   MessageSquare,
   LogOut,
-  GraduationCap,
   LayoutDashboard,
 } from "lucide-react";
+import umatLogo from "@/assets/umat-logo.png";
 
 interface NavItem {
   label: string;
@@ -57,12 +57,10 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center">
-            <GraduationCap size={22} className="text-secondary-foreground" />
-          </div>
+          <img src={umatLogo} alt="UMaT Logo" className="w-10 h-10 object-contain" />
           <div>
-            <h1 className="font-display text-lg font-bold text-sidebar-foreground">PG-SIMS</h1>
-            <p className="text-xs text-sidebar-foreground/60">UMaT Postgraduate</p>
+            <h1 className="font-display text-sm font-bold text-sidebar-foreground leading-tight">Postgraduate</h1>
+            <p className="text-xs text-sidebar-foreground/60">Support System</p>
           </div>
         </div>
       </div>
