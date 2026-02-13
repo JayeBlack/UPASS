@@ -28,6 +28,9 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Register Courses", path: "/courses/register", icon: <BookOpen size={20} /> },
     { label: "Upload Thesis", path: "/thesis/upload", icon: <Upload size={20} /> },
     { label: "Check Results", path: "/results", icon: <BarChart3 size={20} /> },
+    { label: "Financial Status", path: "/finances", icon: <DollarSign size={20} /> },
+    { label: "Transcript", path: "/transcript", icon: <ClipboardCheck size={20} /> },
+    { label: "Request Documents", path: "/documents", icon: <FileText size={20} /> },
   ],
   Supervisor: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
