@@ -9,6 +9,9 @@ import Dashboard from "./pages/Dashboard";
 import CourseRegistration from "./pages/student/CourseRegistration";
 import ThesisUpload from "./pages/student/ThesisUpload";
 import Results from "./pages/student/Results";
+import FinancialStatus from "./pages/student/FinancialStatus";
+import Transcript from "./pages/student/Transcript";
+import DocumentRequests from "./pages/student/DocumentRequests";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import Remarks from "./pages/supervisor/Remarks";
@@ -33,6 +36,9 @@ const App = () => (
             <Route path="/courses/register" element={<CourseRegistration />} />
             <Route path="/thesis/upload" element={<ThesisUpload />} />
             <Route path="/results" element={<Results />} />
+            <Route path="/finances" element={<FinancialStatus />} />
+            <Route path="/transcript" element={<Transcript />} />
+            <Route path="/documents" element={<DocumentRequests />} />
             {/* Supervisor */}
             <Route path="/students" element={<AssignedStudents />} />
             <Route path="/submissions" element={<ReviewSubmissions />} />
