@@ -48,7 +48,7 @@ const DocumentRequests = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Document Requests</h1>
           <p className="text-muted-foreground mt-1">Request recommendation letters, attestation, and other academic documents</p>
@@ -101,38 +101,63 @@ const DocumentRequests = () => {
         </form>
       )}
 
-      {/* Requests List */}
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document</th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Purpose</th>
-              <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((r) => {
-              const cfg = statusConfig[r.status];
-              return (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-mono font-medium text-foreground">{r.id}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{r.type}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{r.purpose}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{r.date}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
-                      {cfg.icon}
-                      {r.status}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Desktop table */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Purpose</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((r) => {
+                const cfg = statusConfig[r.status];
+                return (
+                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-mono font-medium text-foreground">{r.id}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{r.type}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{r.purpose}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{r.date}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                        {cfg.icon}
+                        {r.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {requests.map((r) => {
+          const cfg = statusConfig[r.status];
+          return (
+            <div key={r.id} className="bg-card rounded-xl border border-border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{r.type}</p>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                  {cfg.icon}
+                  {r.status}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{r.purpose}</p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-mono">{r.id}</span>
+                <span>{r.date}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </DashboardLayout>
   );

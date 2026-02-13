@@ -38,7 +38,7 @@ const Transcript = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Academic Transcript</h1>
           <p className="text-muted-foreground mt-1">Kwame Mensah · UMaT/PG/0234/22 · MSc. Information Technology</p>
@@ -73,7 +73,8 @@ const Transcript = () => {
               <h2 className="font-display font-bold text-foreground">{sem.label}</h2>
               <span className="text-sm text-muted-foreground">GPA: <span className="font-bold text-foreground">{sem.gpa.toFixed(2)}</span></span>
             </div>
-            <table className="w-full">
+            {/* Desktop table */}
+            <table className="w-full hidden sm:table">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
@@ -95,6 +96,21 @@ const Transcript = () => {
                 ))}
               </tbody>
             </table>
+            {/* Mobile list */}
+            <div className="sm:hidden divide-y divide-border">
+              {sem.courses.map((c) => (
+                <div key={c.code} className="px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{c.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{c.code} · {c.credits} credits</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-foreground">{c.grade}</p>
+                    <p className="text-xs text-muted-foreground">{c.points.toFixed(1)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
