@@ -48,37 +48,63 @@ const FinancialStatus = () => {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Semester</th>
-              <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
-              <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
-              <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance</th>
-              <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fees.map((f) => {
-              const cfg = statusConfig[f.status] || statusConfig.Pending;
-              return (
-                <tr key={f.semester} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">{f.semester}</td>
-                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.amount}</td>
-                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.paid}</td>
-                  <td className="px-6 py-4 text-sm text-right font-medium text-foreground">{f.balance}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
-                      {cfg.icon}
-                      {f.status}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Desktop table */}
+      <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Semester</th>
+                <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
+                <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
+                <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance</th>
+                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fees.map((f) => {
+                const cfg = statusConfig[f.status] || statusConfig.Pending;
+                return (
+                  <tr key={f.semester} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">{f.semester}</td>
+                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.amount}</td>
+                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.paid}</td>
+                    <td className="px-6 py-4 text-sm text-right font-medium text-foreground">{f.balance}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                        {cfg.icon}
+                        {f.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
+        {fees.map((f) => {
+          const cfg = statusConfig[f.status] || statusConfig.Pending;
+          return (
+            <div key={f.semester} className="bg-card rounded-xl border border-border p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{f.semester}</p>
+                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                  {cfg.icon}
+                  {f.status}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div><p className="text-muted-foreground">Amount</p><p className="font-medium text-foreground">{f.amount}</p></div>
+                <div><p className="text-muted-foreground">Paid</p><p className="font-medium text-foreground">{f.paid}</p></div>
+                <div><p className="text-muted-foreground">Balance</p><p className="font-medium text-foreground">{f.balance}</p></div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </DashboardLayout>
   );

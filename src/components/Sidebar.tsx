@@ -13,8 +13,12 @@ import {
   MessageSquare,
   LogOut,
   LayoutDashboard,
+  Menu,
 } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
 
 interface NavItem {
   label: string;
@@ -46,7 +50,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
 };
 
-const Sidebar = () => {
+const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,8 +59,13 @@ const Sidebar = () => {
 
   const items = navByRole[user.role];
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    onNavigate?.();
+  };
+
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar text-sidebar-foreground flex flex-col z-50">
+    <div className="flex flex-col h-full bg-sidebar text-sidebar-foreground">
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
@@ -69,13 +78,13 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {items.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <button
               key={item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNav(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                 isActive
                   ? "bg-sidebar-accent text-sidebar-primary"
@@ -108,6 +117,42 @@ const Sidebar = () => {
           Sign Out
         </button>
       </div>
+    </div>
+  );
+};
+
+export const MobileHeader = () => {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  if (!user) return null;
+
+  return (
+    <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background px-4 py-3 md:hidden">
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+            <Menu size={22} className="text-foreground" />
+          </button>
+        </SheetTrigger>
+        <SheetContent side="left" className="p-0 w-72 border-none">
+          <SidebarContent onNavigate={() => setOpen(false)} />
+        </SheetContent>
+      </Sheet>
+      <img src={umatLogo} alt="UMaT Logo" className="w-8 h-8 object-contain" />
+      <span className="font-display text-sm font-bold text-foreground">Postgraduate</span>
+    </header>
+  );
+};
+
+const Sidebar = () => {
+  const isMobile = useIsMobile();
+
+  if (isMobile) return null;
+
+  return (
+    <aside className="fixed left-0 top-0 h-screen w-64 z-50">
+      <SidebarContent />
     </aside>
   );
 };
