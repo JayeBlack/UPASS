@@ -22,15 +22,15 @@ const ThesisUpload = () => {
       </div>
 
       {/* Progress */}
-      <div className="bg-card rounded-xl border border-border p-6 mb-6">
+      <div className="bg-card rounded-xl border border-border p-4 sm:p-6 mb-6">
         <h2 className="font-display text-lg font-bold text-foreground mb-4">Progress</h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 overflow-x-auto">
           {stages.map((s, i) => (
-            <div key={s} className="flex-1 flex flex-col items-center">
+            <div key={s} className="flex-1 min-w-[40px] flex flex-col items-center">
               <div className={`w-full h-2 rounded-full mb-2 ${
                 i < currentStage ? "gradient-gold" : i === currentStage ? "bg-secondary/50" : "bg-muted"
               }`} />
-              <span className={`text-xs ${i <= currentStage ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+              <span className={`text-[10px] sm:text-xs text-center ${i <= currentStage ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                 {s}
               </span>
             </div>
@@ -38,9 +38,9 @@ const ThesisUpload = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Upload */}
-        <div className="bg-card rounded-xl border border-border p-6">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Upload Chapter</h2>
           <div
             className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary transition-colors"
@@ -60,7 +60,7 @@ const ThesisUpload = () => {
         </div>
 
         {/* History */}
-        <div className="bg-card rounded-xl border border-border p-6">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Submission History</h2>
           <div className="space-y-3">
             {submissions.map((sub) => (

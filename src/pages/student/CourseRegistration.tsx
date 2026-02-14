@@ -29,7 +29,7 @@ const CourseRegistration = () => {
         <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
       </div>
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
         <div className="bg-card rounded-xl border border-border px-5 py-3 flex items-center gap-3">
           <BookOpen size={18} className="text-muted-foreground" />
           <span className="text-sm"><strong className="text-foreground">{totalCredits}</strong> <span className="text-muted-foreground">credit hours</span></span>
@@ -40,7 +40,8 @@ const CourseRegistration = () => {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block bg-card rounded-xl border border-border overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
@@ -72,6 +73,31 @@ const CourseRegistration = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-3">
+        {courses.map((c) => (
+          <div key={c.code} className="bg-card rounded-xl border border-border p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-mono font-medium text-foreground">{c.code}</p>
+                <p className="text-sm text-foreground mt-1">{c.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">{c.credits} credits</p>
+              </div>
+              <button
+                onClick={() => toggle(c.code)}
+                className={`shrink-0 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  c.registered
+                    ? "gradient-gold text-secondary-foreground"
+                    : "border border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {c.registered ? "Registered" : "Register"}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </DashboardLayout>
   );
