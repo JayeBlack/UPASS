@@ -10,6 +10,7 @@ export interface User {
   department?: string;
   program?: string;
   indexNumber?: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -30,6 +31,7 @@ const mockUsers: Record<UserRole, User> = {
     department: "Computer Science",
     program: "MSc. Information Technology",
     indexNumber: "UMaT/PG/0234/22",
+    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
   },
   Supervisor: {
     id: "sup1",
@@ -37,12 +39,14 @@ const mockUsers: Record<UserRole, User> = {
     name: "Dr. Abena Osei",
     role: "Supervisor",
     department: "Computer Science",
+    avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face",
   },
   Admin: {
     id: "a1",
     email: "admin@umat.edu.gh",
     name: "Prof. Kofi Asante",
     role: "Admin",
+    avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
   },
 };
 

@@ -1,5 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { DollarSign, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { DollarSign, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from "lucide-react";
+import { useState } from "react";
 
 const fees = [
   { semester: "Semester 1, 2025/2026", amount: "GHS 5,200.00", paid: "GHS 5,200.00", balance: "GHS 0.00", status: "Paid" },
@@ -16,6 +17,8 @@ const statusConfig: Record<string, { icon: React.ReactNode; className: string }>
 
 const FinancialStatus = () => {
   const totalOwed = 1600;
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"online" | "receipt" | null>(null);
 
   return (
     <DashboardLayout>
@@ -47,6 +50,117 @@ const FinancialStatus = () => {
           <p className="text-sm text-muted-foreground mt-1">Outstanding Balance</p>
         </div>
       </div>
+
+      {/* Payment Actions */}
+      {totalOwed > 0 && (
+        <div className="bg-card rounded-xl border border-border p-5 mb-8">
+          <h2 className="font-display text-lg font-bold text-foreground mb-3">Make a Payment</h2>
+          <p className="text-sm text-muted-foreground mb-4">Choose your preferred payment method to settle your outstanding balance.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              onClick={() => { setShowPayModal(true); setPaymentMethod("online"); }}
+              className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-secondary/50 hover:bg-secondary/5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center shrink-0">
+                <CreditCard size={18} className="text-secondary-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Pay Online</p>
+                <p className="text-xs text-muted-foreground">Mobile Money or Bank Card</p>
+              </div>
+            </button>
+            <button
+              onClick={() => { setShowPayModal(true); setPaymentMethod("receipt"); }}
+              className="flex items-center gap-3 p-4 rounded-xl border border-border hover:border-secondary/50 hover:bg-secondary/5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-lg bg-info/10 flex items-center justify-center shrink-0">
+                <Upload size={18} className="text-info" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Upload Receipt</p>
+                <p className="text-xs text-muted-foreground">Bank deposit or transfer proof</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
+          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            {paymentMethod === "online" ? (
+              <>
+                <h3 className="font-display text-lg font-bold text-foreground mb-1">Pay Online</h3>
+                <p className="text-sm text-muted-foreground mb-5">Enter the amount you want to pay towards your outstanding balance of GHS {totalOwed.toLocaleString()}</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Amount (GHS)</label>
+                    <input
+                      type="number"
+                      defaultValue={totalOwed}
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Payment Channel</label>
+                    <select className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none">
+                      <option>MTN Mobile Money</option>
+                      <option>Vodafone Cash</option>
+                      <option>AirtelTigo Money</option>
+                      <option>Visa / Mastercard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Phone Number / Card</label>
+                    <input
+                      type="text"
+                      placeholder="024 XXX XXXX"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
+                    />
+                  </div>
+                  <button className="w-full py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+                    Proceed to Pay
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display text-lg font-bold text-foreground mb-1">Upload Payment Receipt</h3>
+                <p className="text-sm text-muted-foreground mb-5">Upload a photo or scan of your bank payment receipt for verification by the finance office.</p>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Amount Paid (GHS)</label>
+                    <input
+                      type="number"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Transaction Reference</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. TXN-123456"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
+                    />
+                  </div>
+                  <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-secondary/50 transition-colors">
+                    <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Click to upload receipt</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">PDF, JPG, PNG (max 5MB)</p>
+                  </div>
+                  <button className="w-full py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+                    Submit for Verification
+                  </button>
+                </div>
+              </>
+            )}
+            <button onClick={() => setShowPayModal(false)} className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Desktop table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
