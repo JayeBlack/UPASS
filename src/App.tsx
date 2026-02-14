@@ -12,6 +12,9 @@ import Results from "./pages/student/Results";
 import FinancialStatus from "./pages/student/FinancialStatus";
 import Transcript from "./pages/student/Transcript";
 import DocumentRequests from "./pages/student/DocumentRequests";
+import ExamTimetable from "./pages/student/ExamTimetable";
+import Clearance from "./pages/student/Clearance";
+import Notifications from "./pages/student/Notifications";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import Remarks from "./pages/supervisor/Remarks";
@@ -39,6 +42,9 @@ const App = () => (
             <Route path="/finances" element={<FinancialStatus />} />
             <Route path="/transcript" element={<Transcript />} />
             <Route path="/documents" element={<DocumentRequests />} />
+            <Route path="/exams" element={<ExamTimetable />} />
+            <Route path="/clearance" element={<Clearance />} />
+            <Route path="/notifications" element={<Notifications />} />
             {/* Supervisor */}
             <Route path="/students" element={<AssignedStudents />} />
             <Route path="/submissions" element={<ReviewSubmissions />} />

@@ -14,8 +14,12 @@ import {
   LogOut,
   LayoutDashboard,
   Menu,
+  Calendar,
+  Shield,
+  Bell,
 } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -30,23 +34,28 @@ const navByRole: Record<UserRole, NavItem[]> = {
   Student: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Register Courses", path: "/courses/register", icon: <BookOpen size={20} /> },
+    { label: "Exam Timetable", path: "/exams", icon: <Calendar size={20} /> },
     { label: "Upload Thesis", path: "/thesis/upload", icon: <Upload size={20} /> },
     { label: "Check Results", path: "/results", icon: <BarChart3 size={20} /> },
     { label: "Financial Status", path: "/finances", icon: <DollarSign size={20} /> },
     { label: "Transcript", path: "/transcript", icon: <ClipboardCheck size={20} /> },
     { label: "Request Documents", path: "/documents", icon: <FileText size={20} /> },
+    { label: "Clearance", path: "/clearance", icon: <Shield size={20} /> },
+    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
   Supervisor: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Assigned Students", path: "/students", icon: <Users size={20} /> },
     { label: "Review Submissions", path: "/submissions", icon: <Eye size={20} /> },
     { label: "Give Remarks", path: "/remarks", icon: <MessageSquare size={20} /> },
+    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
   Admin: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <DollarSign size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
+    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
 };
 
@@ -101,9 +110,12 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
       {/* User info */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-full gradient-gold flex items-center justify-center text-sm font-bold text-secondary-foreground">
-            {user.name.split(" ").map((n) => n[0]).join("")}
-          </div>
+          <Avatar className="w-9 h-9">
+            <AvatarImage src={user.avatarUrl} alt={user.name} />
+            <AvatarFallback className="gradient-gold text-secondary-foreground text-sm font-bold">
+              {user.name.split(" ").map((n) => n[0]).join("")}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user.name}</p>
             <p className="text-xs text-sidebar-foreground/50">{user.role}</p>
