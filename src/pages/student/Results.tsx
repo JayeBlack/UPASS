@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { BarChart3, TrendingUp, TrendingDown, Minus, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Progress } from "@/components/ui/progress";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const semesters = [
   {
