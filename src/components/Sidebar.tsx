@@ -17,6 +17,7 @@ import {
   Calendar,
   Shield,
   Bell,
+  PieChart,
 } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -51,6 +52,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ],
   Admin: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
+    { label: "Analytics", path: "/admin/analytics", icon: <PieChart size={20} /> },
     { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <DollarSign size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },

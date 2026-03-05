@@ -3,10 +3,10 @@ import { DollarSign, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from 
 import { useState } from "react";
 
 const fees = [
-  { semester: "Semester 1, 2025/2026", amount: "GHS 5,200.00", paid: "GHS 5,200.00", balance: "GHS 0.00", status: "Paid" },
-  { semester: "Semester 2, 2024/2025", amount: "GHS 5,200.00", paid: "GHS 5,200.00", balance: "GHS 0.00", status: "Paid" },
-  { semester: "Semester 1, 2024/2025", amount: "GHS 4,800.00", paid: "GHS 4,800.00", balance: "GHS 0.00", status: "Paid" },
-  { semester: "Semester 2, 2023/2024", amount: "GHS 4,800.00", paid: "GHS 3,200.00", balance: "GHS 1,600.00", status: "Partial" },
+  { semester: "Semester 1, 2025/2026", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
+  { semester: "Semester 2, 2024/2025", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
+  { semester: "Semester 1, 2024/2025", amount: "GH₵ 4,800.00", paid: "GH₵ 4,800.00", balance: "GH₵ 0.00", status: "Paid" },
+  { semester: "Semester 2, 2023/2024", amount: "GH₵ 4,800.00", paid: "GH₵ 3,200.00", balance: "GH₵ 1,600.00", status: "Partial" },
 ];
 
 const statusConfig: Record<string, { icon: React.ReactNode; className: string }> = {
@@ -32,26 +32,25 @@ const FinancialStatus = () => {
           <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center mb-3">
             <DollarSign size={18} className="text-secondary-foreground" />
           </div>
-          <p className="text-2xl font-bold font-display text-foreground">GHS 20,000</p>
+          <p className="text-2xl font-bold font-display text-foreground">GH₵ 20,000</p>
           <p className="text-sm text-muted-foreground mt-1">Total Fees</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center mb-3">
             <CheckCircle size={18} className="text-success" />
           </div>
-          <p className="text-2xl font-bold font-display text-foreground">GHS 18,400</p>
+          <p className="text-2xl font-bold font-display text-foreground">GH₵ 18,400</p>
           <p className="text-sm text-muted-foreground mt-1">Total Paid</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center mb-3">
             <AlertCircle size={18} className="text-destructive" />
           </div>
-          <p className="text-2xl font-bold font-display text-foreground">GHS {totalOwed.toLocaleString()}</p>
+          <p className="text-2xl font-bold font-display text-foreground">GH₵ {totalOwed.toLocaleString()}</p>
           <p className="text-sm text-muted-foreground mt-1">Outstanding Balance</p>
         </div>
       </div>
 
-      {/* Payment Actions */}
       {totalOwed > 0 && (
         <div className="bg-card rounded-xl border border-border p-5 mb-8">
           <h2 className="font-display text-lg font-bold text-foreground mb-3">Make a Payment</h2>
@@ -85,22 +84,18 @@ const FinancialStatus = () => {
         </div>
       )}
 
-      {/* Payment Modal */}
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowPayModal(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             {paymentMethod === "online" ? (
               <>
                 <h3 className="font-display text-lg font-bold text-foreground mb-1">Pay Online</h3>
-                <p className="text-sm text-muted-foreground mb-5">Enter the amount you want to pay towards your outstanding balance of GHS {totalOwed.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground mb-5">Enter the amount you want to pay towards your outstanding balance of GH₵ {totalOwed.toLocaleString()}</p>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Amount (GHS)</label>
-                    <input
-                      type="number"
-                      defaultValue={totalOwed}
-                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
-                    />
+                    <label className="text-xs font-medium text-muted-foreground">Amount (GH₵)</label>
+                    <input type="number" defaultValue={totalOwed}
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Payment Channel</label>
@@ -113,11 +108,8 @@ const FinancialStatus = () => {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Phone Number / Card</label>
-                    <input
-                      type="text"
-                      placeholder="024 XXX XXXX"
-                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
-                    />
+                    <input type="text" placeholder="024 XXX XXXX"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none" />
                   </div>
                   <button className="w-full py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
                     Proceed to Pay
@@ -127,22 +119,17 @@ const FinancialStatus = () => {
             ) : (
               <>
                 <h3 className="font-display text-lg font-bold text-foreground mb-1">Upload Payment Receipt</h3>
-                <p className="text-sm text-muted-foreground mb-5">Upload a photo or scan of your bank payment receipt for verification by the finance office.</p>
+                <p className="text-sm text-muted-foreground mb-5">Upload a photo or scan of your bank payment receipt for verification.</p>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Amount Paid (GHS)</label>
-                    <input
-                      type="number"
-                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
-                    />
+                    <label className="text-xs font-medium text-muted-foreground">Amount Paid (GH₵)</label>
+                    <input type="number"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Transaction Reference</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. TXN-123456"
-                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none"
-                    />
+                    <input type="text" placeholder="e.g. TXN-123456"
+                      className="w-full mt-1 px-4 py-2.5 rounded-lg border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-secondary/50 focus:border-secondary outline-none" />
                   </div>
                   <div className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-secondary/50 transition-colors">
                     <Upload size={24} className="mx-auto text-muted-foreground mb-2" />
@@ -162,7 +149,6 @@ const FinancialStatus = () => {
         </div>
       )}
 
-      {/* Desktop table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -198,7 +184,6 @@ const FinancialStatus = () => {
         </div>
       </div>
 
-      {/* Mobile cards */}
       <div className="space-y-3 md:hidden">
         {fees.map((f) => {
           const cfg = statusConfig[f.status] || statusConfig.Pending;

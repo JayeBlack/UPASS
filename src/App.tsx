@@ -21,6 +21,7 @@ import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
 import PassList from "./pages/admin/PassList";
+import Analytics from "./pages/admin/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/admin/students" element={<ManageStudents />} />
             <Route path="/admin/fees" element={<FeesStatus />} />
             <Route path="/admin/passlist" element={<PassList />} />
+            <Route path="/admin/analytics" element={<Analytics />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,6 +1,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { BookOpen, FileText, Users, BarChart3, Clock, CheckCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const StatCard = ({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) => (
   <div className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-shadow">
@@ -16,11 +17,12 @@ const StatCard = ({ icon, label, value, accent }: { icon: React.ReactNode; label
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const studentStats = [
     { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: "6", accent: true },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Thesis Progress", value: "Ch. 3" },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "GPA", value: "3.72" },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "CWA", value: "72.4" },
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: "2" },
   ];
 
@@ -39,6 +41,21 @@ const Dashboard = () => {
   ];
 
   const stats = user?.role === "Student" ? studentStats : user?.role === "Supervisor" ? supervisorStats : adminStats;
+
+  const quickActionRoutes: Record<string, string> = {
+    "Register Courses": "/courses/register",
+    "Upload Chapter": "/thesis/upload",
+    "View Results": "/results",
+    "Contact Supervisor": "/notifications",
+    "Review Pending": "/submissions",
+    "Add Remarks": "/submissions",
+    "View Students": "/students",
+    "Download Reports": "/notifications",
+    "Enroll Students": "/admin/students",
+    "Update Fees": "/admin/fees",
+    "Generate List": "/admin/passlist",
+    "Send Notice": "/notifications",
+  };
 
   const recentActivity = [
     { text: "Thesis Chapter 2 submitted for review", time: "2 hours ago" },
@@ -67,7 +84,6 @@ const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Recent Activity</h2>
           <div className="space-y-4">
@@ -83,7 +99,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
@@ -95,6 +110,7 @@ const Dashboard = () => {
             ).map((action) => (
               <button
                 key={action}
+                onClick={() => navigate(quickActionRoutes[action])}
                 className="px-4 py-3 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors text-left"
               >
                 {action}
