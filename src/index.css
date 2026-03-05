@@ -127,3 +127,28 @@
     background-clip: text;
   }
 }
+
+/* Print styles – only show document content */
+@media print {
+  body {
+    background: white !important;
+  }
+
+  /* Hide sidebar, header, mobile header, and any nav */
+  nav,
+  [data-sidebar],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Remove margin/padding from layout wrapper */
+  main {
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+
+  /* Remove card borders and shadows for clean print */
+  .bg-card {
+    box-shadow: none !important;
+  }
+}

@@ -28,7 +28,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <Sidebar />
       <MobileHeader />
       
-      <div className={`${isMobile ? "p-4" : "ml-64 p-8"} flex items-center justify-between gap-6 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-30`}>
+      <div className={`no-print ${isMobile ? "p-4" : "ml-64 p-8"} flex items-center justify-between gap-6 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-30`}>
         {user && (
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-foreground">
