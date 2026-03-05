@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LogOut } from "lucide-react";
+import { LogOut, Bell } from "lucide-react";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

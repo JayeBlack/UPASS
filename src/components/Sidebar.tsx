@@ -42,13 +42,11 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Transcript", path: "/transcript", icon: <ClipboardCheck size={20} /> },
     { label: "Request Documents", path: "/documents", icon: <FileText size={20} /> },
     { label: "Clearance", path: "/clearance", icon: <Shield size={20} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
   Supervisor: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Assigned Students", path: "/students", icon: <Users size={20} /> },
     { label: "Review Submissions", path: "/submissions", icon: <Eye size={20} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
   Admin: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -56,7 +54,6 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={20} /> },
   ],
 };
 
