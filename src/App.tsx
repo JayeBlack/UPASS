@@ -17,7 +17,7 @@ import Clearance from "./pages/student/Clearance";
 import Notifications from "./pages/student/Notifications";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
-import Remarks from "./pages/supervisor/Remarks";
+
 import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
 import PassList from "./pages/admin/PassList";
@@ -48,7 +48,7 @@ const App = () => (
             {/* Supervisor */}
             <Route path="/students" element={<AssignedStudents />} />
             <Route path="/submissions" element={<ReviewSubmissions />} />
-            <Route path="/remarks" element={<Remarks />} />
+            {/* Remarks merged into /submissions */}
             {/* Admin */}
             <Route path="/admin/students" element={<ManageStudents />} />
             <Route path="/admin/fees" element={<FeesStatus />} />
