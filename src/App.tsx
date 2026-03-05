@@ -41,7 +41,7 @@ const App = () => (
             <Route path="/thesis/upload" element={<ThesisUpload />} />
             <Route path="/results" element={<Results />} />
             <Route path="/finances" element={<FinancialStatus />} />
-            <Route path="/transcript" element={<Transcript />} />
+            <Route path="/transcript" element={<DocumentRequests />} />
             <Route path="/documents" element={<DocumentRequests />} />
             <Route path="/exams" element={<ExamTimetable />} />
             <Route path="/clearance" element={<Clearance />} />

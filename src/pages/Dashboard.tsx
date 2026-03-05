@@ -46,15 +46,15 @@ const Dashboard = () => {
     "Register Courses": "/courses/register",
     "Upload Chapter": "/thesis/upload",
     "View Results": "/results",
-    "Contact Supervisor": "/notifications",
+    "Request Documents": "/documents",
     "Review Pending": "/submissions",
     "Add Remarks": "/submissions",
     "View Students": "/students",
-    "Download Reports": "/notifications",
+    "Exam Timetable": "/exams",
     "Enroll Students": "/admin/students",
     "Update Fees": "/admin/fees",
     "Generate List": "/admin/passlist",
-    "Send Notice": "/notifications",
+    "View Analytics": "/admin/analytics",
   };
 
   const recentActivity = [
@@ -103,10 +103,10 @@ const Dashboard = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
             {(user?.role === "Student"
-              ? ["Register Courses", "Upload Chapter", "View Results", "Contact Supervisor"]
+              ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
               : user?.role === "Supervisor"
-              ? ["Review Pending", "Add Remarks", "View Students", "Download Reports"]
-              : ["Enroll Students", "Update Fees", "Generate List", "Send Notice"]
+              ? ["Review Pending", "Add Remarks", "View Students", "Exam Timetable"]
+              : ["Enroll Students", "Update Fees", "Generate List", "View Analytics"]
             ).map((action) => (
               <button
                 key={action}
