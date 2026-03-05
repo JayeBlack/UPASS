@@ -28,23 +28,30 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <Sidebar />
       <MobileHeader />
       
-      {/* Top Header with Welcome and Profile */}
       <div className={`${isMobile ? "p-4" : "ml-64 p-8"} flex items-center justify-between gap-6 border-b border-border bg-background/50 backdrop-blur-sm sticky top-0 z-30`}>
-        {/* Welcome text */}
         {user && (
           <div className="flex-1">
             <h2 className="text-lg font-semibold text-foreground">
               Welcome, {user.name.split(" ")[0]}
             </h2>
-            {user.department && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {user.department}
-              </p>
-            )}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+              {user.role === "Student" && user.indexNumber && (
+                <p className="text-sm text-muted-foreground">{user.indexNumber}</p>
+              )}
+              {user.role === "Student" && user.indexNumber && user.email && (
+                <span className="hidden sm:inline text-muted-foreground">·</span>
+              )}
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+              {user.department && (
+                <>
+                  <span className="hidden sm:inline text-muted-foreground">·</span>
+                  <p className="text-sm text-muted-foreground">{user.department}</p>
+                </>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Profile and Sign Out - Top Right */}
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -65,6 +72,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               <DropdownMenuItem disabled className="flex flex-col items-start py-2">
                 <span className="text-sm font-medium">{user.name}</span>
                 <span className="text-xs text-muted-foreground">{user.email}</span>
+                {user.role === "Student" && user.indexNumber && (
+                  <span className="text-xs text-muted-foreground">{user.indexNumber}</span>
+                )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
