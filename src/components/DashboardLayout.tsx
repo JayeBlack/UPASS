@@ -53,42 +53,53 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         )}
 
         {user && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted transition-colors">
-                <Avatar className="w-9 h-9">
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  <AvatarFallback className="gradient-gold text-secondary-foreground text-sm font-bold">
-                    {user.name.split(" ").map((n) => n[0]).join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="hidden sm:flex flex-col items-start">
-                  <p className="text-sm font-medium text-foreground">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.role}</p>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem disabled className="flex flex-col items-start py-2">
-                <span className="text-sm font-medium">{user.name}</span>
-                <span className="text-xs text-muted-foreground">{user.email}</span>
-                {user.role === "Student" && user.indexNumber && (
-                  <span className="text-xs text-muted-foreground">{user.indexNumber}</span>
-                )}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  logout();
-                  navigate("/");
-                }}
-                className="text-destructive focus:text-destructive"
-              >
-                <LogOut size={14} className="mr-2" />
-                Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/notifications")}
+              className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+              title="Notifications"
+            >
+              <Bell size={20} className="text-muted-foreground" />
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
+            </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-muted transition-colors">
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarFallback className="gradient-gold text-secondary-foreground text-sm font-bold">
+                      {user.name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden sm:flex flex-col items-start">
+                    <p className="text-sm font-medium text-foreground">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">{user.role}</p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem disabled className="flex flex-col items-start py-2">
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
+                  {user.role === "Student" && user.indexNumber && (
+                    <span className="text-xs text-muted-foreground">{user.indexNumber}</span>
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    navigate("/");
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <LogOut size={14} className="mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
 
