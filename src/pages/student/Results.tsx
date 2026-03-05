@@ -48,11 +48,6 @@ const semesterData = semesters.map((sem) => ({
 const allCourses = semesters.flatMap((s) => s.courses);
 const overallCwa = calcCwa(allCourses);
 
-const chartData = semesterData.map((s) => ({
-  name: s.short,
-  cwa: parseFloat(s.cwa.toFixed(1)),
-}));
-
 const Results = () => {
   const navigate = useNavigate();
 
