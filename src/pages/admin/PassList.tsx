@@ -30,12 +30,14 @@ const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
 const PassList = () => {
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
   const filtered = graduands.filter((g) => {
     const matchesDept = deptFilter === "all" || g.department === deptFilter;
     const matchesYear = yearFilter === "all" || g.year === yearFilter;
-    return matchesDept && matchesYear;
+    const matchesStatus = statusFilter === "all" || g.status === statusFilter;
+    return matchesDept && matchesYear && matchesStatus;
   });
 
   const handleExportPDF = async () => {
@@ -145,6 +147,15 @@ const PassList = () => {
           {departments.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="all">All Status</option>
+          <option value="Eligible">Eligible</option>
+          <option value="Ineligible">Ineligible</option>
         </select>
       </div>
 
