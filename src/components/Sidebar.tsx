@@ -54,6 +54,20 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
   ],
+  Dean: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
+    { label: "Analytics", path: "/admin/analytics", icon: <PieChart size={20} /> },
+    { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
+    { label: "Clearance Approvals", path: "/dean/clearance", icon: <ClipboardCheck size={20} /> },
+    { label: "Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
+    { label: "CWA Results", path: "/dean/results", icon: <BarChart3 size={20} /> },
+  ],
+  Accountant: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
+    { label: "Fee Analytics", path: "/accountant/analytics", icon: <PieChart size={20} /> },
+    { label: "Student Fees", path: "/admin/fees", icon: <Banknote size={20} /> },
+    { label: "Export Reports", path: "/accountant/reports", icon: <FileText size={20} /> },
+  ],
 };
 
 const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {

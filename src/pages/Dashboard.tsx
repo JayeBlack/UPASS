@@ -40,7 +40,24 @@ const Dashboard = () => {
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: "56" },
   ];
 
-  const stats = user?.role === "Student" ? studentStats : user?.role === "Supervisor" ? supervisorStats : adminStats;
+  const deanStats = [
+    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: "247", accent: true },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Clearances Pending", value: "14" },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Avg CWA", value: "68.5" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Graduands", value: "56" },
+  ];
+
+  const accountantStats = [
+    { icon: <FileText size={18} className="text-secondary-foreground" />, label: "Total Fees Collected", value: "₵1.2M", accent: true },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Compliance Rate", value: "82%" },
+    { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: "44" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Receipts", value: "8" },
+  ];
+
+  const roleStatsMap: Record<string, typeof studentStats> = {
+    Student: studentStats, Supervisor: supervisorStats, Admin: adminStats, Dean: deanStats, Accountant: accountantStats,
+  };
+  const stats = roleStatsMap[user?.role || "Student"];
 
   const quickActionRoutes: Record<string, string> = {
     "Register Courses": "/courses/register",
@@ -55,6 +72,12 @@ const Dashboard = () => {
     "Update Fees": "/admin/fees",
     "Generate List": "/admin/passlist",
     "View Analytics": "/admin/analytics",
+    "Approve Clearance": "/dean/clearance",
+    "CWA Results": "/dean/results",
+    "Manage Students": "/admin/students",
+    "Fee Analytics": "/accountant/analytics",
+    "Student Fees": "/admin/fees",
+    "Export Reports": "/accountant/reports",
   };
 
   const recentActivity = [
@@ -73,6 +96,8 @@ const Dashboard = () => {
         <p className="text-muted-foreground mt-1">
           {user?.role === "Student" && `${user.program} • ${user.department}`}
           {user?.role === "Supervisor" && `Department of ${user.department}`}
+          {user?.role === "Dean" && "Dean — School of Postgraduate Studies"}
+          {user?.role === "Accountant" && "Finance Office"}
           {user?.role === "Admin" && "School of Postgraduate Studies"}
         </p>
       </div>
@@ -106,6 +131,10 @@ const Dashboard = () => {
               ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
               : user?.role === "Supervisor"
               ? ["Review Pending", "Add Remarks", "View Students", "Exam Timetable"]
+              : user?.role === "Dean"
+              ? ["View Analytics", "Manage Students", "Approve Clearance", "CWA Results"]
+              : user?.role === "Accountant"
+              ? ["Fee Analytics", "Student Fees", "Export Reports", "View Analytics"]
               : ["Enroll Students", "Update Fees", "Generate List", "View Analytics"]
             ).map((action) => (
               <button
