@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Bell, DollarSign, FileText, Calendar, CheckCircle, Trash2 } from "lucide-react";
+import { Bell, Banknote, FileText, Calendar, CheckCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ const mockNotifications: Notification[] = [
 ];
 
 const typeIcons: Record<string, React.ReactNode> = {
-  fee: <DollarSign size={16} />,
+  fee: <Banknote size={16} />,
   thesis: <FileText size={16} />,
   exam: <Calendar size={16} />,
   general: <Bell size={16} />,

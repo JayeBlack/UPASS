@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { DollarSign, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from "lucide-react";
+import { Banknote, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from "lucide-react";
 import { useState } from "react";
 
 const fees = [
@@ -30,7 +30,7 @@ const FinancialStatus = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
         <div className="bg-card rounded-xl border border-border p-6">
           <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center mb-3">
-            <DollarSign size={18} className="text-secondary-foreground" />
+            <Banknote size={18} className="text-secondary-foreground" />
           </div>
           <p className="text-2xl font-bold font-display text-foreground">GH₵ 20,000</p>
           <p className="text-sm text-muted-foreground mt-1">Total Fees</p>
