@@ -103,10 +103,10 @@ const Dashboard = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-3">
             {(user?.role === "Student"
-              ? ["Register Courses", "Upload Chapter", "View Results", "Contact Supervisor"]
+              ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
               : user?.role === "Supervisor"
-              ? ["Review Pending", "Add Remarks", "View Students", "Download Reports"]
-              : ["Enroll Students", "Update Fees", "Generate List", "Send Notice"]
+              ? ["Review Pending", "Add Remarks", "View Students", "Exam Timetable"]
+              : ["Enroll Students", "Update Fees", "Generate List", "View Analytics"]
             ).map((action) => (
               <button
                 key={action}
