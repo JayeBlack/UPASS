@@ -100,44 +100,34 @@ const Results = () => {
         })}
       </div>
 
-      {/* CWA Progress Analysis */}
+      {/* CWA Bar Chart Analysis */}
       <div className="bg-card rounded-xl border border-border p-6 mb-6">
         <h2 className="font-display font-bold text-foreground mb-5">CWA Performance Analysis</h2>
-        
-        {/* Overall CWA Progress */}
-        <div className="mb-6 p-4 rounded-lg bg-muted/50 border border-border">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-foreground">Overall CWA</span>
-            <span className="text-sm font-bold text-foreground">{overallCwa.toFixed(1)}%</span>
-          </div>
-          <Progress value={overallCwa} className="h-3" />
-          <p className="text-xs text-muted-foreground mt-1.5">
-            {overallCwa >= 80 ? "Excellent" : overallCwa >= 70 ? "Very Good" : overallCwa >= 60 ? "Good" : "Needs Improvement"} Performance
-          </p>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={semesterData.map((s) => ({ name: s.short, cwa: parseFloat(s.cwa.toFixed(1)) }))}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <YAxis domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                  color: "hsl(var(--foreground))",
+                }}
+              />
+              <Bar dataKey="cwa" radius={[6, 6, 0, 0]}>
+                {semesterData.map((_, i) => (
+                  <Cell key={i} fill={`hsl(var(--primary))`} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-
-        {/* Semester-by-Semester Progress */}
-        <div className="space-y-4">
-          {semesterData.map((sem, i) => {
-            const prev = i > 0 ? semesterData[i - 1].cwa : null;
-            const diff = prev !== null ? sem.cwa - prev : null;
-            return (
-              <div key={sem.short}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-medium text-foreground">{sem.label}</span>
-                  <div className="flex items-center gap-2">
-                    {diff !== null && (
-                      <span className={`text-xs font-medium ${diff >= 0 ? "text-success" : "text-destructive"}`}>
-                        {diff >= 0 ? "+" : ""}{diff.toFixed(1)}
-                      </span>
-                    )}
-                    <span className="text-sm font-bold text-foreground">{sem.cwa.toFixed(1)}%</span>
-                  </div>
-                </div>
-                <Progress value={sem.cwa} className="h-2.5" />
-              </div>
-            );
-          })}
+        <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground">Overall CWA</span>
+          <span className="text-lg font-bold text-foreground">{overallCwa.toFixed(1)}%</span>
         </div>
       </div>
 
