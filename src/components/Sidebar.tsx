@@ -106,28 +106,6 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
         })}
       </nav>
 
-      {/* User info */}
-      <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 mb-3">
-          <Avatar className="w-9 h-9">
-            <AvatarImage src={user.avatarUrl} alt={user.name} />
-            <AvatarFallback className="gradient-gold text-secondary-foreground text-sm font-bold">
-              {user.name.split(" ").map((n) => n[0]).join("")}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user.name}</p>
-            <p className="text-xs text-sidebar-foreground/50">{user.role}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => { logout(); navigate("/"); }}
-          className="w-full flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors"
-        >
-          <LogOut size={16} />
-          Sign Out
-        </button>
-      </div>
     </div>
   );
 };
