@@ -46,15 +46,15 @@ const Dashboard = () => {
     "Register Courses": "/courses/register",
     "Upload Chapter": "/thesis/upload",
     "View Results": "/results",
-    "Contact Supervisor": "/notifications",
+    "Request Documents": "/documents",
     "Review Pending": "/submissions",
     "Add Remarks": "/submissions",
     "View Students": "/students",
-    "Download Reports": "/notifications",
+    "Exam Timetable": "/exams",
     "Enroll Students": "/admin/students",
     "Update Fees": "/admin/fees",
     "Generate List": "/admin/passlist",
-    "Send Notice": "/notifications",
+    "View Analytics": "/admin/analytics",
   };
 
   const recentActivity = [
