@@ -22,6 +22,10 @@ import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
 import PassList from "./pages/admin/PassList";
 import Analytics from "./pages/admin/Analytics";
+import ClearanceApprovals from "./pages/dean/ClearanceApprovals";
+import CWAResults from "./pages/dean/CWAResults";
+import FeeAnalytics from "./pages/accountant/FeeAnalytics";
+import ExportReports from "./pages/accountant/ExportReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +59,12 @@ const App = () => (
             <Route path="/admin/fees" element={<FeesStatus />} />
             <Route path="/admin/passlist" element={<PassList />} />
             <Route path="/admin/analytics" element={<Analytics />} />
+            {/* Dean */}
+            <Route path="/dean/clearance" element={<ClearanceApprovals />} />
+            <Route path="/dean/results" element={<CWAResults />} />
+            {/* Accountant */}
+            <Route path="/accountant/analytics" element={<FeeAnalytics />} />
+            <Route path="/accountant/reports" element={<ExportReports />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

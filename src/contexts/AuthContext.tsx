@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
-export type UserRole = "Student" | "Supervisor" | "Admin";
+export type UserRole = "Student" | "Supervisor" | "Admin" | "Dean" | "Accountant";
 
 export interface User {
   id: string;
@@ -48,6 +48,22 @@ const mockUsers: Record<UserRole, User> = {
     role: "Admin",
     avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
   },
+  Dean: {
+    id: "d1",
+    email: "dean@umat.edu.gh",
+    name: "Prof. Ama Boateng",
+    role: "Dean",
+    department: "School of Postgraduate Studies",
+    avatarUrl: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face",
+  },
+  Accountant: {
+    id: "acc1",
+    email: "accountant@umat.edu.gh",
+    name: "Mr. Yaw Darko",
+    role: "Accountant",
+    department: "Finance Office",
+    avatarUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
+  },
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -55,7 +71,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback((email: string, _password: string) => {
     // Determine role from email for mock auth
-    if (email.includes("admin")) {
+    if (email.includes("dean")) {
+      setUser(mockUsers.Dean);
+    } else if (email.includes("accountant") || email.includes("finance")) {
+      setUser(mockUsers.Accountant);
+    } else if (email.includes("admin")) {
       setUser(mockUsers.Admin);
     } else if (email.includes("supervisor") || email.includes("sup")) {
       setUser(mockUsers.Supervisor);
