@@ -1,9 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { FileText, CheckCircle, Clock, Eye, Send, MessageSquare, ArrowLeft, X } from "lucide-react";
+import { FileText, CheckCircle, Clock, Eye, Send, MessageSquare, ArrowLeft, Bot } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
+import AIFeedbackPanel from "@/components/supervisor/AIFeedbackPanel";
 
 interface Submission {
   id: string;
@@ -39,6 +41,7 @@ const ReviewSubmissions = () => {
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
   const [newRemark, setNewRemark] = useState("");
+  const [showAI, setShowAI] = useState(true);
 
   const handleSendRemark = () => {
     if (!newRemark.trim() || !selectedSubmission) return;
@@ -57,7 +60,7 @@ const ReviewSubmissions = () => {
     ? remarks.filter((r) => r.submissionId === selectedSubmission.id)
     : [];
 
-  // ── Detail view (reviewing a submission) ──
+  // ── Detail view ──
   if (selectedSubmission) {
     return (
       <DashboardLayout>
@@ -80,85 +83,110 @@ const ReviewSubmissions = () => {
                 {selectedSubmission.chapter} · Submitted {selectedSubmission.date}
               </p>
             </div>
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                selectedSubmission.status === "Pending"
-                  ? "bg-warning/10 text-warning"
-                  : "bg-success/10 text-success"
-              }`}
-            >
-              {selectedSubmission.status === "Pending" ? <Clock size={12} /> : <CheckCircle size={12} />}
-              {selectedSubmission.status}
-            </span>
-          </div>
-        </div>
-
-        {/* Document viewer */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden mb-6">
-          <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/30">
-            <FileText size={16} className="text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">
-              {selectedSubmission.student.replace(" ", "_")}_{selectedSubmission.chapter.replace(" ", "_")}.pdf
-            </span>
-          </div>
-          <div className="h-72 md:h-96 flex items-center justify-center bg-muted/10 text-muted-foreground text-sm">
-            <div className="text-center space-y-2">
-              <FileText size={48} className="mx-auto text-muted-foreground/40" />
-              <p>Document preview will appear here</p>
-              <p className="text-xs text-muted-foreground/60">PDF viewer integration coming soon</p>
+            <div className="flex items-center gap-3">
+              {/* AI Toggle */}
+              <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5">
+                <Bot size={14} className="text-primary" />
+                <span className="text-xs font-medium text-foreground">AI</span>
+                <Switch checked={showAI} onCheckedChange={setShowAI} className="scale-75" />
+              </div>
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                  selectedSubmission.status === "Pending"
+                    ? "bg-warning/10 text-warning"
+                    : "bg-success/10 text-success"
+                }`}
+              >
+                {selectedSubmission.status === "Pending" ? <Clock size={12} /> : <CheckCircle size={12} />}
+                {selectedSubmission.status}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Remark input */}
-        <div className="bg-card rounded-xl border border-border p-5 mb-6">
-          <h2 className="font-display text-lg font-bold text-foreground mb-3">Add Remark</h2>
-          <Textarea
-            value={newRemark}
-            onChange={(e) => setNewRemark(e.target.value)}
-            placeholder="Type your feedback for this submission..."
-            className="resize-none h-24 mb-3"
-          />
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handleSendRemark}
-              disabled={!newRemark.trim()}
-              className="gradient-gold text-secondary-foreground hover:opacity-90"
-            >
-              <Send size={14} className="mr-1.5" />
-              Send Remark
-            </Button>
-            {/* Future: grade / approve buttons */}
-          </div>
-        </div>
-
-        {/* Previous remarks */}
-        <div className="bg-card rounded-xl border border-border p-5">
-          <h2 className="font-display text-lg font-bold text-foreground mb-4">
-            Previous Remarks
-            {submissionRemarks.length > 0 && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({submissionRemarks.length})
-              </span>
-            )}
-          </h2>
-          {submissionRemarks.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">No remarks yet for this submission.</p>
-          ) : (
-            <ScrollArea className="max-h-72">
-              <div className="space-y-3">
-                {submissionRemarks.map((r) => (
-                  <div key={r.id} className="p-4 rounded-lg bg-muted/50 border-l-4 border-secondary">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageSquare size={14} className="text-secondary" />
-                      <span className="text-sm font-medium text-foreground">{r.author}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">{r.date}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{r.text}</p>
-                  </div>
-                ))}
+        {/* Main content grid */}
+        <div className={`grid gap-6 ${showAI ? "lg:grid-cols-[1fr_340px]" : "grid-cols-1"}`}>
+          <div className="space-y-6 min-w-0">
+            {/* Document viewer */}
+            <div className="bg-card rounded-xl border border-border overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/30">
+                <FileText size={16} className="text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">
+                  {selectedSubmission.student.replace(" ", "_")}_{selectedSubmission.chapter.replace(" ", "_")}.pdf
+                </span>
               </div>
-            </ScrollArea>
+              <div className="h-72 md:h-96 flex items-center justify-center bg-muted/10 text-muted-foreground text-sm">
+                <div className="text-center space-y-2">
+                  <FileText size={48} className="mx-auto text-muted-foreground/40" />
+                  <p>Document preview will appear here</p>
+                  <p className="text-xs text-muted-foreground/60">PDF viewer integration coming soon</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Remark input */}
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="font-display text-lg font-bold text-foreground mb-3">Add Remark</h2>
+              <Textarea
+                value={newRemark}
+                onChange={(e) => setNewRemark(e.target.value)}
+                placeholder="Type your feedback for this submission..."
+                className="resize-none h-24 mb-3"
+              />
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleSendRemark}
+                  disabled={!newRemark.trim()}
+                  className="gradient-gold text-secondary-foreground hover:opacity-90"
+                >
+                  <Send size={14} className="mr-1.5" />
+                  Send Remark
+                </Button>
+              </div>
+            </div>
+
+            {/* Previous remarks */}
+            <div className="bg-card rounded-xl border border-border p-5">
+              <h2 className="font-display text-lg font-bold text-foreground mb-4">
+                Previous Remarks
+                {submissionRemarks.length > 0 && (
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({submissionRemarks.length})
+                  </span>
+                )}
+              </h2>
+              {submissionRemarks.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">No remarks yet for this submission.</p>
+              ) : (
+                <ScrollArea className="max-h-72">
+                  <div className="space-y-3">
+                    {submissionRemarks.map((r) => (
+                      <div key={r.id} className="p-4 rounded-lg bg-muted/50 border-l-4 border-secondary">
+                        <div className="flex items-center gap-2 mb-2">
+                          <MessageSquare size={14} className="text-secondary" />
+                          <span className="text-sm font-medium text-foreground">{r.author}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">{r.date}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{r.text}</p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+          </div>
+
+          {/* AI Sidebar */}
+          {showAI && (
+            <div className="space-y-4">
+              <AIFeedbackPanel
+                studentName={selectedSubmission.student}
+                chapter={selectedSubmission.chapter}
+                visible={showAI}
+                onToggle={() => setShowAI(!showAI)}
+                onUseSuggestion={(text) => setNewRemark((prev) => (prev ? prev + "\n\n" + text : text))}
+              />
+            </div>
           )}
         </div>
       </DashboardLayout>
@@ -175,7 +203,7 @@ const ReviewSubmissions = () => {
 
       <div className="space-y-4">
         {submissions.map((sub) => (
-          <div key={sub.id} className="bg-card rounded-xl border border-border p-5 flex items-center justify-between hover:shadow-md transition-shadow">
+          <div key={sub.id} className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-4">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${sub.status === "Pending" ? "bg-warning/10" : "bg-success/10"}`}>
                 {sub.status === "Pending" ? <Clock size={18} className="text-warning" /> : <CheckCircle size={18} className="text-success" />}
@@ -188,6 +216,7 @@ const ReviewSubmissions = () => {
             <Button
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={() => setSelectedSubmission(sub)}
             >
               <Eye size={14} className="mr-1.5" />

@@ -18,6 +18,7 @@ import Notifications from "./pages/student/Notifications";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import TemplatesAnnouncements from "./pages/supervisor/TemplatesAnnouncements";
+import AIAssistant from "./pages/supervisor/AIAssistant";
 
 import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/students" element={<AssignedStudents />} />
             <Route path="/submissions" element={<ReviewSubmissions />} />
             <Route path="/supervisor/templates" element={<TemplatesAnnouncements />} />
+            <Route path="/supervisor/ai" element={<AIAssistant />} />
             {/* Remarks merged into /submissions */}
             {/* Admin */}
             <Route path="/admin/students" element={<ManageStudents />} />

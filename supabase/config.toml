@@ -1,1 +1,4 @@
 project_id = "cuyqeydqbhciuanwvmif"
+
+[functions.supervisor-ai]
+verify_jwt = false
