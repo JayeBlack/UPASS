@@ -19,6 +19,9 @@ import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import TemplatesAnnouncements from "./pages/supervisor/TemplatesAnnouncements";
 import AIAssistant from "./pages/supervisor/AIAssistant";
+import GradeEntry from "./pages/exams-officer/GradeEntry";
+import GeneratePassList from "./pages/exams-officer/GeneratePassList";
+import PublishResults from "./pages/exams-officer/PublishResults";
 
 import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
@@ -69,6 +72,10 @@ const App = () => (
             {/* Accountant */}
             <Route path="/accountant/analytics" element={<FeeAnalytics />} />
             <Route path="/accountant/reports" element={<ExportReports />} />
+            {/* Exams Officer */}
+            <Route path="/exams/grades" element={<GradeEntry />} />
+            <Route path="/exams/passlist" element={<GeneratePassList />} />
+            <Route path="/exams/publish" element={<PublishResults />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
