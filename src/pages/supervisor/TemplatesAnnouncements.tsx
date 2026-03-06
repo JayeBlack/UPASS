@@ -63,7 +63,7 @@ const assignedStudents = ["Kwame Mensah", "Esi Appiah", "Yaw Boateng", "Efua Dan
 const fileIcon = (type: string) => {
   switch (type) {
     case "PDF": return <FileText size={18} className="text-destructive" />;
-    case "PPTX": return <FileType size={18} className="text-orange-500" />;
+    case "PPTX": return <FileType size={18} className="text-accent-foreground" />;
     case "ZIP": return <Archive size={18} className="text-muted-foreground" />;
     default: return <FileText size={18} className="text-primary" />;
   }
