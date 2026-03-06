@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 
-export type UserRole = "Student" | "Supervisor" | "Admin" | "Dean" | "Accountant";
+export type UserRole = "Student" | "Supervisor" | "Admin" | "Dean" | "Accountant" | "ExamsOfficer";
 
 export interface User {
   id: string;
@@ -64,6 +64,14 @@ const mockUsers: Record<UserRole, User> = {
     department: "Finance Office",
     avatarUrl: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
   },
+  ExamsOfficer: {
+    id: "eo1",
+    email: "exams@umat.edu.gh",
+    name: "Mrs. Akosua Mensah",
+    role: "ExamsOfficer",
+    department: "School of Postgraduate Studies",
+    avatarUrl: "https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=150&h=150&fit=crop&crop=face",
+  },
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -79,6 +87,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(mockUsers.Admin);
     } else if (email.includes("supervisor") || email.includes("sup")) {
       setUser(mockUsers.Supervisor);
+    } else if (email.includes("exam")) {
+      setUser(mockUsers.ExamsOfficer);
     } else {
       setUser(mockUsers.Student);
     }

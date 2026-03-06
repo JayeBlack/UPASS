@@ -54,8 +54,15 @@ const Dashboard = () => {
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Receipts", value: "8" },
   ];
 
+  const examsOfficerStats = [
+    { icon: <BarChart3 size={18} className="text-secondary-foreground" />, label: "Results Published", value: "3", accent: true },
+    { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Batches", value: "5" },
+    { icon: <Users size={18} className="text-muted-foreground" />, label: "Total Students", value: "247" },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Pass Rate", value: "86%" },
+  ];
+
   const roleStatsMap: Record<string, typeof studentStats> = {
-    Student: studentStats, Supervisor: supervisorStats, Admin: adminStats, Dean: deanStats, Accountant: accountantStats,
+    Student: studentStats, Supervisor: supervisorStats, Admin: adminStats, Dean: deanStats, Accountant: accountantStats, ExamsOfficer: examsOfficerStats,
   };
   const stats = roleStatsMap[user?.role || "Student"];
 
@@ -78,6 +85,9 @@ const Dashboard = () => {
     "Fee Analytics": "/accountant/analytics",
     "Student Fees": "/admin/fees",
     "Export Reports": "/accountant/reports",
+    "Enter Grades": "/exams/grades",
+    "Pass List": "/exams/passlist",
+    "Publish Results": "/exams/publish",
   };
 
   const roleActivities: Record<string, { text: string; time: string }[]> = {
@@ -110,6 +120,12 @@ const Dashboard = () => {
       { text: "Monthly financial report exported", time: "1 day ago" },
       { text: "3 students flagged for outstanding fees", time: "2 days ago" },
       { text: "Fee compliance rate updated to 82%", time: "4 days ago" },
+    ],
+    ExamsOfficer: [
+      { text: "Semester 1 results published for MSc. IT", time: "1 hour ago" },
+      { text: "CSV grade upload for Mining Engineering processed", time: "1 day ago" },
+      { text: "Pass list generated for Computer Science", time: "2 days ago" },
+      { text: "CWA recalculated for 28 students", time: "3 days ago" },
     ],
   };
 
@@ -163,6 +179,8 @@ const Dashboard = () => {
               ? ["View Analytics", "Manage Students", "Approve Clearance", "CWA Results"]
               : user?.role === "Accountant"
               ? ["Fee Analytics", "Student Fees", "Export Reports", "View Analytics"]
+              : user?.role === "ExamsOfficer"
+              ? ["Enter Grades", "Pass List", "Publish Results", "View Analytics"]
               : ["Enroll Students", "Update Fees", "Generate List", "View Analytics"]
             ).map((action) => (
               <button
