@@ -80,12 +80,40 @@ const Dashboard = () => {
     "Export Reports": "/accountant/reports",
   };
 
-  const recentActivity = [
-    { text: "Thesis Chapter 2 submitted for review", time: "2 hours ago" },
-    { text: "Course registration approved by advisor", time: "1 day ago" },
-    { text: "New announcement from Graduate School", time: "2 days ago" },
-    { text: "Fees payment confirmed", time: "3 days ago" },
-  ];
+  const roleActivities: Record<string, { text: string; time: string }[]> = {
+    Student: [
+      { text: "Thesis Chapter 2 submitted for review", time: "2 hours ago" },
+      { text: "Course registration approved by advisor", time: "1 day ago" },
+      { text: "Fees payment confirmed — GH₵ 2,600 received", time: "3 days ago" },
+      { text: "Library clearance approved", time: "5 days ago" },
+    ],
+    Supervisor: [
+      { text: "Kwame Mensah submitted Chapter 3 for review", time: "1 hour ago" },
+      { text: "Esi Appiah's thesis proposal approved", time: "1 day ago" },
+      { text: "New student Yaw Boateng assigned to you", time: "2 days ago" },
+      { text: "Remark added for Efua Dankwah's Chapter 2", time: "4 days ago" },
+    ],
+    Admin: [
+      { text: "12 new student registrations processed", time: "3 hours ago" },
+      { text: "Pass list for Semester 1 generated", time: "1 day ago" },
+      { text: "Fee records updated for Mining Engineering", time: "2 days ago" },
+      { text: "Exam timetable published for all programs", time: "3 days ago" },
+    ],
+    Dean: [
+      { text: "5 new clearance requests awaiting approval", time: "1 hour ago" },
+      { text: "CWA results reviewed for Computer Science", time: "1 day ago" },
+      { text: "Graduation list finalized — 56 students", time: "2 days ago" },
+      { text: "Clearance approved for Akua Sarpong", time: "3 days ago" },
+    ],
+    Accountant: [
+      { text: "GH₵ 15,400 in fee payments received today", time: "2 hours ago" },
+      { text: "Monthly financial report exported", time: "1 day ago" },
+      { text: "3 students flagged for outstanding fees", time: "2 days ago" },
+      { text: "Fee compliance rate updated to 82%", time: "4 days ago" },
+    ],
+  };
+
+  const recentActivity = roleActivities[user?.role || "Student"];
 
   return (
     <DashboardLayout>
