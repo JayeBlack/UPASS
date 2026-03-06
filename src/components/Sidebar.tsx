@@ -75,7 +75,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
   ExamsOfficer: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Grade Entry", path: "/exams/grades", icon: <BookOpen size={20} /> },
-    { label: "Generate Pass List", path: "/exams/passlist", icon: <ListChecks size={20} /> },
+    { label: "Pass List", path: "/exams/passlist", icon: <ListChecks size={20} /> },
     { label: "Publish Results", path: "/exams/publish", icon: <Send size={20} /> },
     { label: "Analytics", path: "/admin/analytics", icon: <PieChart size={20} /> },
     { label: "Students", path: "/admin/students", icon: <Users size={20} /> },
