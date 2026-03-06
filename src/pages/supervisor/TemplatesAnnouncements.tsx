@@ -381,7 +381,7 @@ const TemplatesAnnouncements = () => {
                               {a.visibility === "All Students" ? <Users size={12} /> : <User size={12} />}
                               {a.visibility}
                             </Badge>
-                            {isScheduled && <Badge variant="outline" className="gap-1 text-orange-600 border-orange-300"><Clock size={12} /> Scheduled</Badge>}
+                            {isScheduled && <Badge variant="outline" className="gap-1 text-accent-foreground border-accent"><Clock size={12} /> Scheduled</Badge>}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock size={12} /> {date.toLocaleDateString()} at {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
