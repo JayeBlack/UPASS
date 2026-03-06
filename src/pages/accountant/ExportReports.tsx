@@ -29,9 +29,9 @@ const ExportReports = () => {
 
       <div className="space-y-4">
         {reports.map((r) => (
-          <div key={r.id} className="bg-card rounded-xl border border-border p-5 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+          <div key={r.id} className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-10 h-10 shrink-0 rounded-lg bg-muted flex items-center justify-center">
                 <FileText size={20} className="text-muted-foreground" />
               </div>
               <div>
@@ -42,7 +42,7 @@ const ExportReports = () => {
             </div>
             <button
               onClick={() => handleExport(r.name)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto shrink-0"
             >
               <Download size={16} />
               Export PDF
