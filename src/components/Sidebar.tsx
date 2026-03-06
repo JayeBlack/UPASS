@@ -4,6 +4,7 @@ import {
   BookOpen,
   FileText,
   BarChart3,
+  GraduationCap,
   Users,
   ClipboardCheck,
   Banknote,
@@ -18,6 +19,7 @@ import {
   Shield,
   Bell,
   PieChart,
+  Send,
 } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -69,6 +71,15 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Fee Analytics", path: "/accountant/analytics", icon: <PieChart size={20} /> },
     { label: "Student Fees", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Export Reports", path: "/accountant/reports", icon: <FileText size={20} /> },
+  ],
+  ExamsOfficer: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
+    { label: "Grade Entry", path: "/exams/grades", icon: <BookOpen size={20} /> },
+    { label: "Generate Pass List", path: "/exams/passlist", icon: <ListChecks size={20} /> },
+    { label: "Publish Results", path: "/exams/publish", icon: <Send size={20} /> },
+    { label: "Analytics", path: "/admin/analytics", icon: <PieChart size={20} /> },
+    { label: "Students", path: "/admin/students", icon: <Users size={20} /> },
+    { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={20} /> },
   ],
 };
 
