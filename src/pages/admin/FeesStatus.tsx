@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { CheckCircle, XCircle, Search, Filter } from "lucide-react";
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 interface FeeRecord {
   name: string;
@@ -12,7 +13,7 @@ interface FeeRecord {
   cleared: boolean;
 }
 
-const feeRecords: FeeRecord[] = [
+const initialRecords: FeeRecord[] = [
   { name: "Kwame Mensah", index: "UMaT/PG/0234/22", department: "Computer Science", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
   { name: "Ama Serwaa", index: "UMaT/PG/0198/22", department: "Computer Science", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
   { name: "Yaw Boateng", index: "UMaT/PG/0312/22", department: "Computer Science", totalFees: 5200, amountPaid: 3400, outstanding: 1800, cleared: false },
@@ -25,23 +26,38 @@ const feeRecords: FeeRecord[] = [
   { name: "Nana Agyei", index: "UMaT/PG/0420/23", department: "Mechanical Engineering", totalFees: 5800, amountPaid: 5800, outstanding: 0, cleared: true },
 ];
 
-const departments = [...new Set(feeRecords.map((f) => f.department))];
+const departments = [...new Set(initialRecords.map((f) => f.department))];
 
 const FeesStatus = () => {
+  const [records, setRecords] = useState<FeeRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "cleared" | "owing">("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
 
-  const filtered = feeRecords.filter((f) => {
+  const handleToggleClearance = (index: string) => {
+    setRecords((prev) =>
+      prev.map((r) => {
+        if (r.index !== index) return r;
+        const newCleared = !r.cleared;
+        toast({
+          title: newCleared ? "Student Cleared" : "Clearance Revoked",
+          description: `${r.name} (${r.index}) has been ${newCleared ? "cleared" : "revoked"}.`,
+        });
+        return { ...r, cleared: newCleared };
+      })
+    );
+  };
+
+  const filtered = records.filter((f) => {
     const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase()) || f.index.includes(search);
     const matchesStatus = statusFilter === "all" || (statusFilter === "cleared" ? f.cleared : !f.cleared);
     const matchesDept = deptFilter === "all" || f.department === deptFilter;
     return matchesSearch && matchesStatus && matchesDept;
   });
 
-  const totalCleared = feeRecords.filter((f) => f.cleared).length;
-  const totalOwing = feeRecords.filter((f) => !f.cleared).length;
-  const totalOutstanding = feeRecords.reduce((s, f) => s + f.outstanding, 0);
+  const totalCleared = records.filter((f) => f.cleared).length;
+  const totalOwing = records.filter((f) => !f.cleared).length;
+  const totalOutstanding = records.reduce((s, f) => s + f.outstanding, 0);
 
   return (
     <DashboardLayout>
@@ -108,7 +124,7 @@ const FeesStatus = () => {
       </div>
 
       {/* Results count */}
-      <p className="text-sm text-muted-foreground mb-4">Showing {filtered.length} of {feeRecords.length} students</p>
+      <p className="text-sm text-muted-foreground mb-4">Showing {filtered.length} of {records.length} students</p>
 
       {/* Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -149,11 +165,14 @@ const FeesStatus = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      f.cleared
-                        ? "border border-border text-muted-foreground"
-                        : "gradient-gold text-secondary-foreground hover:opacity-90"
-                    }`}>
+                    <button
+                      onClick={() => handleToggleClearance(f.index)}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        f.cleared
+                          ? "border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                          : "gradient-gold text-secondary-foreground hover:opacity-90"
+                      }`}
+                    >
                       {f.cleared ? "Revoke" : "Clear"}
                     </button>
                   </td>
