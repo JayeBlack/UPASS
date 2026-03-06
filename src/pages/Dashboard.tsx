@@ -142,6 +142,7 @@ const Dashboard = () => {
           {user?.role === "Supervisor" && `Department of ${user.department}`}
           {user?.role === "Dean" && "Dean — School of Postgraduate Studies"}
           {user?.role === "Accountant" && "Finance Office"}
+          {user?.role === "ExamsOfficer" && "Examinations Office — School of Postgraduate Studies"}
           {user?.role === "Admin" && "School of Postgraduate Studies"}
         </p>
       </div>
