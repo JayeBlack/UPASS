@@ -12,6 +12,7 @@ import {
   Upload,
   Eye,
   MessageSquare,
+  Bot,
   LogOut,
   LayoutDashboard,
   Menu,
@@ -43,6 +44,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Financial Status", path: "/finances", icon: <Banknote size={20} /> },
     { label: "Request Documents", path: "/documents", icon: <FileText size={20} /> },
     { label: "Clearance", path: "/clearance", icon: <Shield size={20} /> },
+    { label: "SPS Assistant", path: "/student/chat", icon: <Bot size={20} /> },
   ],
   Supervisor: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
