@@ -15,6 +15,7 @@ import DocumentRequests from "./pages/student/DocumentRequests";
 import ExamTimetable from "./pages/student/ExamTimetable";
 import Clearance from "./pages/student/Clearance";
 import Notifications from "./pages/student/Notifications";
+import ChatAssistant from "./pages/student/ChatAssistant";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import TemplatesAnnouncements from "./pages/supervisor/TemplatesAnnouncements";
