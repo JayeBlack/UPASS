@@ -1,0 +1,10 @@
+const router = require("express").Router();
+const ctrl = require("../controllers/clearanceController");
+const { authenticate, authorize } = require("../middleware/auth");
+router.use(authenticate);
+router.get("/student/:studentId", ctrl.getByStudent);
+router.get("/pending", authorize("Admin", "Dean"), ctrl.getPending);
+router.put("/:id/approve", authorize("Admin", "Dean"), ctrl.approve);
+router.put("/:id/reject", authorize("Admin", "Dean"), ctrl.reject);
+router.post("/init/:studentId", authorize("Admin"), ctrl.initSteps);
+module.exports = router;

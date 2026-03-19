@@ -1,0 +1,12 @@
+const router = require("express").Router();
+const ctrl = require("../controllers/thesisController");
+const { authenticate, authorize } = require("../middleware/auth");
+const upload = require("../middleware/upload");
+router.use(authenticate);
+router.get("/student/:studentId", ctrl.getByStudent);
+router.get("/pending", authorize("Supervisor", "Admin", "Dean"), ctrl.getPending);
+router.post("/upload", (req, res, next) => { req.uploadSubDir = "thesis"; next(); }, upload.single("file"), ctrl.upload);
+router.put("/:id/review", authorize("Supervisor"), ctrl.review);
+router.post("/:id/remarks", ctrl.addRemark);
+router.get("/:id/remarks", ctrl.getRemarks);
+module.exports = router;
