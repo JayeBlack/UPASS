@@ -12,6 +12,7 @@ import {
   Upload,
   Eye,
   MessageSquare,
+  Bot,
   LogOut,
   LayoutDashboard,
   Menu,
