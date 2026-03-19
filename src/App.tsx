@@ -55,6 +55,7 @@ const App = () => (
             <Route path="/documents" element={<DocumentRequests />} />
             <Route path="/exams" element={<ExamTimetable />} />
             <Route path="/clearance" element={<Clearance />} />
+            <Route path="/student/chat" element={<ChatAssistant />} />
             <Route path="/notifications" element={<Notifications />} />
             {/* Supervisor */}
             <Route path="/students" element={<AssignedStudents />} />
