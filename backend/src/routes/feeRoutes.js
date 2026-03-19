@@ -1,0 +1,10 @@
+const router = require("express").Router();
+const ctrl = require("../controllers/feeController");
+const { authenticate, authorize } = require("../middleware/auth");
+router.use(authenticate);
+router.get("/student/:studentId", ctrl.getByStudent);
+router.get("/", authorize("Admin", "Accountant", "Dean", "ExamsOfficer"), ctrl.getAll);
+router.get("/summary", authorize("Admin", "Accountant", "Dean"), ctrl.getSummary);
+router.post("/payment", ctrl.makePayment);
+router.put("/:id/clearance", authorize("Admin", "Accountant"), ctrl.toggleClearance);
+module.exports = router;

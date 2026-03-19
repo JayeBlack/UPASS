@@ -1,0 +1,10 @@
+const router = require("express").Router();
+const ctrl = require("../controllers/notificationController");
+const { authenticate, authorize } = require("../middleware/auth");
+router.use(authenticate);
+router.get("/", ctrl.getForUser);
+router.put("/:id/read", ctrl.markRead);
+router.put("/read-all", ctrl.markAllRead);
+router.delete("/:id", ctrl.remove);
+router.post("/", authorize("Admin", "Dean", "ExamsOfficer"), ctrl.create);
+module.exports = router;
