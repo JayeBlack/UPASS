@@ -1,3 +1,4 @@
+import React from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Bot, Send, Sparkles, Loader2, ThumbsUp, ThumbsDown, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
@@ -9,6 +10,68 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supervisor-ai`;
+
+// Clean markdown artifacts from AI responses
+const cleanResponse = (text: string): string => {
+  return text
+    .replace(/#{1,6}\s*/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1")
+    .replace(/^[-•]\s+/gm, "• ")
+    .trim();
+};
+
+// Render text with clickable links, phone numbers, and WhatsApp links
+const renderWithLinks = (text: string): React.ReactNode => {
+  const cleaned = cleanResponse(text);
+  const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  let tokenized = cleaned.replace(MD_LINK, '<<<MDLINK:$2:::$1>>>');
+  const SPLIT = /(<<<MDLINK:[^>]+>>>|https?:\/\/[^\s)<>,]+|(?:WhatsApp|whatsapp|Whatsapp)[:\s]*[\+]?[\d\s\-()]{7,}|(?:\+\d{1,3}[\s\-]?)?\(?\d{2,4}\)?[\s\-]?\d{3,4}[\s\-]?\d{3,4})/g;
+  const parts = tokenized.split(SPLIT);
+
+  return parts.map((part, i) => {
+    if (!part) return null;
+    const md = part.match(/^<<<MDLINK:(.*?):::(.+?)>>>$/);
+    if (md) {
+      return (
+        <a key={i} href={md[1]} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors break-all">
+          {md[2]}
+        </a>
+      );
+    }
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors break-all">
+          {part}
+        </a>
+      );
+    }
+    const waMatch = part.match(/^(?:WhatsApp|whatsapp|Whatsapp)[:\s]*([\+\d\s\-()]{7,})$/);
+    if (waMatch) {
+      const digits = waMatch[1].replace(/[^\d+]/g, '');
+      const waUrl = `https://wa.me/${digits.replace('+', '')}`;
+      return (
+        <a key={i} href={waUrl} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+          {part}
+        </a>
+      );
+    }
+    const phoneDigits = part.replace(/[^\d+]/g, '');
+    if (phoneDigits.length >= 7 && /^[\+]?[\d\s\-()]+$/.test(part.trim())) {
+      return (
+        <a key={i} href={`tel:${phoneDigits}`}
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+          {part}
+        </a>
+      );
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -176,7 +239,7 @@ const AIAssistant = () => {
                           <span className="text-xs font-medium text-primary">AI Assistant</span>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      <div className="whitespace-pre-wrap" style={{ fontSize: '15px', lineHeight: '1.7' }}>{renderWithLinks(m.content)}</div>
                       {m.role === "assistant" && (
                         <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
                           <button onClick={() => handleFeedback("up")} className="p-1 rounded hover:bg-background/50 text-muted-foreground hover:text-success transition-colors">
