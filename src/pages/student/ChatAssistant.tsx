@@ -168,21 +168,21 @@ const ChatAssistant = () => {
                   }`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${
+                    className={`max-w-[85%] rounded-xl px-5 py-4 ${
                       m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/60 text-foreground"
+                        ? "bg-primary text-primary-foreground text-[15px]"
+                        : "bg-muted/60 text-foreground text-[15px] leading-relaxed"
                     }`}
                   >
                     {m.role === "assistant" && (
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Bot size={12} className="text-primary" />
-                        <span className="text-xs font-medium text-primary">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Bot size={14} className="text-primary" />
+                        <span className="text-sm font-semibold text-primary">
                           SPS Assistant
                         </span>
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <div className="whitespace-pre-wrap font-sans">{cleanResponse(m.content)}</div>
                   </div>
                 </div>
               ))}
