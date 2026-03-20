@@ -21,6 +21,18 @@ const quickPrompts = [
   "How do I contact the SPS office?",
 ];
 
+// Clean markdown artifacts from AI responses
+const cleanResponse = (text: string): string => {
+  return text
+    .replace(/#{1,6}\s*/g, "")         // Remove heading markers
+    .replace(/\*\*(.*?)\*\*/g, "$1")   // Remove bold **text**
+    .replace(/\*(.*?)\*/g, "$1")       // Remove italic *text*
+    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1") // Remove code backticks
+    .replace(/^[-•]\s+/gm, "• ")       // Normalize bullet dashes to dots
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)") // Links to plain text
+    .trim();
+};
+
 const ChatAssistant = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -168,21 +180,21 @@ const ChatAssistant = () => {
                   }`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${
+                    className={`max-w-[85%] rounded-xl px-5 py-4 ${
                       m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted/60 text-foreground"
+                        ? "bg-primary text-primary-foreground text-[15px]"
+                        : "bg-muted/60 text-foreground text-[15px] leading-relaxed"
                     }`}
                   >
                     {m.role === "assistant" && (
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <Bot size={12} className="text-primary" />
-                        <span className="text-xs font-medium text-primary">
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Bot size={14} className="text-primary" />
+                        <span className="text-sm font-semibold text-primary">
                           SPS Assistant
                         </span>
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <div className="whitespace-pre-wrap font-sans">{cleanResponse(m.content)}</div>
                   </div>
                 </div>
               ))}
