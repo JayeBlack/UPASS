@@ -21,6 +21,18 @@ const quickPrompts = [
   "How do I contact the SPS office?",
 ];
 
+// Clean markdown artifacts from AI responses
+const cleanResponse = (text: string): string => {
+  return text
+    .replace(/#{1,6}\s*/g, "")         // Remove heading markers
+    .replace(/\*\*(.*?)\*\*/g, "$1")   // Remove bold **text**
+    .replace(/\*(.*?)\*/g, "$1")       // Remove italic *text*
+    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1") // Remove code backticks
+    .replace(/^[-•]\s+/gm, "• ")       // Normalize bullet dashes to dots
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)") // Links to plain text
+    .trim();
+};
+
 const ChatAssistant = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
