@@ -228,7 +228,7 @@ const ChatAssistant = () => {
                         </span>
                       </div>
                     )}
-                    <div className="whitespace-pre-wrap font-sans">{cleanResponse(m.content)}</div>
+                    <div className="whitespace-pre-wrap font-sans">{renderWithLinks(m.content)}</div>
                   </div>
                 </div>
               ))}
