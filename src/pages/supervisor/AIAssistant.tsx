@@ -23,7 +23,6 @@ const cleanResponse = (text: string): string => {
     .replace(/\*{2,}/g, "")              // stray asterisks
     .replace(/_{2,}/g, "")               // stray underscores used as separators
     .replace(/~{2}(.*?)~{2}/g, "$1")     // strikethrough
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // will be re-linked by renderInlineLinks
     .replace(/\n{3,}/g, "\n\n")          // collapse excessive blank lines
     .trim();
 };
