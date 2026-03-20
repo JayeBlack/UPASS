@@ -14,11 +14,16 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supervisor-a
 // Clean markdown artifacts from AI responses (skip table lines)
 const cleanResponse = (text: string): string => {
   return text
-    .replace(/#{1,6}\s*/g, "")
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1")
-    .replace(/^[-•]\s+/gm, "• ")
+    .replace(/#{1,6}\s*/g, "")           // remove markdown headings
+    .replace(/\*\*(.*?)\*\*/g, "$1")     // bold
+    .replace(/\*(.*?)\*/g, "$1")         // italic
+    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1") // code blocks
+    .replace(/^[-•]\s+/gm, "• ")         // normalize bullets
+    .replace(/^>\s?/gm, "")              // remove blockquotes >
+    .replace(/\*{2,}/g, "")              // stray asterisks
+    .replace(/_{2,}/g, "")               // stray underscores used as separators
+    .replace(/~{2}(.*?)~{2}/g, "$1")     // strikethrough
+    .replace(/\n{3,}/g, "\n\n")          // collapse excessive blank lines
     .trim();
 };
 

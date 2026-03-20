@@ -29,6 +29,11 @@ const cleanResponse = (text: string): string => {
     .replace(/\*(.*?)\*/g, "$1")
     .replace(/`{1,3}(.*?)`{1,3}/gs, "$1")
     .replace(/^[-•]\s+/gm, "• ")
+    .replace(/^>\s?/gm, "")
+    .replace(/\*{2,}/g, "")
+    .replace(/_{2,}/g, "")
+    .replace(/~{2}(.*?)~{2}/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
