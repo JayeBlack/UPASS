@@ -32,20 +32,22 @@ const cleanResponse = (text: string): string => {
     .trim();
 };
 
-// Render text with clickable links (markdown links + raw URLs)
+// Render text with clickable links, phone numbers, and WhatsApp links
 const renderWithLinks = (text: string): React.ReactNode => {
   const cleaned = cleanResponse(text);
 
-  // First extract markdown links [label](url), then find raw URLs
+  // Token markdown links [label](url)
   const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
-  // Replace markdown links with a token
   let tokenized = cleaned.replace(MD_LINK, '<<<MDLINK:$2:::$1>>>');
 
-  // Split on tokens and raw URLs
-  const SPLIT = /(<<<MDLINK:[^>]+>>>|https?:\/\/[^\s)<>,]+)/g;
+  // Match: tokens, raw URLs, WhatsApp patterns, and phone numbers
+  const SPLIT = /(<<<MDLINK:[^>]+>>>|https?:\/\/[^\s)<>,]+|(?:WhatsApp|whatsapp|Whatsapp)[:\s]*[\+]?[\d\s\-()]{7,}|(?:\+\d{1,3}[\s\-]?)?\(?\d{2,4}\)?[\s\-]?\d{3,4}[\s\-]?\d{3,4})/g;
   const parts = tokenized.split(SPLIT);
 
   return parts.map((part, i) => {
+    if (!part) return null;
+
+    // Markdown link token
     const md = part.match(/^<<<MDLINK:(.*?):::(.+?)>>>$/);
     if (md) {
       return (
@@ -55,6 +57,8 @@ const renderWithLinks = (text: string): React.ReactNode => {
         </a>
       );
     }
+
+    // Raw URL
     if (/^https?:\/\//.test(part)) {
       return (
         <a key={i} href={part} target="_blank" rel="noopener noreferrer"
@@ -63,6 +67,31 @@ const renderWithLinks = (text: string): React.ReactNode => {
         </a>
       );
     }
+
+    // WhatsApp pattern (e.g. "WhatsApp: +233 24 000 1234")
+    const waMatch = part.match(/^(?:WhatsApp|whatsapp|Whatsapp)[:\s]*([\+\d\s\-()]{7,})$/);
+    if (waMatch) {
+      const digits = waMatch[1].replace(/[^\d+]/g, '');
+      const waUrl = `https://wa.me/${digits.replace('+', '')}`;
+      return (
+        <a key={i} href={waUrl} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors inline-flex items-center gap-1">
+          {part}
+        </a>
+      );
+    }
+
+    // Phone number pattern
+    const phoneDigits = part.replace(/[^\d+]/g, '');
+    if (phoneDigits.length >= 7 && /^[\+]?[\d\s\-()]+$/.test(part.trim())) {
+      return (
+        <a key={i} href={`tel:${phoneDigits}`}
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">
+          {part}
+        </a>
+      );
+    }
+
     return <span key={i}>{part}</span>;
   });
 };
