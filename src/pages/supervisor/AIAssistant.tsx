@@ -321,7 +321,7 @@ const AIAssistant = () => {
                           <span className="text-xs font-medium text-primary">AI Assistant</span>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap" style={{ fontSize: '15px', lineHeight: '1.7' }}>{renderWithLinks(m.content)}</div>
+                      <div className="whitespace-pre-wrap" style={{ fontSize: '15px', lineHeight: '1.7' }}>{renderFormattedContent(m.content)}</div>
                       {m.role === "assistant" && (
                         <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
                           <button onClick={() => handleFeedback("up")} className="p-1 rounded hover:bg-background/50 text-muted-foreground hover:text-success transition-colors">
