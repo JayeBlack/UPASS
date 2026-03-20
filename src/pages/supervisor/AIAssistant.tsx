@@ -11,7 +11,7 @@ import { toast } from "sonner";
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supervisor-ai`;
 
-// Clean markdown artifacts from AI responses
+// Clean markdown artifacts from AI responses (skip table lines)
 const cleanResponse = (text: string): string => {
   return text
     .replace(/#{1,6}\s*/g, "")
@@ -22,11 +22,29 @@ const cleanResponse = (text: string): string => {
     .trim();
 };
 
-// Render text with clickable links, phone numbers, and WhatsApp links
-const renderWithLinks = (text: string): React.ReactNode => {
-  const cleaned = cleanResponse(text);
+// Parse a markdown table block into { headers, rows }
+const parseMarkdownTable = (block: string): { headers: string[]; rows: string[][] } | null => {
+  const lines = block.trim().split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return null;
+  // header row must have pipes
+  if (!lines[0].includes("|")) return null;
+
+  const parseCells = (line: string) =>
+    line.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+
+  const headers = parseCells(lines[0]);
+  // second line should be the separator (dashes)
+  const sepIdx = lines[1].match(/^[\s|:-]+$/) ? 1 : -1;
+  if (sepIdx === -1) return null;
+
+  const rows = lines.slice(sepIdx + 1).map(parseCells);
+  return { headers, rows };
+};
+
+// Render inline text with clickable links, phone numbers, and WhatsApp
+const renderInlineLinks = (text: string): React.ReactNode => {
   const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
-  let tokenized = cleaned.replace(MD_LINK, '<<<MDLINK:$2:::$1>>>');
+  let tokenized = text.replace(MD_LINK, '<<<MDLINK:$2:::$1>>>');
   const SPLIT = /(<<<MDLINK:[^>]+>>>|https?:\/\/[^\s)<>,]+|(?:WhatsApp|whatsapp|Whatsapp)[:\s]*[\+]?[\d\s\-()]{7,}|(?:\+\d{1,3}[\s\-]?)?\(?\d{2,4}\)?[\s\-]?\d{3,4}[\s\-]?\d{3,4})/g;
   const parts = tokenized.split(SPLIT);
 
@@ -70,6 +88,70 @@ const renderWithLinks = (text: string): React.ReactNode => {
       );
     }
     return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+};
+
+// Render a table as a styled HTML table
+const renderTable = (table: { headers: string[]; rows: string[][] }, key: number) => (
+  <div key={key} className="my-3 overflow-x-auto rounded-lg border border-border">
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="bg-muted/60">
+          {table.headers.map((h, hi) => (
+            <th key={hi} className="px-3 py-2 text-left font-semibold text-foreground border-b border-border whitespace-nowrap">
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {table.rows.map((row, ri) => (
+          <tr key={ri} className={ri % 2 === 0 ? "bg-background" : "bg-muted/30"}>
+            {row.map((cell, ci) => (
+              <td key={ci} className="px-3 py-2 text-foreground border-b border-border/50">
+                {renderInlineLinks(cell)}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// Main renderer: splits content into table blocks and text blocks
+const renderFormattedContent = (text: string): React.ReactNode => {
+  // Split by table blocks (consecutive lines containing pipes with a separator row)
+  const TABLE_REGEX = /((?:^[ \t]*\|.+\|[ \t]*\n?){2,})/gm;
+  const segments: { type: "text" | "table"; content: string }[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(TABLE_REGEX)) {
+    const before = text.slice(lastIndex, match.index);
+    if (before.trim()) segments.push({ type: "text", content: before });
+    segments.push({ type: "table", content: match[1] });
+    lastIndex = (match.index || 0) + match[0].length;
+  }
+  const remaining = text.slice(lastIndex);
+  if (remaining.trim()) segments.push({ type: "text", content: remaining });
+
+  // If no table segments found, fall back to simple rendering
+  if (segments.length === 0) {
+    return renderInlineLinks(cleanResponse(text));
+  }
+
+  return segments.map((seg, i) => {
+    if (seg.type === "table") {
+      const parsed = parseMarkdownTable(seg.content);
+      if (parsed) return renderTable(parsed, i);
+      // Not a valid table, render as text
+      return <React.Fragment key={i}>{renderInlineLinks(cleanResponse(seg.content))}</React.Fragment>;
+    }
+    return (
+      <div key={i} className="whitespace-pre-wrap">
+        {renderInlineLinks(cleanResponse(seg.content))}
+      </div>
+    );
   });
 };
 
@@ -239,7 +321,7 @@ const AIAssistant = () => {
                           <span className="text-xs font-medium text-primary">AI Assistant</span>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap" style={{ fontSize: '15px', lineHeight: '1.7' }}>{renderWithLinks(m.content)}</div>
+                      <div className="whitespace-pre-wrap" style={{ fontSize: '15px', lineHeight: '1.7' }}>{renderFormattedContent(m.content)}</div>
                       {m.role === "assistant" && (
                         <div className="flex items-center gap-1 mt-2 pt-2 border-t border-border/50">
                           <button onClick={() => handleFeedback("up")} className="p-1 rounded hover:bg-background/50 text-muted-foreground hover:text-success transition-colors">
