@@ -14,7 +14,7 @@ You help supervisors with:
 - Tracking student progress and milestones
 - Answering questions about thesis guidelines, formatting, and best practices
 - Providing summaries of student work and historical feedback
-Keep responses concise, professional, and actionable. Use markdown formatting.`,
+Keep responses concise, professional, and actionable. When comparing items, listing student progress, showing schedules, evaluation criteria, or any structured data, ALWAYS use markdown tables (with | pipes and --- separator rows) for clarity. Use plain text for explanations.`,
 
   feedback: `You are an AI assistant helping a thesis supervisor review a student's submission.
 Based on the submission details provided, generate 3-5 specific, constructive feedback suggestions.
