@@ -24,13 +24,47 @@ const quickPrompts = [
 // Clean markdown artifacts from AI responses
 const cleanResponse = (text: string): string => {
   return text
-    .replace(/#{1,6}\s*/g, "")         // Remove heading markers
-    .replace(/\*\*(.*?)\*\*/g, "$1")   // Remove bold **text**
-    .replace(/\*(.*?)\*/g, "$1")       // Remove italic *text*
-    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1") // Remove code backticks
-    .replace(/^[-•]\s+/gm, "• ")       // Normalize bullet dashes to dots
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1 ($2)") // Links to plain text
+    .replace(/#{1,6}\s*/g, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/`{1,3}(.*?)`{1,3}/gs, "$1")
+    .replace(/^[-•]\s+/gm, "• ")
     .trim();
+};
+
+// Render text with clickable links (markdown links + raw URLs)
+const renderWithLinks = (text: string): React.ReactNode => {
+  const cleaned = cleanResponse(text);
+
+  // First extract markdown links [label](url), then find raw URLs
+  const MD_LINK = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  // Replace markdown links with a token
+  let tokenized = cleaned.replace(MD_LINK, '<<<MDLINK:$2:::$1>>>');
+
+  // Split on tokens and raw URLs
+  const SPLIT = /(<<<MDLINK:[^>]+>>>|https?:\/\/[^\s)<>,]+)/g;
+  const parts = tokenized.split(SPLIT);
+
+  return parts.map((part, i) => {
+    const md = part.match(/^<<<MDLINK:(.*?):::(.+?)>>>$/);
+    if (md) {
+      return (
+        <a key={i} href={md[1]} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors break-all">
+          {md[2]}
+        </a>
+      );
+    }
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors break-all">
+          {part}
+        </a>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 };
 
 const ChatAssistant = () => {
