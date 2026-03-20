@@ -1,3 +1,4 @@
+import React from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Bot, Send, Sparkles, Loader2, ThumbsUp, ThumbsDown, AlertTriangle, CheckCircle, Info } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
