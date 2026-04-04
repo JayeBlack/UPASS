@@ -152,12 +152,14 @@ const FeesStatus = () => {
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
           <p className="text-muted-foreground mt-1">Financial clearance for postgraduate students</p>
         </div>
-        <button
-          onClick={() => setShowImport(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <Upload size={14} /> Import Manual Payments (.csv)
-        </button>
+        {isAccountant && (
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <Upload size={14} /> Import Manual Payments (.csv)
+          </button>
+        )}
       </div>
 
       {/* Import Modal */}
