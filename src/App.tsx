@@ -12,7 +12,6 @@ import Results from "./pages/student/Results";
 import FinancialStatus from "./pages/student/FinancialStatus";
 import Transcript from "./pages/student/Transcript";
 import DocumentRequests from "./pages/student/DocumentRequests";
-import ExamTimetable from "./pages/student/ExamTimetable";
 import Clearance from "./pages/student/Clearance";
 import Notifications from "./pages/student/Notifications";
 import ChatAssistant from "./pages/student/ChatAssistant";
@@ -28,10 +27,12 @@ import ManageStudents from "./pages/admin/ManageStudents";
 import FeesStatus from "./pages/admin/FeesStatus";
 import PassList from "./pages/admin/PassList";
 import Analytics from "./pages/admin/Analytics";
+import SystemLog from "./pages/admin/SystemLog";
 import ClearanceApprovals from "./pages/dean/ClearanceApprovals";
 import CWAResults from "./pages/dean/CWAResults";
 import FeeAnalytics from "./pages/accountant/FeeAnalytics";
 import ExportReports from "./pages/accountant/ExportReports";
+import FeeAnnouncements from "./pages/accountant/FeeAnnouncements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,7 +54,6 @@ const App = () => (
             <Route path="/finances" element={<FinancialStatus />} />
             <Route path="/transcript" element={<DocumentRequests />} />
             <Route path="/documents" element={<DocumentRequests />} />
-            <Route path="/exams" element={<ExamTimetable />} />
             <Route path="/clearance" element={<Clearance />} />
             <Route path="/student/chat" element={<ChatAssistant />} />
             <Route path="/notifications" element={<Notifications />} />
@@ -62,18 +62,19 @@ const App = () => (
             <Route path="/submissions" element={<ReviewSubmissions />} />
             <Route path="/supervisor/templates" element={<TemplatesAnnouncements />} />
             <Route path="/supervisor/ai" element={<AIAssistant />} />
-            {/* Remarks merged into /submissions */}
             {/* Admin */}
             <Route path="/admin/students" element={<ManageStudents />} />
             <Route path="/admin/fees" element={<FeesStatus />} />
             <Route path="/admin/passlist" element={<PassList />} />
             <Route path="/admin/analytics" element={<Analytics />} />
+            <Route path="/admin/log" element={<SystemLog />} />
             {/* Dean */}
             <Route path="/dean/clearance" element={<ClearanceApprovals />} />
             <Route path="/dean/results" element={<CWAResults />} />
             {/* Accountant */}
             <Route path="/accountant/analytics" element={<FeeAnalytics />} />
             <Route path="/accountant/reports" element={<ExportReports />} />
+            <Route path="/accountant/announcements" element={<FeeAnnouncements />} />
             {/* Exams Officer */}
             <Route path="/exams/grades" element={<GradeEntry />} />
             <Route path="/exams/passlist" element={<GeneratePassList />} />

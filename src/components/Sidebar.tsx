@@ -38,7 +38,6 @@ const navByRole: Record<UserRole, NavItem[]> = {
   Student: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { label: "Register Courses", path: "/courses/register", icon: <BookOpen size={20} /> },
-    { label: "Exam Timetable", path: "/exams", icon: <Calendar size={20} /> },
     { label: "Upload Thesis", path: "/thesis/upload", icon: <Upload size={20} /> },
     { label: "Check Results", path: "/results", icon: <BarChart3 size={20} /> },
     { label: "Financial Status", path: "/finances", icon: <Banknote size={20} /> },
@@ -59,6 +58,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
+    { label: "System Log", path: "/admin/log", icon: <FileText size={20} /> },
   ],
   Dean: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
@@ -73,6 +73,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Fee Analytics", path: "/accountant/analytics", icon: <PieChart size={20} /> },
     { label: "Student Fees", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Export Reports", path: "/accountant/reports", icon: <FileText size={20} /> },
+    { label: "Fee Notices", path: "/accountant/announcements", icon: <Bell size={20} /> },
   ],
   ExamsOfficer: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },

@@ -46,6 +46,7 @@ const mockUsers: Record<UserRole, User> = {
     email: "admin@umat.edu.gh",
     name: "Prof. Kofi Asante",
     role: "Admin",
+    department: "Computer Science",
     avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
   },
   Dean: {
@@ -78,11 +79,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
 
   const login = useCallback((email: string, _password: string) => {
-    // Determine role from email for mock auth
     if (email.includes("dean")) {
       setUser(mockUsers.Dean);
     } else if (email.includes("accountant") || email.includes("finance")) {
       setUser(mockUsers.Accountant);
+    } else if (email.includes("superadmin")) {
+      setUser({ ...mockUsers.Admin, id: "sa1", email: "superadmin@umat.edu.gh", name: "Prof. Nana Kwaku", department: undefined });
     } else if (email.includes("admin")) {
       setUser(mockUsers.Admin);
     } else if (email.includes("supervisor") || email.includes("sup")) {

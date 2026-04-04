@@ -74,17 +74,18 @@ const Dashboard = () => {
     "Review Pending": "/submissions",
     "Add Remarks": "/submissions",
     "View Students": "/students",
-    "Exam Timetable": "/exams",
     "Enroll Students": "/admin/students",
     "Update Fees": "/admin/fees",
     "Generate List": "/admin/passlist",
     "View Analytics": "/admin/analytics",
+    "System Log": "/admin/log",
     "Approve Clearance": "/dean/clearance",
     "CWA Results": "/dean/results",
     "Manage Students": "/admin/students",
     "Fee Analytics": "/accountant/analytics",
     "Student Fees": "/admin/fees",
     "Export Reports": "/accountant/reports",
+    "Fee Notices": "/accountant/announcements",
     "Enter Grades": "/exams/grades",
     "Pass List": "/exams/passlist",
     "Publish Results": "/exams/publish",
@@ -143,7 +144,7 @@ const Dashboard = () => {
           {user?.role === "Dean" && "Dean — School of Postgraduate Studies"}
           {user?.role === "Accountant" && "Finance Office"}
           {user?.role === "ExamsOfficer" && "Examinations Office — School of Postgraduate Studies"}
-          {user?.role === "Admin" && "School of Postgraduate Studies"}
+          {user?.role === "Admin" && (user.department ? `Department Admin — ${user.department}` : "Super Admin — School of Postgraduate Studies")}
         </p>
       </div>
 
@@ -175,14 +176,14 @@ const Dashboard = () => {
             {(user?.role === "Student"
               ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
               : user?.role === "Supervisor"
-              ? ["Review Pending", "Add Remarks", "View Students", "Exam Timetable"]
+              ? ["Review Pending", "Add Remarks", "View Students"]
               : user?.role === "Dean"
               ? ["View Analytics", "Manage Students", "Approve Clearance", "CWA Results"]
               : user?.role === "Accountant"
-              ? ["Fee Analytics", "Student Fees", "Export Reports", "View Analytics"]
+              ? ["Fee Analytics", "Student Fees", "Export Reports", "Fee Notices"]
               : user?.role === "ExamsOfficer"
               ? ["Enter Grades", "Pass List", "Publish Results", "View Analytics"]
-              : ["Enroll Students", "Update Fees", "Generate List", "View Analytics"]
+              : ["Enroll Students", "Update Fees", "Generate List", "System Log"]
             ).map((action) => (
               <button
                 key={action}

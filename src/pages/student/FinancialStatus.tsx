@@ -1,6 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Banknote, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from "lucide-react";
+import { Banknote, CheckCircle, AlertCircle, Clock, Upload, CreditCard, Download } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import umatLogo from "@/assets/umat-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 const fees = [
   { semester: "Semester 1, 2025/2026", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
@@ -19,6 +22,69 @@ const FinancialStatus = () => {
   const totalOwed = 1600;
   const [showPayModal, setShowPayModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"online" | "receipt" | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const handleDownloadReceipt = async (fee: typeof fees[0]) => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = umatLogo;
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+        doc.addImage(img, "PNG", 85, 8, 20, 20);
+      } catch { /* continue */ }
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("University of Mines and Technology", 105, 35, { align: "center" });
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("School of Postgraduate Studies", 105, 42, { align: "center" });
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("FEE PAYMENT RECEIPT", 105, 52, { align: "center" });
+
+      doc.setDrawColor(34, 87, 50);
+      doc.line(20, 57, 190, 57);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const startY = 65;
+      const lines = [
+        ["Student Name:", user?.name || "N/A"],
+        ["Index Number:", user?.indexNumber || "N/A"],
+        ["Programme:", user?.program || "N/A"],
+        ["Department:", user?.department || "N/A"],
+        ["Semester:", fee.semester],
+        ["Total Fee:", fee.amount],
+        ["Amount Paid:", fee.paid],
+        ["Balance:", fee.balance],
+        ["Status:", fee.status],
+        ["Date:", new Date().toLocaleDateString("en-GB")],
+      ];
+
+      lines.forEach(([label, value], i) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(label, 25, startY + i * 8);
+        doc.setFont("helvetica", "normal");
+        doc.text(value, 80, startY + i * 8);
+      });
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.text("This is a computer-generated receipt.", 105, 280, { align: "center" });
+      doc.text(`Generated on ${new Date().toLocaleDateString("en-GB")}`, 105, 285, { align: "center" });
+
+      doc.save(`UMaT_Fee_Receipt_${fee.semester.replace(/[\s,\/]/g, "_")}.pdf`);
+      toast({ title: "Receipt downloaded", description: `Payment receipt for ${fee.semester}` });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate receipt", variant: "destructive" });
+    }
+  };
 
   return (
     <DashboardLayout>
@@ -159,6 +225,7 @@ const FinancialStatus = () => {
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance</th>
                 <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Receipt</th>
               </tr>
             </thead>
             <tbody>
@@ -175,6 +242,11 @@ const FinancialStatus = () => {
                         {cfg.icon}
                         {f.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <button onClick={() => handleDownloadReceipt(f)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Download receipt">
+                        <Download size={16} />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -201,6 +273,9 @@ const FinancialStatus = () => {
                 <div><p className="text-muted-foreground">Paid</p><p className="font-medium text-foreground">{f.paid}</p></div>
                 <div><p className="text-muted-foreground">Balance</p><p className="font-medium text-foreground">{f.balance}</p></div>
               </div>
+              <button onClick={() => handleDownloadReceipt(f)} className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                <Download size={14} /> Download Receipt
+              </button>
             </div>
           );
         })}

@@ -13,12 +13,12 @@ interface ChatMessage {
 }
 
 const quickPrompts = [
-  "What postgraduate programmes are available?",
-  "How do I apply for admission?",
   "What are the fees for 2025/2026?",
   "What is the seminar requirement?",
-  "How long does an MPhil programme take?",
+  "How do I register for courses?",
   "How do I contact the SPS office?",
+  "What is the thesis submission process?",
+  "How do I apply for clearance?",
 ];
 
 // Clean markdown artifacts from AI responses
@@ -199,7 +199,7 @@ const ChatAssistant = () => {
               SPS Assistant
             </h1>
             <p className="text-muted-foreground text-sm">
-              Ask about programmes, admissions, fees, and more
+              Ask about fees, registration, thesis, clearance, and more
             </p>
           </div>
         </div>
@@ -215,8 +215,8 @@ const ChatAssistant = () => {
                 Welcome to SPS Assistant
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                I can help you with postgraduate admissions, programmes, fees,
-                registration, and more at UMaT.
+                I can help you with fees, course registration, thesis submissions,
+                clearance, and other academic matters.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -290,7 +290,7 @@ const ChatAssistant = () => {
                   handleSend();
                 }
               }}
-              placeholder="Ask about programmes, fees, admissions, seminars…"
+              placeholder="Ask about fees, registration, thesis, clearance…"
               className="resize-none h-12 min-h-[48px]"
             />
             <Button

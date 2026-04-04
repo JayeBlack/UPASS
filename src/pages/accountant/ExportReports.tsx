@@ -69,27 +69,20 @@ const reportData: Record<number, { head: string[][]; body: string[][] }> = {
 const ExportReports = () => {
   const { toast } = useToast();
 
-  const handleExport = async (report: typeof reports[0]) => {
+  const handleExportPDF = async (report: typeof reports[0]) => {
     try {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
-
       const doc = new jsPDF();
       const data = reportData[report.id];
 
-      // Logo
       try {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = umatLogo;
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-        });
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
         doc.addImage(img, "PNG", 80, 8, 25, 25);
-      } catch {
-        // continue without logo
-      }
+      } catch { /* continue */ }
 
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
@@ -121,17 +114,51 @@ const ExportReports = () => {
       }
 
       doc.save(`UMaT_${report.name.replace(/\s+/g, "_")}_${report.period.replace("/", "-")}.pdf`);
-      toast({ title: "Report Exported", description: `${report.name} has been downloaded as PDF.` });
+      toast({ title: "Report Exported", description: `${report.name} downloaded as PDF` });
     } catch {
-      toast({ title: "Export Failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
+      toast({ title: "Export Failed", description: "Could not generate the PDF", variant: "destructive" });
     }
+  };
+
+  const handleExportCSV = (report: typeof reports[0]) => {
+    const data = reportData[report.id];
+    const csvContent = [
+      data.head[0].join(","),
+      ...data.body.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `UMaT_${report.name.replace(/\s+/g, "_")}_${report.period.replace("/", "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Report Exported", description: `${report.name} downloaded as CSV` });
+  };
+
+  const handleExportExcel = (report: typeof reports[0]) => {
+    const data = reportData[report.id];
+    const csvContent = [
+      data.head[0].join("\t"),
+      ...data.body.map((row) => row.join("\t")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `UMaT_${report.name.replace(/\s+/g, "_")}_${report.period.replace("/", "-")}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Report Exported", description: `${report.name} downloaded as Excel` });
   };
 
   return (
     <DashboardLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold font-display text-foreground">Export Financial Reports</h1>
-        <p className="text-muted-foreground mt-1">Generate and download financial reports</p>
+        <p className="text-muted-foreground mt-1">Generate and download financial reports in multiple formats</p>
       </div>
 
       <div className="space-y-4">
@@ -147,13 +174,17 @@ const ExportReports = () => {
                 <p className="text-xs text-muted-foreground mt-0.5">Academic Year: {r.period}</p>
               </div>
             </div>
-            <button
-              onClick={() => handleExport(r)}
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity w-full sm:w-auto shrink-0"
-            >
-              <Download size={16} />
-              Export PDF
-            </button>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => handleExportPDF(r)} className="flex items-center gap-2 px-3 py-2 rounded-lg gradient-gold text-secondary-foreground text-xs font-medium hover:opacity-90 transition-opacity">
+                <Download size={14} /> PDF
+              </button>
+              <button onClick={() => handleExportCSV(r)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                <Download size={14} /> CSV
+              </button>
+              <button onClick={() => handleExportExcel(r)} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                <Download size={14} /> Excel
+              </button>
+            </div>
           </div>
         ))}
       </div>

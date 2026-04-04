@@ -102,6 +102,12 @@ const GradeEntry = () => {
     toast({ title: "Results published", description: "Grades are now visible on student portals" });
   };
 
+  const deletePublished = () => {
+    setCwaResults([]);
+    setRows([]);
+    toast({ title: "Results deleted", description: "Published results have been removed" });
+  };
+
   const allValid = rows.length > 0 && rows.every((r) => r.valid);
 
   return (
@@ -184,6 +190,11 @@ const GradeEntry = () => {
           <button onClick={publishResults} disabled={!allValid} className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">
             Publish to Student Portals
           </button>
+          {cwaResults.length > 0 && (
+            <button onClick={deletePublished} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
+              Delete Published Results
+            </button>
+          )}
         </div>
       )}
 
