@@ -4,31 +4,12 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
+import { useStudents } from "@/hooks/use-student-store";
+import { studentStore, type Student } from "@/stores/studentStore";
 import * as XLSX from "xlsx";
 
-interface Student {
-  id: string;
-  name: string;
-  index: string;
-  email: string;
-  program: string;
-  department: string;
-  status: "Active" | "Inactive";
-}
-
-const initialStudents: Student[] = [
-  { id: "1", name: "Kwame Mensah", index: "UMaT/PG/0234/22", email: "kwame.mensah@umat.edu.gh", program: "MSc. IT", department: "Computer Science", status: "Active" },
-  { id: "2", name: "Ama Serwaa", index: "UMaT/PG/0198/22", email: "ama.serwaa@umat.edu.gh", program: "MSc. IT", department: "Computer Science", status: "Active" },
-  { id: "3", name: "Yaw Boateng", index: "UMaT/PG/0312/22", email: "yaw.boateng@umat.edu.gh", program: "MPhil CS", department: "Computer Science", status: "Active" },
-  { id: "4", name: "Efua Dankwah", index: "UMaT/PG/0287/22", email: "efua.dankwah@umat.edu.gh", program: "MSc. IT", department: "Computer Science", status: "Inactive" },
-  { id: "5", name: "Kofi Adjei", index: "UMaT/PG/0345/22", email: "kofi.adjei@umat.edu.gh", program: "MPhil CS", department: "Computer Science", status: "Active" },
-  { id: "6", name: "Abena Owusu", index: "UMaT/PG/0401/23", email: "abena.owusu@umat.edu.gh", program: "MSc. Mining Eng", department: "Mining Engineering", status: "Active" },
-  { id: "7", name: "Esi Appiah", index: "UMaT/PG/0145/21", email: "esi.appiah@umat.edu.gh", program: "MSc. Electrical Eng", department: "Electrical Engineering", status: "Active" },
-  { id: "8", name: "Nana Agyei", index: "UMaT/PG/0420/23", email: "nana.agyei@umat.edu.gh", program: "MSc. Mechanical Eng", department: "Mechanical Engineering", status: "Active" },
-];
-
 const ManageStudents = () => {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const students = useStudents();
   const [search, setSearch] = useState("");
   const [showEnrollForm, setShowEnrollForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -46,7 +27,6 @@ const ManageStudents = () => {
 
   const filtered = students.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.index.includes(search);
-    // Departmental admin: always filter by their department
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
     const matchesDept = effectiveDept === "all" || s.department === effectiveDept;
     return matchesSearch && matchesDept;
@@ -58,7 +38,7 @@ const ManageStudents = () => {
       return;
     }
     const newStudent: Student = { id: `s${Date.now()}`, ...form };
-    setStudents((prev) => [newStudent, ...prev]);
+    studentStore.addStudent(newStudent);
     setForm({ name: "", index: "", email: "", program: "", department: "", status: "Active" });
     setShowEnrollForm(false);
     toast({ title: "Student enrolled", description: `${form.name} has been added to the system` });
@@ -119,7 +99,7 @@ const ManageStudents = () => {
             toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
             return;
           }
-          setStudents((prev) => [...newStudents, ...prev]);
+          studentStore.addStudents(newStudents);
           setShowBulkUpload(false);
           toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
         } catch {
@@ -150,7 +130,7 @@ const ManageStudents = () => {
             toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
             return;
           }
-          setStudents((prev) => [...newStudents, ...prev]);
+          studentStore.addStudents(newStudents);
           setShowBulkUpload(false);
           toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
         } catch {
@@ -164,7 +144,7 @@ const ManageStudents = () => {
 
   const handleDelete = (id: string) => {
     const student = students.find((s) => s.id === id);
-    setStudents((prev) => prev.filter((s) => s.id !== id));
+    studentStore.removeStudent(id);
     setDeleteConfirm(null);
     toast({ title: "Student removed", description: `${student?.name} has been removed from the system` });
   };
