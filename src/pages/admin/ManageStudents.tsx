@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
+import * as XLSX from "xlsx";
 
 interface Student {
   id: string;
@@ -63,84 +64,101 @@ const ManageStudents = () => {
     toast({ title: "Student enrolled", description: `${form.name} has been added to the system` });
   };
 
-  const parseCSVLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { inQuotes = !inQuotes; }
-      else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ""; }
-      else { current += ch; }
+  const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z]/g, "");
+
+  const mapColumns = (headers: string[]): Record<string, number> => {
+    const normalized = headers.map(normalizeHeader);
+    const colMap: Record<string, number> = {};
+    const knownCols: Record<string, string[]> = {
+      name: ["name", "fullname", "studentname", "student"],
+      index: ["index", "indexnumber", "indexno", "studentid", "regno", "regnumber"],
+      email: ["email", "emailaddress", "mail"],
+      program: ["program", "programme", "course", "programname", "programmename"],
+      department: ["department", "dept", "departmentname"],
+    };
+    for (const [field, aliases] of Object.entries(knownCols)) {
+      const idx = normalized.findIndex((h) => aliases.includes(h));
+      if (idx !== -1) colMap[field] = idx;
     }
-    result.push(current.trim());
-    return result;
+    if (Object.keys(colMap).length < 2) {
+      colMap.name = 0; colMap.index = 1; colMap.email = 2; colMap.program = 3; colMap.department = 4;
+    }
+    return colMap;
+  };
+
+  const parseRows = (rows: string[][]): Student[] => {
+    if (rows.length < 2) return [];
+    const colMap = mapColumns(rows[0]);
+    return rows.slice(1).map((cols, i) => ({
+      id: `bulk${i}${Date.now()}`,
+      name: (cols[colMap.name ?? 0] || "").toString().trim(),
+      index: (cols[colMap.index ?? 1] || "").toString().trim(),
+      email: (cols[colMap.email ?? 2] || "").toString().trim(),
+      program: (cols[colMap.program ?? 3] || "").toString().trim(),
+      department: (cols[colMap.department ?? 4] || adminDepartment || "").toString().trim(),
+      status: "Active" as const,
+    })).filter((s) => s.name && s.index);
   };
 
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const text = ev.target?.result as string;
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        if (lines.length < 2) {
-          toast({ title: "Empty file", description: "The CSV file has no data rows", variant: "destructive" });
-          return;
+
+    const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+          const newStudents = parseRows(rows);
+          if (newStudents.length === 0) {
+            toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
+            return;
+          }
+          setStudents((prev) => [...newStudents, ...prev]);
+          setShowBulkUpload(false);
+          toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
+        } catch {
+          toast({ title: "File read error", description: "Could not parse the Excel file.", variant: "destructive" });
         }
-
-        // Parse header to detect column positions
-        const headers = parseCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[^a-z]/g, ""));
-        const colMap: Record<string, number> = {};
-        const knownCols: Record<string, string[]> = {
-          name: ["name", "fullname", "studentname", "student"],
-          index: ["index", "indexnumber", "indexno", "studentid", "id", "regno", "regnumber"],
-          email: ["email", "emailaddress", "mail"],
-          program: ["program", "programme", "course", "programname", "programmename"],
-          department: ["department", "dept", "departmentname"],
-        };
-
-        for (const [field, aliases] of Object.entries(knownCols)) {
-          const idx = headers.findIndex((h) => aliases.includes(h));
-          if (idx !== -1) colMap[field] = idx;
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const text = ev.target?.result as string;
+          const lines = text.split(/\r?\n/).filter((l) => l.trim());
+          const rows = lines.map((line) => {
+            const result: string[] = [];
+            let current = "";
+            let inQuotes = false;
+            for (const ch of line) {
+              if (ch === '"') inQuotes = !inQuotes;
+              else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ""; }
+              else current += ch;
+            }
+            result.push(current.trim());
+            return result;
+          });
+          const newStudents = parseRows(rows);
+          if (newStudents.length === 0) {
+            toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
+            return;
+          }
+          setStudents((prev) => [...newStudents, ...prev]);
+          setShowBulkUpload(false);
+          toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
+        } catch {
+          toast({ title: "File read error", description: "Could not parse the CSV file.", variant: "destructive" });
         }
-
-        // Fallback: assume positional if no headers matched
-        const usePositional = Object.keys(colMap).length < 2;
-        if (usePositional) {
-          colMap.name = 0; colMap.index = 1; colMap.email = 2; colMap.program = 3; colMap.department = 4;
-        }
-
-        const newStudents: Student[] = lines.slice(1).map((line, i) => {
-          const cols = parseCSVLine(line);
-          return {
-            id: `bulk${i}${Date.now()}`,
-            name: cols[colMap.name ?? 0] || "",
-            index: cols[colMap.index ?? 1] || "",
-            email: cols[colMap.email ?? 2] || "",
-            program: cols[colMap.program ?? 3] || "",
-            department: cols[colMap.department ?? 4] || (adminDepartment || ""),
-            status: "Active" as const,
-          };
-        }).filter((s) => s.name && s.index);
-
-        if (newStudents.length === 0) {
-          toast({ title: "No valid students found", description: "Please ensure your CSV has columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
-          return;
-        }
-
-        setStudents((prev) => [...newStudents, ...prev]);
-        setShowBulkUpload(false);
-        toast({
-          title: `${newStudents.length} students enrolled`,
-          description: "Students from the uploaded file have been added to the system",
-        });
-      } catch (err) {
-        toast({ title: "File read error", description: "Could not parse the uploaded file. Please check the format.", variant: "destructive" });
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    }
     e.target.value = "";
   };
 
