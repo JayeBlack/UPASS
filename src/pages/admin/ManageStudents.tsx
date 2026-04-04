@@ -4,12 +4,11 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
-import { useStudents } from "@/hooks/use-student-store";
-import { studentStore, type Student } from "@/stores/studentStore";
+import { useDataStore, type Student } from "@/contexts/DataStoreContext";
 import * as XLSX from "xlsx";
 
 const ManageStudents = () => {
-  const students = useStudents();
+  const { students, addStudent, addStudents, removeStudent } = useDataStore();
   const [search, setSearch] = useState("");
   const [showEnrollForm, setShowEnrollForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -38,7 +37,7 @@ const ManageStudents = () => {
       return;
     }
     const newStudent: Student = { id: `s${Date.now()}`, ...form };
-    studentStore.addStudent(newStudent);
+    addStudent(newStudent);
     setForm({ name: "", index: "", email: "", program: "", department: "", status: "Active" });
     setShowEnrollForm(false);
     toast({ title: "Student enrolled", description: `${form.name} has been added to the system` });
@@ -83,7 +82,6 @@ const ManageStudents = () => {
   const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
 
     if (isExcel) {
@@ -99,7 +97,7 @@ const ManageStudents = () => {
             toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
             return;
           }
-          studentStore.addStudents(newStudents);
+          addStudents(newStudents);
           setShowBulkUpload(false);
           toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
         } catch {
@@ -130,7 +128,7 @@ const ManageStudents = () => {
             toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
             return;
           }
-          studentStore.addStudents(newStudents);
+          addStudents(newStudents);
           setShowBulkUpload(false);
           toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
         } catch {
@@ -144,7 +142,7 @@ const ManageStudents = () => {
 
   const handleDelete = (id: string) => {
     const student = students.find((s) => s.id === id);
-    studentStore.removeStudent(id);
+    removeStudent(id);
     setDeleteConfirm(null);
     toast({ title: "Student removed", description: `${student?.name} has been removed from the system` });
   };
@@ -153,7 +151,7 @@ const ManageStudents = () => {
     <DashboardLayout>
       <div className="flex items-center justify-between mb-8">
         <div>
-         <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
+          <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
           <p className="text-muted-foreground mt-1">
             {isSuperAdmin ? `${students.length} registered postgraduate students` : `${adminDepartment} — ${filtered.length} students`}
           </p>
@@ -168,7 +166,6 @@ const ManageStudents = () => {
         </div>
       </div>
 
-      {/* Bulk Upload Modal */}
       {showBulkUpload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowBulkUpload(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -176,7 +173,7 @@ const ManageStudents = () => {
               <h3 className="font-display text-lg font-bold text-foreground">Bulk Student Upload</h3>
               <button onClick={() => setShowBulkUpload(false)} className="p-1 rounded hover:bg-muted transition-colors"><X size={18} className="text-muted-foreground" /></button>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing student details. The system will read the file and enroll students automatically.</p>
+            <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing student details.</p>
             <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Index Number, Email, Programme, Department</p>
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
             <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
@@ -189,7 +186,6 @@ const ManageStudents = () => {
         </div>
       )}
 
-      {/* Enroll Form Modal */}
       {showEnrollForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowEnrollForm(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -241,7 +237,6 @@ const ManageStudents = () => {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setDeleteConfirm(null)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-sm w-full shadow-xl text-center" onClick={(e) => e.stopPropagation()}>
