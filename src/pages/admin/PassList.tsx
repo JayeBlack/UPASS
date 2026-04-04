@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface Graduand {
   name: string;
