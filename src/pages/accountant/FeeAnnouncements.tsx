@@ -2,6 +2,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Send, Bell, Clock, Users, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useDataStore } from "@/contexts/DataStoreContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface Announcement {
   id: string;
@@ -25,6 +27,8 @@ const mockAnnouncements: Announcement[] = [
 ];
 
 const FeeAnnouncements = () => {
+  const { students, graduands } = useDataStore();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const [announcements, setAnnouncements] = useState(mockAnnouncements);
   const [showCompose, setShowCompose] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -34,6 +38,11 @@ const FeeAnnouncements = () => {
   const [importedFeeList, setImportedFeeList] = useState<FeeListItem[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const deptStudents = adminDepartment ? students.filter((s) => s.department === adminDepartment) : students;
+  const deptGraduands = adminDepartment ? graduands.filter((g) => g.department === adminDepartment) : graduands;
+  const totalStudentCount = deptStudents.length;
+  const totalGraduandCount = deptGraduands.filter((g) => g.status === "Eligible").length;
 
   const handleSend = () => {
     if (!title.trim() || !message.trim()) {
@@ -46,7 +55,7 @@ const FeeAnnouncements = () => {
       message,
       audience,
       sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-      recipients: audience === "All Students" ? 247 : 44,
+      recipients: audience === "All Students" ? totalStudentCount : Math.round(totalStudentCount * 0.18),
     };
     setAnnouncements((prev) => [newAnnouncement, ...prev]);
     setTitle("");
@@ -106,7 +115,7 @@ const FeeAnnouncements = () => {
       message: `The following fee schedule has been published for the current academic year:\n\n${feeMsg}\n\nPlease make payments before the deadline.`,
       audience: "All Students",
       sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-      recipients: 247,
+      recipients: totalStudentCount,
     };
     setAnnouncements((prev) => [newAnnouncement, ...prev]);
     setImportedFeeList([]);
@@ -118,25 +127,20 @@ const FeeAnnouncements = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Fee Notices</h1>
-          <p className="text-muted-foreground mt-1">Import fee schedules and send payment notifications to students</p>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? "Import fee schedules and send payment notifications to students" : `${adminDepartment} — Fee notifications`}
+          </p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
+          <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
             <Upload size={14} /> Import Fee List (.csv)
           </button>
-          <button
-            onClick={() => setShowCompose(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-          >
+          <button onClick={() => setShowCompose(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
             <Send size={14} /> Compose Notice
           </button>
         </div>
       </div>
 
-      {/* Import Modal */}
       {showImport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowImport(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -144,10 +148,7 @@ const FeeAnnouncements = () => {
             <p className="text-sm text-muted-foreground mb-4">Upload a CSV file containing the school fees schedule. Once imported, you can send it as a notice to all students so they are aware of their fees for the academic year.</p>
             <p className="text-xs text-muted-foreground mb-3">Expected columns: Programme, Level/Year, Amount</p>
             <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleImport} />
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
-            >
+            <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
               <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-foreground font-medium">Click to upload CSV file</p>
               <p className="text-xs text-muted-foreground mt-1">Only .csv format accepted</p>
@@ -157,7 +158,6 @@ const FeeAnnouncements = () => {
         </div>
       )}
 
-      {/* Imported Fee List Preview */}
       {importedFeeList.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-5 mb-6">
           <div className="flex items-center justify-between mb-3">
@@ -192,7 +192,6 @@ const FeeAnnouncements = () => {
         </div>
       )}
 
-      {/* Compose Modal */}
       {showCompose && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowCompose(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -226,7 +225,6 @@ const FeeAnnouncements = () => {
         </div>
       )}
 
-      {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-3">
           <Bell size={20} className="text-primary" />
@@ -238,20 +236,19 @@ const FeeAnnouncements = () => {
         <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-3">
           <Users size={20} className="text-success" />
           <div>
-            <p className="text-xl font-bold font-display text-foreground">247</p>
+            <p className="text-xl font-bold font-display text-foreground">{totalStudentCount}</p>
             <p className="text-xs text-muted-foreground">Total Students</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-5 flex items-center gap-3">
           <Users size={20} className="text-warning" />
           <div>
-            <p className="text-xl font-bold font-display text-foreground">56</p>
+            <p className="text-xl font-bold font-display text-foreground">{totalGraduandCount}</p>
             <p className="text-xs text-muted-foreground">Graduates</p>
           </div>
         </div>
       </div>
 
-      {/* Sent announcements */}
       <h2 className="font-display text-lg font-bold text-foreground mb-4">Sent Notices</h2>
       <div className="space-y-4">
         {announcements.map((a) => (
