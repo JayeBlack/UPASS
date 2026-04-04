@@ -6,11 +6,14 @@ import umatLogo from "@/assets/umat-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 
 const fees = [
-  { semester: "Semester 1, 2025/2026", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
-  { semester: "Semester 2, 2024/2025", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
-  { semester: "Semester 1, 2024/2025", amount: "GH₵ 4,800.00", paid: "GH₵ 4,800.00", balance: "GH₵ 0.00", status: "Paid" },
-  { semester: "Semester 2, 2023/2024", amount: "GH₵ 4,800.00", paid: "GH₵ 3,200.00", balance: "GH₵ 1,600.00", status: "Partial" },
+  { semester: "Semester 1, 2025/2026", totalNum: 5200, paidNum: 5200, status: "Paid" },
+  { semester: "Semester 2, 2024/2025", totalNum: 5200, paidNum: 5200, status: "Paid" },
+  { semester: "Semester 1, 2024/2025", totalNum: 4800, paidNum: 4800, status: "Paid" },
+  { semester: "Semester 2, 2023/2024", totalNum: 4800, paidNum: 3200, status: "Partial" },
 ];
+
+const formatCurrency = (amount: number) => `GHS ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+const formatCurrencyDisplay = (amount: number) => `GH\u20B5 ${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 
 const statusConfig: Record<string, { icon: React.ReactNode; className: string }> = {
   Paid: { icon: <CheckCircle size={14} />, className: "bg-success/10 text-success" },
