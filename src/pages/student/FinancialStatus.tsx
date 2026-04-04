@@ -273,6 +273,9 @@ const FinancialStatus = () => {
                 <div><p className="text-muted-foreground">Paid</p><p className="font-medium text-foreground">{f.paid}</p></div>
                 <div><p className="text-muted-foreground">Balance</p><p className="font-medium text-foreground">{f.balance}</p></div>
               </div>
+              <button onClick={() => handleDownloadReceipt(f)} className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
+                <Download size={14} /> Download Receipt
+              </button>
             </div>
           );
         })}
