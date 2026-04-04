@@ -3,10 +3,10 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
-import { useGraduands } from "@/hooks/use-student-store";
+import { useDataStore } from "@/contexts/DataStoreContext";
 
 const PassList = () => {
-  const graduands = useGraduands();
+  const { graduands } = useDataStore();
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [progFilter, setProgFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
@@ -32,7 +32,6 @@ const PassList = () => {
       "Name,Index Number,Programme,Department,CWA,Eligibility",
       ...filtered.map((g) => `${g.name},${g.index},${g.program},${g.department},${g.cwa.toFixed(1)},${g.status}`),
     ].join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
