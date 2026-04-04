@@ -1,6 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Banknote, CheckCircle, AlertCircle, Clock, Upload, CreditCard } from "lucide-react";
+import { Banknote, CheckCircle, AlertCircle, Clock, Upload, CreditCard, Download } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import umatLogo from "@/assets/umat-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 const fees = [
   { semester: "Semester 1, 2025/2026", amount: "GH₵ 5,200.00", paid: "GH₵ 5,200.00", balance: "GH₵ 0.00", status: "Paid" },
