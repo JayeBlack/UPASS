@@ -243,6 +243,11 @@ const FinancialStatus = () => {
                         {f.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-center">
+                      <button onClick={() => handleDownloadReceipt(f)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Download receipt">
+                        <Download size={16} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
