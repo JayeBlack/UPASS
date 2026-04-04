@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
+import * as XLSX from "xlsx";
 
 interface Student {
   id: string;
