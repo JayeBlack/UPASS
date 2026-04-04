@@ -1,4 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useDataStore } from "@/contexts/DataStoreContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   BookOpen, FileText, Users, BarChart3, Clock, CheckCircle,
@@ -53,6 +55,21 @@ interface StatItem {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { students, graduands } = useDataStore();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+
+  // Filter data by department for departmental admins
+  const deptStudents = adminDepartment
+    ? students.filter((s) => s.department === adminDepartment)
+    : students;
+  const deptGraduands = adminDepartment
+    ? graduands.filter((g) => g.department === adminDepartment)
+    : graduands;
+
+  const totalStudents = deptStudents.length;
+  const activeStudents = deptStudents.filter((s) => s.status === "Active").length;
+  const totalGraduands = deptGraduands.filter((g) => g.status === "Eligible").length;
+  const feesClearedPct = totalStudents > 0 ? Math.round((activeStudents / totalStudents) * 100) : 0;
 
   const studentStats = [
     { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: "6", accent: true, trend: "neutral" as const, sub: "Semester 1" },
@@ -69,30 +86,30 @@ const Dashboard = () => {
   ];
 
   const adminStats = [
-    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: "247", accent: true, trend: "up" as const, sub: "+12%", onClick: () => navigate("/admin/students") },
-    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: "34" },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: "82%", trend: "up" as const, sub: "+5%", onClick: () => navigate("/admin/fees") },
-    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: "56", onClick: () => navigate("/admin/passlist") },
+    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, trend: "up" as const, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
+    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: adminDepartment ? "8" : "34" },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: `${feesClearedPct}%`, trend: "up" as const, sub: "+5%", onClick: () => navigate("/admin/fees") },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
 
   const deanStats = [
-    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: "247", accent: true, trend: "up" as const, sub: "+12%", onClick: () => navigate("/admin/students") },
+    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, trend: "up" as const, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Clearances Pending", value: "14", trend: "down" as const, sub: "-6", onClick: () => navigate("/dean/clearance") },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Avg CWA", value: "68.5", trend: "up" as const, sub: "+1.2" },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Graduands", value: "56", onClick: () => navigate("/admin/passlist") },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Avg CWA", value: deptGraduands.length > 0 ? (deptGraduands.reduce((a, g) => a + g.cwa, 0) / deptGraduands.length).toFixed(1) : "—", trend: "up" as const, sub: "+1.2" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
 
   const accountantStats = [
     { icon: <Banknote size={18} className="text-secondary-foreground" />, label: "Total Fees Collected", value: "GH₵ 1.2M", accent: true, trend: "up" as const, sub: "+18%", onClick: () => navigate("/accountant/analytics") },
     { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Compliance Rate", value: "82%", trend: "up" as const, sub: "+5%" },
-    { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: "44", trend: "down" as const, sub: "-8", onClick: () => navigate("/admin/fees") },
+    { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: String(totalStudents - activeStudents), trend: "down" as const, sub: "-8", onClick: () => navigate("/admin/fees") },
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Receipts", value: "8" },
   ];
 
   const examsOfficerStats = [
     { icon: <BarChart3 size={18} className="text-secondary-foreground" />, label: "Results Published", value: "3", accent: true },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Batches", value: "5", trend: "down" as const, sub: "-2" },
-    { icon: <Users size={18} className="text-muted-foreground" />, label: "Total Students", value: "247" },
+    { icon: <Users size={18} className="text-muted-foreground" />, label: "Total Students", value: String(totalStudents) },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Pass Rate", value: "86%", trend: "up" as const, sub: "+3%" },
   ];
 
