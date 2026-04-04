@@ -444,9 +444,9 @@ const Analytics = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Enrollment Trend</h2>
-          <p className="text-xs text-muted-foreground mb-4">5-year postgraduate enrollment growth</p>
+          <p className="text-xs text-muted-foreground mb-4">{adminDepartment ? `${adminDepartment} — 5-year trend` : "5-year postgraduate enrollment growth"}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={enrollmentTrend}>
+            <AreaChart data={scaledEnrollmentTrend}>
               <defs>
                 <linearGradient id="enrollGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(145 60% 22%)" stopOpacity={0.3} />
