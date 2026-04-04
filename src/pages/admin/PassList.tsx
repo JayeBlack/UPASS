@@ -3,38 +3,20 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
-
-interface Graduand {
-  name: string;
-  index: string;
-  program: string;
-  department: string;
-  cwa: number;
-  year: string;
-  status: string;
-}
-
-const graduands: Graduand[] = [
-  { name: "Akua Mensah", index: "UMaT/PG/0112/21", program: "MSc. IT", department: "Computer Science", cwa: 72.5, year: "2025", status: "Eligible" },
-  { name: "Kofi Darko", index: "UMaT/PG/0089/21", program: "MPhil CS", department: "Computer Science", cwa: 78.4, year: "2025", status: "Eligible" },
-  { name: "Esi Appiah", index: "UMaT/PG/0145/21", program: "MSc. Mining Eng", department: "Mining Engineering", cwa: 68.3, year: "2025", status: "Eligible" },
-  { name: "Yaw Frimpong", index: "UMaT/PG/0178/21", program: "MSc. IT", department: "Computer Science", cwa: 48.9, year: "2025", status: "Ineligible" },
-  { name: "Abena Kyei", index: "UMaT/PG/0201/21", program: "MPhil CS", department: "Computer Science", cwa: 74.1, year: "2025", status: "Eligible" },
-  { name: "Nana Agyei", index: "UMaT/PG/0420/23", program: "MSc. Mechanical Eng", department: "Mechanical Engineering", cwa: 71.2, year: "2024", status: "Eligible" },
-  { name: "Ama Boateng", index: "UMaT/PG/0333/22", program: "MSc. Electrical Eng", department: "Electrical Engineering", cwa: 65.8, year: "2024", status: "Eligible" },
-];
-
-const departments = [...new Set(graduands.map((g) => g.department))];
-const programs = [...new Set(graduands.map((g) => g.program))];
-const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
+import { useGraduands } from "@/hooks/use-student-store";
 
 const PassList = () => {
+  const graduands = useGraduands();
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [progFilter, setProgFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+
+  const departments = [...new Set(graduands.map((g) => g.department))];
+  const programs = [...new Set(graduands.map((g) => g.program))];
+  const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
