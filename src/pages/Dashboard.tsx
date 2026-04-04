@@ -1,4 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useDataStore } from "@/contexts/DataStoreContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 import DashboardLayout from "@/components/DashboardLayout";
 import {
   BookOpen, FileText, Users, BarChart3, Clock, CheckCircle,
