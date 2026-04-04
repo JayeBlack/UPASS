@@ -199,7 +199,7 @@ const ChatAssistant = () => {
               SPS Assistant
             </h1>
             <p className="text-muted-foreground text-sm">
-              Ask about programmes, admissions, fees, and more
+              Ask about fees, registration, thesis, clearance, and more
             </p>
           </div>
         </div>
