@@ -34,6 +34,7 @@ const programs = [...new Set(initialRecords.map((f) => f.program))];
 
 const FeesStatus = () => {
   const { user } = useAuth();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const isAccountant = user?.role === "Accountant";
   const [records, setRecords] = useState<FeeRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
