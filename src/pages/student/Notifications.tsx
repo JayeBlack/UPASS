@@ -49,6 +49,10 @@ const roleNotifications: Record<string, Notification[]> = {
     { id: "ac4", title: "Payment Reconciliation Complete", message: "All payments for Mining Engineering program have been reconciled.", type: "fee", severity: "success", date: "2026-02-10", read: true },
     { id: "ac5", title: "Export Completed", message: "Financial summary report for Semester 1 has been exported successfully.", type: "report", severity: "success", date: "2026-02-08", read: true },
   ],
+  "Exams Officer": [
+    { id: "eo1", title: "Results Submission Deadline", message: "Lecturers must submit all grades by 20th February 2026.", type: "exam", severity: "warning", date: "2026-02-14", read: false },
+    { id: "eo2", title: "Pass List Ready for Review", message: "The pass list for Semester 1 has been generated and is pending your approval.", type: "general", severity: "info", date: "2026-02-12", read: true },
+  ],
 };
 
 const typeIcons: Record<string, React.ReactNode> = {
