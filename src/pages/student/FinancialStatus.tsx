@@ -131,9 +131,9 @@ const FinancialStatus = () => {
       // Table rows
       const paymentRows = [
         ["Semester", fee.semester],
-        ["Total Fee", sanitizeAmount(fee.amount)],
-        ["Amount Paid", sanitizeAmount(fee.paid)],
-        ["Outstanding Balance", sanitizeAmount(fee.balance)],
+        ["Total Fee", formatCurrency(fee.totalNum)],
+        ["Amount Paid", formatCurrency(fee.paidNum)],
+        ["Outstanding Balance", formatCurrency(fee.totalNum - fee.paidNum)],
       ];
 
       doc.setFont("helvetica", "normal");
