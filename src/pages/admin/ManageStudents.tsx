@@ -3,7 +3,7 @@ import { Users, Search, Trash2, X, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface Student {
   id: string;
