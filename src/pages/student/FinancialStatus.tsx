@@ -322,9 +322,9 @@ const FinancialStatus = () => {
                 return (
                   <tr key={f.semester} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-foreground">{f.semester}</td>
-                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.amount}</td>
-                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{f.paid}</td>
-                    <td className="px-6 py-4 text-sm text-right font-medium text-foreground">{f.balance}</td>
+                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{formatCurrencyDisplay(f.totalNum)}</td>
+                    <td className="px-6 py-4 text-sm text-right text-muted-foreground">{formatCurrencyDisplay(f.paidNum)}</td>
+                    <td className="px-6 py-4 text-sm text-right font-medium text-foreground">{formatCurrencyDisplay(f.totalNum - f.paidNum)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
                         {cfg.icon}
