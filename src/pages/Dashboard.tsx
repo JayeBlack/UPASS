@@ -40,6 +40,16 @@ const StatCard = ({
   </button>
 );
 
+interface StatItem {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent?: boolean;
+  trend?: "up" | "down" | "neutral";
+  sub?: string;
+  onClick?: () => void;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
