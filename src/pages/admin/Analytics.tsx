@@ -410,7 +410,7 @@ const Analytics = () => {
         >
           <CheckCircle size={18} className="text-success shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.feesCleared}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayFeesCleared}</p>
             <p className="text-xs text-muted-foreground">Fees Cleared</p>
           </div>
         </div>
@@ -420,21 +420,21 @@ const Analytics = () => {
         >
           <AlertTriangle size={18} className="text-warning shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.feesOwing}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayFeesOwing}</p>
             <p className="text-xs text-muted-foreground">Fees Owing</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
           <BarChart3 size={18} className="text-info shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.avgCwa}</p>
+            <p className="text-lg font-bold font-display text-foreground">{realAvgCwa}</p>
             <p className="text-xs text-muted-foreground">Avg. CWA</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
           <FileText size={18} className="text-secondary shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.thesisDefended}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayThesisDefended}</p>
             <p className="text-xs text-muted-foreground">Thesis Defended</p>
           </div>
         </div>
