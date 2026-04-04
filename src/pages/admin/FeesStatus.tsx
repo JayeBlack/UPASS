@@ -7,6 +7,7 @@ interface FeeRecord {
   name: string;
   index: string;
   department: string;
+  program: string;
   totalFees: number;
   amountPaid: number;
   outstanding: number;
@@ -14,25 +15,28 @@ interface FeeRecord {
 }
 
 const initialRecords: FeeRecord[] = [
-  { name: "Kwame Mensah", index: "UMaT/PG/0234/22", department: "Computer Science", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
-  { name: "Ama Serwaa", index: "UMaT/PG/0198/22", department: "Computer Science", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
-  { name: "Yaw Boateng", index: "UMaT/PG/0312/22", department: "Computer Science", totalFees: 5200, amountPaid: 3400, outstanding: 1800, cleared: false },
-  { name: "Efua Dankwah", index: "UMaT/PG/0287/22", department: "Computer Science", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
-  { name: "Kofi Adjei", index: "UMaT/PG/0345/22", department: "Computer Science", totalFees: 5200, amountPaid: 2600, outstanding: 2600, cleared: false },
-  { name: "Abena Owusu", index: "UMaT/PG/0401/23", department: "Mining Engineering", totalFees: 6000, amountPaid: 6000, outstanding: 0, cleared: true },
-  { name: "Yaw Frimpong", index: "UMaT/PG/0178/21", department: "Mining Engineering", totalFees: 6000, amountPaid: 4500, outstanding: 1500, cleared: false },
-  { name: "Esi Appiah", index: "UMaT/PG/0145/21", department: "Electrical Engineering", totalFees: 5500, amountPaid: 5500, outstanding: 0, cleared: true },
-  { name: "Akua Mensah", index: "UMaT/PG/0112/21", department: "Electrical Engineering", totalFees: 5500, amountPaid: 3000, outstanding: 2500, cleared: false },
-  { name: "Nana Agyei", index: "UMaT/PG/0420/23", department: "Mechanical Engineering", totalFees: 5800, amountPaid: 5800, outstanding: 0, cleared: true },
+  { name: "Kwame Mensah", index: "UMaT/PG/0234/22", department: "Computer Science", program: "MSc. IT", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
+  { name: "Ama Serwaa", index: "UMaT/PG/0198/22", department: "Computer Science", program: "MSc. IT", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
+  { name: "Yaw Boateng", index: "UMaT/PG/0312/22", department: "Computer Science", program: "MPhil CS", totalFees: 5200, amountPaid: 3400, outstanding: 1800, cleared: false },
+  { name: "Efua Dankwah", index: "UMaT/PG/0287/22", department: "Computer Science", program: "MSc. IT", totalFees: 5200, amountPaid: 5200, outstanding: 0, cleared: true },
+  { name: "Kofi Adjei", index: "UMaT/PG/0345/22", department: "Computer Science", program: "MPhil CS", totalFees: 5200, amountPaid: 2600, outstanding: 2600, cleared: false },
+  { name: "Abena Owusu", index: "UMaT/PG/0401/23", department: "Mining Engineering", program: "MSc. Mining Eng", totalFees: 6000, amountPaid: 6000, outstanding: 0, cleared: true },
+  { name: "Yaw Frimpong", index: "UMaT/PG/0178/21", department: "Mining Engineering", program: "MSc. Mining Eng", totalFees: 6000, amountPaid: 4500, outstanding: 1500, cleared: false },
+  { name: "Esi Appiah", index: "UMaT/PG/0145/21", department: "Electrical Engineering", program: "MSc. Electrical Eng", totalFees: 5500, amountPaid: 5500, outstanding: 0, cleared: true },
+  { name: "Akua Mensah", index: "UMaT/PG/0112/21", department: "Electrical Engineering", program: "MSc. Electrical Eng", totalFees: 5500, amountPaid: 3000, outstanding: 2500, cleared: false },
+  { name: "Nana Agyei", index: "UMaT/PG/0420/23", department: "Mechanical Engineering", program: "MSc. Mechanical Eng", totalFees: 5800, amountPaid: 5800, outstanding: 0, cleared: true },
 ];
 
 const departments = [...new Set(initialRecords.map((f) => f.department))];
+const programs = [...new Set(initialRecords.map((f) => f.program))];
 
 const FeesStatus = () => {
   const [records, setRecords] = useState<FeeRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "cleared" | "owing">("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
+  const [progFilter, setProgFilter] = useState<string>("all");
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const handleToggleClearance = (index: string) => {
     setRecords((prev) =>
@@ -52,7 +56,8 @@ const FeesStatus = () => {
     const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase()) || f.index.includes(search);
     const matchesStatus = statusFilter === "all" || (statusFilter === "cleared" ? f.cleared : !f.cleared);
     const matchesDept = deptFilter === "all" || f.department === deptFilter;
-    return matchesSearch && matchesStatus && matchesDept;
+    const matchesProg = progFilter === "all" || f.program === progFilter;
+    return matchesSearch && matchesStatus && matchesDept && matchesProg;
   });
 
   const totalCleared = records.filter((f) => f.cleared).length;
@@ -66,7 +71,6 @@ const FeesStatus = () => {
         <p className="text-muted-foreground mt-1">Financial clearance for postgraduate students</p>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-success" />
@@ -91,42 +95,61 @@ const FeesStatus = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or index..."
-            className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or index..." className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as "all" | "cleared" | "owing")}
-          className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Statuses</option>
           <option value="cleared">Cleared Only</option>
           <option value="owing">Owing Only</option>
         </select>
-        <select
-          value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
-          className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="all">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
+        <button onClick={() => setShowFilterPanel(!showFilterPanel)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm hover:bg-muted transition-colors flex items-center gap-2">
+          <Filter size={14} /> Filters {(deptFilter !== "all" || progFilter !== "all") && <span className="w-2 h-2 rounded-full bg-primary" />}
+        </button>
       </div>
 
-      {/* Results count */}
+      {showFilterPanel && (
+        <div className="bg-card rounded-xl border border-border p-5 mb-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by Department & Programme</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input type="checkbox" checked={deptFilter === "all"} onChange={() => setDeptFilter("all")} className="rounded border-input" />
+                  All Departments
+                </label>
+                {departments.map((d) => (
+                  <label key={d} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={deptFilter === d} onChange={() => setDeptFilter(deptFilter === d ? "all" : d)} className="rounded border-input" />
+                    {d}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-2 block">Programmes</label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input type="checkbox" checked={progFilter === "all"} onChange={() => setProgFilter("all")} className="rounded border-input" />
+                  All Programmes
+                </label>
+                {programs.map((p) => (
+                  <label key={p} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={progFilter === p} onChange={() => setProgFilter(progFilter === p ? "all" : p)} className="rounded border-input" />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground mb-4">Showing {filtered.length} of {records.length} students</p>
 
-      {/* Table */}
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -134,6 +157,7 @@ const FeesStatus = () => {
               <tr className="border-b border-border">
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
+                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
                 <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Fees</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
@@ -147,6 +171,7 @@ const FeesStatus = () => {
                 <tr key={f.index} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-foreground">{f.name}</td>
                   <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{f.index}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{f.program}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{f.department}</td>
                   <td className="px-6 py-4 text-sm text-right text-muted-foreground">GH₵ {f.totalFees.toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-right text-muted-foreground">GH₵ {f.amountPaid.toLocaleString()}</td>
@@ -158,21 +183,12 @@ const FeesStatus = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                      f.cleared ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
-                    }`}>
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${f.cleared ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {f.cleared ? "Cleared" : "Owing"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleToggleClearance(f.index)}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        f.cleared
-                          ? "border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                          : "gradient-gold text-secondary-foreground hover:opacity-90"
-                      }`}
-                    >
+                    <button onClick={() => handleToggleClearance(f.index)} className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${f.cleared ? "border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : "gradient-gold text-secondary-foreground hover:opacity-90"}`}>
                       {f.cleared ? "Revoke" : "Clear"}
                     </button>
                   </td>
@@ -180,9 +196,7 @@ const FeesStatus = () => {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                    No students match the selected filters
-                  </td>
+                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-muted-foreground">No students match the selected filters</td>
                 </tr>
               )}
             </tbody>
