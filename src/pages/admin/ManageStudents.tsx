@@ -3,7 +3,7 @@ import { Users, Search, Trash2, X, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface Student {
   id: string;
@@ -35,11 +35,7 @@ const ManageStudents = () => {
   const [deptFilter, setDeptFilter] = useState("all");
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
-
-  // For departmental admin, filter by their department
-  const isSuperAdmin = user?.role === "Admin" && !user?.department?.includes("Department");
-  const adminDept = user?.department;
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const departments = [...new Set(students.map((s) => s.department))];
 
@@ -49,7 +45,9 @@ const ManageStudents = () => {
 
   const filtered = students.filter((s) => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.index.includes(search);
-    const matchesDept = deptFilter === "all" || s.department === deptFilter;
+    // Departmental admin: always filter by their department
+    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    const matchesDept = effectiveDept === "all" || s.department === effectiveDept;
     return matchesSearch && matchesDept;
   });
 
@@ -107,8 +105,10 @@ const ManageStudents = () => {
     <DashboardLayout>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
-          <p className="text-muted-foreground mt-1">{students.length} registered postgraduate students</p>
+         <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? `${students.length} registered postgraduate students` : `${adminDepartment} — ${filtered.length} students`}
+          </p>
         </div>
         <div className="flex gap-3">
           <button onClick={() => setShowBulkUpload(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
@@ -215,10 +215,12 @@ const ManageStudents = () => {
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or index number..." className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
+        {isSuperAdmin && (
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">All Departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">

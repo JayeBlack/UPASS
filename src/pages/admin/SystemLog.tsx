@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Clock, Filter, Users, Shield, BookOpen, Banknote, FileText } from "lucide-react";
 import { useState } from "react";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface LogEntry {
   id: string;
@@ -40,6 +41,7 @@ const categoryIcons: Record<string, React.ReactNode> = {
 const SystemLog = () => {
   const [catFilter, setCatFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const filtered = mockLogs.filter((l) => {
     return (catFilter === "all" || l.category === catFilter) &&
@@ -50,7 +52,9 @@ const SystemLog = () => {
     <DashboardLayout>
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-display text-foreground">System Log</h1>
-        <p className="text-muted-foreground mt-1">Track all activities across the system</p>
+        <p className="text-muted-foreground mt-1">
+          {isSuperAdmin ? "Track all activities across the system" : `${adminDepartment} — Activity log`}
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">

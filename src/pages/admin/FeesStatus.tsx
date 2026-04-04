@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Search, Filter, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface FeeRecord {
   name: string;
@@ -33,6 +34,7 @@ const programs = [...new Set(initialRecords.map((f) => f.program))];
 
 const FeesStatus = () => {
   const { user } = useAuth();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const isAccountant = user?.role === "Accountant";
   const [records, setRecords] = useState<FeeRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
@@ -134,7 +136,8 @@ const FeesStatus = () => {
   const filtered = records.filter((f) => {
     const matchesSearch = f.name.toLowerCase().includes(search.toLowerCase()) || f.index.includes(search);
     const matchesStatus = statusFilter === "all" || (statusFilter === "cleared" ? f.cleared : !f.cleared);
-    const matchesDept = deptFilter === "all" || f.department === deptFilter;
+    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    const matchesDept = effectiveDept === "all" || f.department === effectiveDept;
     const matchesProg = progFilter === "all" || f.program === progFilter;
     return matchesSearch && matchesStatus && matchesDept && matchesProg;
   });
@@ -150,7 +153,9 @@ const FeesStatus = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
-          <p className="text-muted-foreground mt-1">Financial clearance for postgraduate students</p>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? "Financial clearance for postgraduate students" : `${adminDepartment} — Financial clearance`}
+          </p>
         </div>
         {isAccountant && (
           <button
@@ -261,23 +266,25 @@ const FeesStatus = () => {
 
       {showFilterPanel && (
         <div className="bg-card rounded-xl border border-border p-5 mb-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by Department & Programme</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                  <input type="checkbox" checked={deptFilter === "all"} onChange={() => setDeptFilter("all")} className="rounded border-input" />
-                  All Departments
-                </label>
-                {allDepts.map((d) => (
-                  <label key={d} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                    <input type="checkbox" checked={deptFilter === d} onChange={() => setDeptFilter(deptFilter === d ? "all" : d)} className="rounded border-input" />
-                    {d}
+          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by {isSuperAdmin ? "Department & " : ""}Programme</h3>
+          <div className={`grid grid-cols-1 ${isSuperAdmin ? "sm:grid-cols-2" : ""} gap-4`}>
+            {isSuperAdmin && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={deptFilter === "all"} onChange={() => setDeptFilter("all")} className="rounded border-input" />
+                    All Departments
                   </label>
-                ))}
+                  {allDepts.map((d) => (
+                    <label key={d} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                      <input type="checkbox" checked={deptFilter === d} onChange={() => setDeptFilter(deptFilter === d ? "all" : d)} className="rounded border-input" />
+                      {d}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Programmes</label>
               <div className="space-y-2">

@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface Graduand {
   name: string;
@@ -33,9 +34,11 @@ const PassList = () => {
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const filtered = graduands.filter((g) => {
-    const matchesDept = deptFilter === "all" || g.department === deptFilter;
+    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    const matchesDept = effectiveDept === "all" || g.department === effectiveDept;
     const matchesProg = progFilter === "all" || g.program === progFilter;
     const matchesYear = yearFilter === "all" || g.year === yearFilter;
     const matchesStatus = statusFilter === "all" || g.status === statusFilter;
@@ -63,7 +66,9 @@ const PassList = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Pass List</h1>
-          <p className="text-muted-foreground mt-1">Graduands eligible for convocation</p>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? "Graduands eligible for convocation" : `${adminDepartment} — Graduands eligible for convocation`}
+          </p>
         </div>
         <button onClick={handleExportCSV} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
           <Download size={14} /> Export CSV
@@ -75,10 +80,12 @@ const PassList = () => {
           <option value="all">All Years</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
+        {isSuperAdmin && (
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">All Departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
         <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Programmes</option>
           {programs.map((p) => <option key={p} value={p}>{p}</option>)}

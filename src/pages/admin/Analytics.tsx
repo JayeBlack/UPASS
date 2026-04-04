@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 // --- Academic year data sets ---
 interface YearData {
@@ -264,6 +265,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const Analytics = () => {
   const [selectedYear, setSelectedYear] = useState("2025/2026");
   const navigate = useNavigate();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const data = academicYears[selectedYear];
 
   const graduationEligibility = [
@@ -279,8 +281,12 @@ const Analytics = () => {
       {/* Header with Year Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold font-display text-foreground">School Analytics</h1>
-          <p className="text-muted-foreground mt-1">Comprehensive overview — {data.label} Academic Year</p>
+          <h1 className="text-3xl font-bold font-display text-foreground">
+            {isSuperAdmin ? "School Analytics" : `${adminDepartment} Analytics`}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? `Comprehensive overview — ${data.label} Academic Year` : `Department overview — ${data.label} Academic Year`}
+          </p>
         </div>
         <select
           value={selectedYear}
