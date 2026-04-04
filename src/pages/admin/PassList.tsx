@@ -37,7 +37,8 @@ const PassList = () => {
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const filtered = graduands.filter((g) => {
-    const matchesDept = deptFilter === "all" || g.department === deptFilter;
+    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    const matchesDept = effectiveDept === "all" || g.department === effectiveDept;
     const matchesProg = progFilter === "all" || g.program === progFilter;
     const matchesYear = yearFilter === "all" || g.year === yearFilter;
     const matchesStatus = statusFilter === "all" || g.status === statusFilter;
