@@ -3,6 +3,7 @@ import { CheckCircle, XCircle, Search, Filter, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface FeeRecord {
   name: string;
