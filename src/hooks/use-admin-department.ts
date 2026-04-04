@@ -7,7 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
  */
 export const useAdminDepartment = () => {
   const { user } = useAuth();
-  const isSuperAdmin = user?.isSuperAdmin === true;
+  // Super admin and Dean both get global access with department filters
+  const isSuperAdmin = user?.isSuperAdmin === true || user?.role === "Dean";
   const adminDepartment = isSuperAdmin ? undefined : user?.department;
 
   return { isSuperAdmin, adminDepartment, user };
