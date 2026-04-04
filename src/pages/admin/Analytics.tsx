@@ -543,7 +543,7 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">CWA Distribution</h2>
           <p className="text-xs text-muted-foreground mb-4">Students per CWA range — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.cwaDistribution}>
+            <BarChart data={scaledCwaDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis dataKey="range" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
