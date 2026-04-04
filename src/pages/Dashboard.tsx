@@ -55,6 +55,21 @@ interface StatItem {
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { students, graduands } = useDataStore();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+
+  // Filter data by department for departmental admins
+  const deptStudents = adminDepartment
+    ? students.filter((s) => s.department === adminDepartment)
+    : students;
+  const deptGraduands = adminDepartment
+    ? graduands.filter((g) => g.department === adminDepartment)
+    : graduands;
+
+  const totalStudents = deptStudents.length;
+  const activeStudents = deptStudents.filter((s) => s.status === "Active").length;
+  const totalGraduands = deptGraduands.filter((g) => g.status === "Eligible").length;
+  const feesClearedPct = totalStudents > 0 ? Math.round((activeStudents / totalStudents) * 100) : 0;
 
   const studentStats = [
     { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: "6", accent: true, trend: "neutral" as const, sub: "Semester 1" },
@@ -71,17 +86,17 @@ const Dashboard = () => {
   ];
 
   const adminStats = [
-    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: "247", accent: true, trend: "up" as const, sub: "+12%", onClick: () => navigate("/admin/students") },
-    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: "34" },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: "82%", trend: "up" as const, sub: "+5%", onClick: () => navigate("/admin/fees") },
-    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: "56", onClick: () => navigate("/admin/passlist") },
+    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, trend: "up" as const, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
+    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: adminDepartment ? "8" : "34" },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: `${feesClearedPct}%`, trend: "up" as const, sub: "+5%", onClick: () => navigate("/admin/fees") },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
 
   const deanStats = [
-    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: "247", accent: true, trend: "up" as const, sub: "+12%", onClick: () => navigate("/admin/students") },
+    { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, trend: "up" as const, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Clearances Pending", value: "14", trend: "down" as const, sub: "-6", onClick: () => navigate("/dean/clearance") },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Avg CWA", value: "68.5", trend: "up" as const, sub: "+1.2" },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Graduands", value: "56", onClick: () => navigate("/admin/passlist") },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Avg CWA", value: deptGraduands.length > 0 ? (deptGraduands.reduce((a, g) => a + g.cwa, 0) / deptGraduands.length).toFixed(1) : "—", trend: "up" as const, sub: "+1.2" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
 
   const accountantStats = [
