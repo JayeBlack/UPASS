@@ -13,12 +13,12 @@ interface ChatMessage {
 }
 
 const quickPrompts = [
-  "What postgraduate programmes are available?",
-  "How do I apply for admission?",
   "What are the fees for 2025/2026?",
   "What is the seminar requirement?",
-  "How long does an MPhil programme take?",
+  "How do I register for courses?",
   "How do I contact the SPS office?",
+  "What is the thesis submission process?",
+  "How do I apply for clearance?",
 ];
 
 // Clean markdown artifacts from AI responses
