@@ -4,9 +4,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, Legend,
 } from "recharts";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
+import { useDataStore } from "@/contexts/DataStoreContext";
 
 // --- Academic year data sets ---
 interface YearData {
@@ -266,15 +267,90 @@ const Analytics = () => {
   const [selectedYear, setSelectedYear] = useState("2025/2026");
   const navigate = useNavigate();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+  const { students, graduands } = useDataStore();
   const data = academicYears[selectedYear];
 
+  // Department name mapping for matching DataStore departments to chart short names
+  const deptShortName: Record<string, string> = {
+    "Computer Science": "Computer Science",
+    "Mining Engineering": "Mining Eng.",
+    "Electrical Engineering": "Electrical Eng.",
+    "Mechanical Engineering": "Mechanical Eng.",
+  };
+
+  // Filter data by admin's department
+  const deptStudents = adminDepartment
+    ? students.filter((s) => s.department === adminDepartment)
+    : students;
+  const deptGraduands = adminDepartment
+    ? graduands.filter((g) => g.department === adminDepartment)
+    : graduands;
+
+  const realTotalStudents = deptStudents.length;
+  const realActiveStudents = deptStudents.filter((s) => s.status === "Active").length;
+  const realEligibleGraduands = deptGraduands.filter((g) => g.status === "Eligible").length;
+  const realIneligibleGraduands = deptGraduands.filter((g) => g.status === "Ineligible").length;
+  const realTotalGraduands = realEligibleGraduands + realIneligibleGraduands;
+  const realAvgCwa = deptGraduands.length > 0
+    ? (deptGraduands.reduce((a, g) => a + g.cwa, 0) / deptGraduands.length).toFixed(1)
+    : data.avgCwa.toString();
+
+  // Use real data for top-level stats, fallback to mock for charts
+  const displayTotalStudents = realTotalStudents > 0 ? realTotalStudents : data.totalStudents;
+  const displayEligible = realEligibleGraduands > 0 ? realEligibleGraduands : data.graduandsEligible;
+  const displayIneligible = realIneligibleGraduands > 0 ? realIneligibleGraduands : data.graduandsIneligible;
+
+  // Filter enrollment chart data for departmental admins
+  const filteredEnrollmentByDept = adminDepartment
+    ? data.enrollmentByDept.filter((d) => {
+        const shortName = deptShortName[adminDepartment];
+        return d.name === shortName || d.name === adminDepartment;
+      })
+    : data.enrollmentByDept;
+
+  // Filter program breakdown for departmental admins
+  const deptProgramMap: Record<string, string[]> = {
+    "Computer Science": ["MSc. IT", "MPhil CS"],
+    "Mining Engineering": ["MSc. Mining"],
+    "Electrical Engineering": ["MSc. Electrical"],
+    "Mechanical Engineering": ["MSc. Mechanical"],
+  };
+  const filteredProgramBreakdown = adminDepartment
+    ? data.programBreakdown.filter((p) => (deptProgramMap[adminDepartment] || []).includes(p.name))
+    : data.programBreakdown;
+
+  // Scale fees for departmental admins (proportional to their student ratio)
+  const deptRatio = adminDepartment
+    ? (filteredEnrollmentByDept.reduce((a, d) => a + d.students, 0) / data.enrollmentByDept.reduce((a, d) => a + d.students, 0)) || 0.25
+    : 1;
+  const displayFeesCollected = Math.round(data.feesCollected * deptRatio);
+  const displayFeesCleared = Math.round(data.feesCleared * deptRatio);
+  const displayFeesOwing = Math.round(data.feesOwing * deptRatio);
+  const scaledFeesCollection = adminDepartment
+    ? data.feesCollection.map((f) => ({ ...f, collected: Math.round(f.collected * deptRatio), target: Math.round(f.target * deptRatio) }))
+    : data.feesCollection;
+
+  // Scale thesis and CWA for departmental admins
+  const scaledThesisProgress = adminDepartment
+    ? data.thesisProgress.map((t) => ({ ...t, value: Math.round(t.value * deptRatio) }))
+    : data.thesisProgress;
+  const scaledCwaDistribution = adminDepartment
+    ? data.cwaDistribution.map((c) => ({ ...c, count: Math.round(c.count * deptRatio) }))
+    : data.cwaDistribution;
+  const displayThesisDefended = Math.round(data.thesisDefended * deptRatio);
+
+  // Enrollment trend scaled for dept admins
+  const scaledEnrollmentTrend = adminDepartment
+    ? enrollmentTrend.map((e) => ({ ...e, students: Math.round(e.students * deptRatio) }))
+    : enrollmentTrend;
+
   const graduationEligibility = [
-    { name: "Eligible", value: data.graduandsEligible },
-    { name: "Ineligible", value: data.graduandsIneligible },
+    { name: "Eligible", value: displayEligible },
+    { name: "Ineligible", value: displayIneligible },
   ];
-  const totalGraduands = data.graduandsEligible + data.graduandsIneligible;
-  const eligiblePct = ((data.graduandsEligible / totalGraduands) * 100).toFixed(1);
-  const ineligiblePct = ((data.graduandsIneligible / totalGraduands) * 100).toFixed(1);
+  const totalGraduands = displayEligible + displayIneligible;
+  const eligiblePct = totalGraduands > 0 ? ((displayEligible / totalGraduands) * 100).toFixed(1) : "0";
+  const ineligiblePct = totalGraduands > 0 ? ((displayIneligible / totalGraduands) * 100).toFixed(1) : "0";
 
   return (
     <DashboardLayout>
@@ -303,25 +379,25 @@ const Analytics = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <StatCard
           icon={<Users size={18} className="text-secondary-foreground" />}
-          label="Total Students" value={data.totalStudents.toString()}
-          sub="↑ 12% from last year" trend="up" accent
+          label="Total Students" value={displayTotalStudents.toString()}
+          sub={`${realActiveStudents} active`} trend="up" accent
           onClick={() => navigate("/admin/students")}
         />
         <StatCard
           icon={<GraduationCap size={18} className="text-muted-foreground" />}
-          label="Graduands (Eligible)" value={data.graduandsEligible.toString()}
+          label="Graduands (Eligible)" value={displayEligible.toString()}
           sub={`${eligiblePct}% eligibility rate`} trend="up"
           onClick={() => navigate("/admin/passlist")}
         />
         <StatCard
           icon={<Banknote size={18} className="text-muted-foreground" />}
-          label="Fees Collected" value={`GH₵ ${(data.feesCollected / 1000000).toFixed(2)}M`}
+          label="Fees Collected" value={displayFeesCollected >= 1000000 ? `GH₵ ${(displayFeesCollected / 1000000).toFixed(2)}M` : `GH₵ ${(displayFeesCollected / 1000).toFixed(0)}K`}
           sub={`${data.collectionRate}% collection rate`} trend="up"
           onClick={() => navigate("/admin/fees")}
         />
         <StatCard
           icon={<BookOpen size={18} className="text-muted-foreground" />}
-          label="Active Programs" value="12"
+          label="Active Programs" value={adminDepartment ? String(deptProgramMap[adminDepartment]?.length || 2) : "12"}
           sub={data.newPrograms}
         />
       </div>
@@ -334,7 +410,7 @@ const Analytics = () => {
         >
           <CheckCircle size={18} className="text-success shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.feesCleared}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayFeesCleared}</p>
             <p className="text-xs text-muted-foreground">Fees Cleared</p>
           </div>
         </div>
@@ -344,21 +420,21 @@ const Analytics = () => {
         >
           <AlertTriangle size={18} className="text-warning shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.feesOwing}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayFeesOwing}</p>
             <p className="text-xs text-muted-foreground">Fees Owing</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
           <BarChart3 size={18} className="text-info shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.avgCwa}</p>
+            <p className="text-lg font-bold font-display text-foreground">{realAvgCwa}</p>
             <p className="text-xs text-muted-foreground">Avg. CWA</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
           <FileText size={18} className="text-secondary shrink-0" />
           <div>
-            <p className="text-lg font-bold font-display text-foreground">{data.thesisDefended}</p>
+            <p className="text-lg font-bold font-display text-foreground">{displayThesisDefended}</p>
             <p className="text-xs text-muted-foreground">Thesis Defended</p>
           </div>
         </div>
@@ -368,9 +444,9 @@ const Analytics = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-card rounded-xl border border-border p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Enrollment Trend</h2>
-          <p className="text-xs text-muted-foreground mb-4">5-year postgraduate enrollment growth</p>
+          <p className="text-xs text-muted-foreground mb-4">{adminDepartment ? `${adminDepartment} — 5-year trend` : "5-year postgraduate enrollment growth"}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={enrollmentTrend}>
+            <AreaChart data={scaledEnrollmentTrend}>
               <defs>
                 <linearGradient id="enrollGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(145 60% 22%)" stopOpacity={0.3} />
@@ -387,10 +463,10 @@ const Analytics = () => {
         </div>
 
         <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="font-display text-lg font-bold text-foreground mb-1">Enrollment by Department</h2>
+          <h2 className="font-display text-lg font-bold text-foreground mb-1">{adminDepartment ? "Enrollment Overview" : "Enrollment by Department"}</h2>
           <p className="text-xs text-muted-foreground mb-4">Gender breakdown — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.enrollmentByDept}>
+            <BarChart data={filteredEnrollmentByDept}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(120 8% 45%)" />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
@@ -409,7 +485,7 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Fees Collection Trend</h2>
           <p className="text-xs text-muted-foreground mb-4">Monthly collected vs target (GH₵) — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={data.feesCollection}>
+            <LineChart data={scaledFeesCollection}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
@@ -439,14 +515,14 @@ const Analytics = () => {
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[0] }} />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{data.graduandsEligible} Eligible</p>
+                  <p className="text-sm font-semibold text-foreground">{displayEligible} Eligible</p>
                   <p className="text-xs text-muted-foreground">{eligiblePct}%</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[1] }} />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{data.graduandsIneligible} Ineligible</p>
+                  <p className="text-sm font-semibold text-foreground">{displayIneligible} Ineligible</p>
                   <p className="text-xs text-muted-foreground">{ineligiblePct}%</p>
                 </div>
               </div>
@@ -467,7 +543,7 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">CWA Distribution</h2>
           <p className="text-xs text-muted-foreground mb-4">Students per CWA range — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.cwaDistribution}>
+            <BarChart data={scaledCwaDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis dataKey="range" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
@@ -483,8 +559,8 @@ const Analytics = () => {
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={220}>
               <PieChart>
-                <Pie data={data.programBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={false}>
-                  {data.programBreakdown.map((_, index) => (
+                <Pie data={filteredProgramBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={false}>
+                  {filteredProgramBreakdown.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[index % PROGRAM_COLORS.length]} />
                   ))}
                 </Pie>
@@ -492,7 +568,7 @@ const Analytics = () => {
               </PieChart>
             </ResponsiveContainer>
             <div className="space-y-2">
-              {data.programBreakdown.map((p, i) => (
+              {filteredProgramBreakdown.map((p, i) => (
                 <div key={p.name} className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PROGRAM_COLORS[i % PROGRAM_COLORS.length] }} />
                   <span className="text-xs text-muted-foreground">{p.name}</span>
@@ -510,13 +586,13 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Thesis Progress</h2>
           <p className="text-xs text-muted-foreground mb-4">Students at each stage — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.thesisProgress} layout="vertical">
+            <BarChart data={scaledThesisProgress} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" width={80} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" name="Students" radius={[0, 4, 4, 0]}>
-                {data.thesisProgress.map((entry, index) => (
+                {scaledThesisProgress.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Bar>
