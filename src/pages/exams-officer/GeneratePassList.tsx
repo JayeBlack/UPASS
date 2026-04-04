@@ -2,39 +2,25 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-interface Graduand {
-  name: string;
-  index: string;
-  program: string;
-  department: string;
-  cwa: number;
-  year: string;
-  status: string;
-}
-
-const graduands: Graduand[] = [
-  { name: "Akua Mensah", index: "UMaT/PG/0112/21", program: "MSc. IT", department: "Computer Science", cwa: 72.5, year: "2025", status: "Pass" },
-  { name: "Kofi Darko", index: "UMaT/PG/0089/21", program: "MPhil CS", department: "Computer Science", cwa: 78.4, year: "2025", status: "Pass" },
-  { name: "Esi Appiah", index: "UMaT/PG/0145/21", program: "MSc. Mining Eng", department: "Mining Engineering", cwa: 68.3, year: "2025", status: "Pass" },
-  { name: "Yaw Frimpong", index: "UMaT/PG/0178/21", program: "MSc. IT", department: "Computer Science", cwa: 48.9, year: "2025", status: "Fail" },
-  { name: "Abena Kyei", index: "UMaT/PG/0201/21", program: "MPhil CS", department: "Computer Science", cwa: 74.1, year: "2025", status: "Pass" },
-  { name: "Nana Agyei", index: "UMaT/PG/0420/23", program: "MSc. Mechanical Eng", department: "Mechanical Engineering", cwa: 71.2, year: "2024", status: "Pass" },
-  { name: "Ama Boateng", index: "UMaT/PG/0333/22", program: "MSc. Electrical Eng", department: "Electrical Engineering", cwa: 65.8, year: "2024", status: "Pass" },
-];
-
-const departments = [...new Set(graduands.map((g) => g.department))];
-const programs = [...new Set(graduands.map((g) => g.program))];
-const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
+import { useDataStore } from "@/contexts/DataStoreContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 const GeneratePassList = () => {
+  const { graduands } = useDataStore();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const [deptFilter, setDeptFilter] = useState("all");
   const [progFilter, setProgFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
   const { toast } = useToast();
 
+  const departments = [...new Set(graduands.map((g) => g.department))];
+  const programs = [...new Set(graduands.map((g) => g.program))];
+  const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
+
   const filtered = graduands.filter((g) => {
-    return (deptFilter === "all" || g.department === deptFilter) &&
+    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    const matchesDept = effectiveDept === "all" || g.department === effectiveDept;
+    return matchesDept &&
       (progFilter === "all" || g.program === progFilter) &&
       (yearFilter === "all" || g.year === yearFilter);
   });
@@ -76,10 +62,12 @@ const GeneratePassList = () => {
           <option value="all">All Programmes</option>
           {programs.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
+        {isSuperAdmin && (
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">All Departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
       </div>
 
       <p className="text-sm text-muted-foreground mb-4">Showing {filtered.length} of {graduands.length} students</p>
@@ -106,7 +94,7 @@ const GeneratePassList = () => {
                   <td className="px-6 py-4 text-sm text-muted-foreground">{g.department}</td>
                   <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{g.cwa.toFixed(1)}</td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Pass" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
                   </td>
                 </tr>
               ))}

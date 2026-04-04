@@ -144,9 +144,10 @@ const FeesStatus = () => {
 
   const allDepts = [...new Set(records.map((f) => f.department))];
   const allProgs = [...new Set(records.map((f) => f.program))];
-  const totalCleared = records.filter((f) => f.cleared).length;
-  const totalOwing = records.filter((f) => !f.cleared).length;
-  const totalOutstanding = records.reduce((s, f) => s + f.outstanding, 0);
+  const deptRecords = adminDepartment ? records.filter((f) => f.department === adminDepartment) : records;
+  const totalCleared = deptRecords.filter((f) => f.cleared).length;
+  const totalOwing = deptRecords.filter((f) => !f.cleared).length;
+  const totalOutstanding = deptRecords.reduce((s, f) => s + f.outstanding, 0);
 
   return (
     <DashboardLayout>

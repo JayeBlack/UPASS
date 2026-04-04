@@ -10,22 +10,23 @@ interface LogEntry {
   role: string;
   action: string;
   category: string;
+  department: string;
   details: string;
 }
 
 const mockLogs: LogEntry[] = [
-  { id: "l1", timestamp: "2026-04-04 14:32:10", user: "Prof. Kofi Asante", role: "Admin", action: "Enrolled Student", category: "Students", details: "Enrolled Kwame Mensah (UMaT/PG/0500/26) into MSc. IT" },
-  { id: "l2", timestamp: "2026-04-04 13:15:45", user: "Mr. Yaw Darko", role: "Accountant", action: "Cleared Student", category: "Fees", details: "Financial clearance granted for Ama Serwaa (UMaT/PG/0198/22)" },
-  { id: "l3", timestamp: "2026-04-04 11:20:33", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Published Results", category: "Results", details: "Semester 1 results published for MSc. IT (28 students)" },
-  { id: "l4", timestamp: "2026-04-03 16:45:22", user: "Prof. Ama Boateng", role: "Dean", action: "Approved Clearance", category: "Clearance", details: "Graduation clearance approved for Kofi Darko (UMaT/PG/0089/21)" },
-  { id: "l5", timestamp: "2026-04-03 14:10:18", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Uploaded Grades", category: "Results", details: "CSV grade upload for Mining Engineering (15 students)" },
-  { id: "l6", timestamp: "2026-04-03 10:30:05", user: "Prof. Kofi Asante", role: "Admin", action: "Deleted Student", category: "Students", details: "Removed Yaw Frimpong (UMaT/PG/0178/21) from the system" },
-  { id: "l7", timestamp: "2026-04-02 15:20:40", user: "Mr. Yaw Darko", role: "Accountant", action: "Revoked Clearance", category: "Fees", details: "Financial clearance revoked for Kofi Adjei (UMaT/PG/0345/22)" },
-  { id: "l8", timestamp: "2026-04-02 09:55:12", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Generated Pass List", category: "Results", details: "Pass list generated for Computer Science (2025)" },
-  { id: "l9", timestamp: "2026-04-01 14:45:30", user: "Prof. Kofi Asante", role: "Admin", action: "Bulk Enrollment", category: "Students", details: "12 students enrolled via Excel upload for Mining Engineering" },
-  { id: "l10", timestamp: "2026-04-01 11:30:25", user: "Mr. Yaw Darko", role: "Accountant", action: "Sent Fee Notice", category: "Fees", details: "Fee payment reminder sent to 44 students with outstanding balances" },
-  { id: "l11", timestamp: "2026-03-31 16:10:55", user: "Prof. Ama Boateng", role: "Dean", action: "Rejected Clearance", category: "Clearance", details: "Clearance rejected for Efua Dankwah — outstanding fees" },
-  { id: "l12", timestamp: "2026-03-31 10:05:42", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Deleted Results", category: "Results", details: "Deleted published results for MSc. Electrical Eng Semester 2" },
+  { id: "l1", timestamp: "2026-04-04 14:32:10", user: "Prof. Kofi Asante", role: "Admin", action: "Enrolled Student", category: "Students", department: "Computer Science", details: "Enrolled Kwame Mensah (UMaT/PG/0500/26) into MSc. IT" },
+  { id: "l2", timestamp: "2026-04-04 13:15:45", user: "Mr. Yaw Darko", role: "Accountant", action: "Cleared Student", category: "Fees", department: "Computer Science", details: "Financial clearance granted for Ama Serwaa (UMaT/PG/0198/22)" },
+  { id: "l3", timestamp: "2026-04-04 11:20:33", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Published Results", category: "Results", department: "Computer Science", details: "Semester 1 results published for MSc. IT (28 students)" },
+  { id: "l4", timestamp: "2026-04-03 16:45:22", user: "Prof. Ama Boateng", role: "Dean", action: "Approved Clearance", category: "Clearance", department: "Computer Science", details: "Graduation clearance approved for Kofi Darko (UMaT/PG/0089/21)" },
+  { id: "l5", timestamp: "2026-04-03 14:10:18", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Uploaded Grades", category: "Results", department: "Mining Engineering", details: "CSV grade upload for Mining Engineering (15 students)" },
+  { id: "l6", timestamp: "2026-04-03 10:30:05", user: "Prof. Kofi Asante", role: "Admin", action: "Deleted Student", category: "Students", department: "Computer Science", details: "Removed Yaw Frimpong (UMaT/PG/0178/21) from the system" },
+  { id: "l7", timestamp: "2026-04-02 15:20:40", user: "Mr. Yaw Darko", role: "Accountant", action: "Revoked Clearance", category: "Fees", department: "Computer Science", details: "Financial clearance revoked for Kofi Adjei (UMaT/PG/0345/22)" },
+  { id: "l8", timestamp: "2026-04-02 09:55:12", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Generated Pass List", category: "Results", department: "Computer Science", details: "Pass list generated for Computer Science (2025)" },
+  { id: "l9", timestamp: "2026-04-01 14:45:30", user: "Dr. Kwesi Mensah", role: "Admin", action: "Bulk Enrollment", category: "Students", department: "Mining Engineering", details: "12 students enrolled via Excel upload for Mining Engineering" },
+  { id: "l10", timestamp: "2026-04-01 11:30:25", user: "Mr. Yaw Darko", role: "Accountant", action: "Sent Fee Notice", category: "Fees", department: "Electrical Engineering", details: "Fee payment reminder sent to 44 students with outstanding balances" },
+  { id: "l11", timestamp: "2026-03-31 16:10:55", user: "Prof. Ama Boateng", role: "Dean", action: "Rejected Clearance", category: "Clearance", department: "Electrical Engineering", details: "Clearance rejected for Efua Dankwah — outstanding fees" },
+  { id: "l12", timestamp: "2026-03-31 10:05:42", user: "Mrs. Akosua Mensah", role: "ExamsOfficer", action: "Deleted Results", category: "Results", department: "Electrical Engineering", details: "Deleted published results for MSc. Electrical Eng Semester 2" },
 ];
 
 const categories = [...new Set(mockLogs.map((l) => l.category))];
@@ -44,8 +45,10 @@ const SystemLog = () => {
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const filtered = mockLogs.filter((l) => {
-    return (catFilter === "all" || l.category === catFilter) &&
-      (roleFilter === "all" || l.role === roleFilter);
+    const matchesCat = catFilter === "all" || l.category === catFilter;
+    const matchesRole = roleFilter === "all" || l.role === roleFilter;
+    const matchesDept = isSuperAdmin || !adminDepartment || l.department === adminDepartment;
+    return matchesCat && matchesRole && matchesDept;
   });
 
   return (
@@ -85,6 +88,7 @@ const SystemLog = () => {
                 <span className="text-sm font-medium text-foreground">{log.action}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{log.category}</span>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{log.role}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-secondary/10 text-secondary-foreground">{log.department}</span>
               </div>
               <p className="text-sm text-muted-foreground">{log.details}</p>
               <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">

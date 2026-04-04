@@ -2,6 +2,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useState } from "react";
 import { Filter } from "lucide-react";
+import { useDataStore } from "@/contexts/DataStoreContext";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 const programCWA = [
   { program: "MSc. IT", cwa: 71.2, department: "Computer Science", year: "2022" },
@@ -27,66 +29,65 @@ const topStudents = [
   { name: "Ama Serwaa", index: "UMaT/PG/0089/21", program: "MSc. Geo. Engineering", department: "Geological Engineering", year: "2021", cwa: 81.5 },
 ];
 
-const departments = [...new Set(programCWA.map((p) => p.department))];
-const years = [...new Set([...programCWA.map((p) => p.year), ...topStudents.map((s) => s.year)])].sort();
-
 const CWAResults = () => {
+  const { students, graduands } = useDataStore();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
 
+  const departments = [...new Set(programCWA.map((p) => p.department))];
+  const years = [...new Set([...programCWA.map((p) => p.year), ...topStudents.map((s) => s.year)])].sort();
+
+  const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+
   const filteredPrograms = programCWA.filter((p) => {
     const matchYear = yearFilter === "all" || p.year === yearFilter;
-    const matchDept = deptFilter === "all" || p.department === deptFilter;
+    const matchDept = effectiveDept === "all" || p.department === effectiveDept;
     return matchYear && matchDept;
   });
 
   const filteredStudents = topStudents.filter((s) => {
     const matchYear = yearFilter === "all" || s.year === yearFilter;
-    const matchDept = deptFilter === "all" || s.department === deptFilter;
+    const matchDept = effectiveDept === "all" || s.department === effectiveDept;
     return matchYear && matchDept;
   });
+
+  // Use DataStore for real counts
+  const deptStudentsList = adminDepartment ? students.filter((s) => s.department === adminDepartment) : students;
+  const deptGraduandsList = adminDepartment ? graduands.filter((g) => g.department === adminDepartment) : graduands;
 
   return (
     <DashboardLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold font-display text-foreground">CWA Results Overview</h1>
-        <p className="text-muted-foreground mt-1">Performance analysis across all postgraduate programs</p>
+        <p className="text-muted-foreground mt-1">
+          {isSuperAdmin ? "Performance analysis across all postgraduate programs" : `${adminDepartment} — Performance analysis`}
+        </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Filter size={16} />
           <span>Filter by:</span>
         </div>
-        <select
-          value={yearFilter}
-          onChange={(e) => setYearFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
+        <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Years</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select
-          value={deptFilter}
-          onChange={(e) => setDeptFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="all">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
+        {isSuperAdmin && (
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">All Departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
         {[
           { label: "School Avg CWA", value: filteredPrograms.length ? (filteredPrograms.reduce((s, p) => s + p.cwa, 0) / filteredPrograms.length).toFixed(1) : "—" },
-          { label: "Total Students", value: filteredStudents.length.toString() },
+          { label: "Total Students", value: String(deptStudentsList.length) },
           { label: "First Class", value: filteredStudents.filter((s) => s.cwa >= 70).length.toString() },
-          { label: "Pass Rate", value: "97.9%" },
+          { label: "Graduands", value: String(deptGraduandsList.filter((g) => g.status === "Eligible").length) },
         ].map((s) => (
           <div key={s.label} className="bg-card rounded-xl border border-border p-5">
             <p className="text-2xl font-bold font-display text-foreground">{s.value}</p>

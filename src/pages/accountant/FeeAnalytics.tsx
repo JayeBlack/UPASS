@@ -2,6 +2,8 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useState, useMemo } from "react";
 import { Filter } from "lucide-react";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
+import { useDataStore } from "@/contexts/DataStoreContext";
 
 // Shared payment store that both online & manual imports feed into
 interface PaymentRecord {
@@ -36,6 +38,8 @@ const basePayments: PaymentRecord[] = [
 ];
 
 const FeeAnalytics = () => {
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+  const { students } = useDataStore();
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
 
@@ -45,12 +49,12 @@ const FeeAnalytics = () => {
   const filteredPayments = useMemo(() => {
     return basePayments.filter((p) => {
       const matchYear = yearFilter === "all" || p.paidYear === yearFilter;
-      const matchDept = deptFilter === "all" || p.department === deptFilter;
+      const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+      const matchDept = effectiveDept === "all" || p.department === effectiveDept;
       return matchYear && matchDept;
     });
-  }, [yearFilter, deptFilter]);
+  }, [yearFilter, deptFilter, isSuperAdmin, adminDepartment]);
 
-  // Real-time computed analytics from payment records
   const totalCollected = useMemo(() => filteredPayments.reduce((s, p) => s + p.amountPaid, 0), [filteredPayments]);
   const totalExpected = useMemo(() => filteredPayments.reduce((s, p) => s + p.totalFees, 0), [filteredPayments]);
   const outstanding = totalExpected - totalCollected;
@@ -58,7 +62,6 @@ const FeeAnalytics = () => {
   const owingCount = useMemo(() => filteredPayments.filter((p) => p.amountPaid < p.totalFees).length, [filteredPayments]);
   const complianceRate = filteredPayments.length > 0 ? Math.round((clearedCount / filteredPayments.length) * 100) : 0;
 
-  // Monthly collection chart data - computed from records
   const monthlyData = useMemo(() => {
     const monthOrder = ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug"];
     const grouped: Record<string, number> = {};
@@ -68,7 +71,6 @@ const FeeAnalytics = () => {
     return monthOrder.filter((m) => grouped[m]).map((m) => ({ month: m, collected: grouped[m] }));
   }, [filteredPayments]);
 
-  // Compliance by programme - computed from records
   const complianceByProg = useMemo(() => {
     const progMap: Record<string, { total: number; cleared: number }> = {};
     filteredPayments.forEach((p) => {
@@ -86,7 +88,9 @@ const FeeAnalytics = () => {
     <DashboardLayout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold font-display text-foreground">Fee Payment Analytics</h1>
-        <p className="text-muted-foreground mt-1">Real-time financial overview computed from payment records</p>
+        <p className="text-muted-foreground mt-1">
+          {isSuperAdmin ? "Real-time financial overview computed from payment records" : `${adminDepartment} — Financial overview`}
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -98,10 +102,12 @@ const FeeAnalytics = () => {
           <option value="all">All Years</option>
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Departments</option>
-          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
+        {isSuperAdmin && (
+          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="all">All Departments</option>
+            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-6">
