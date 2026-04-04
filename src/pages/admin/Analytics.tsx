@@ -586,13 +586,13 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Thesis Progress</h2>
           <p className="text-xs text-muted-foreground mb-4">Students at each stage — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.thesisProgress} layout="vertical">
+            <BarChart data={scaledThesisProgress} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis type="number" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" width={80} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="value" name="Students" radius={[0, 4, 4, 0]}>
-                {data.thesisProgress.map((entry, index) => (
+                {scaledThesisProgress.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Bar>
