@@ -72,6 +72,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Fee Analytics", path: "/accountant/analytics", icon: <PieChart size={20} /> },
     { label: "Student Fees", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Export Reports", path: "/accountant/reports", icon: <FileText size={20} /> },
+    { label: "Fee Notices", path: "/accountant/announcements", icon: <Bell size={20} /> },
   ],
   ExamsOfficer: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
