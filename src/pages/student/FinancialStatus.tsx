@@ -22,6 +22,69 @@ const FinancialStatus = () => {
   const totalOwed = 1600;
   const [showPayModal, setShowPayModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"online" | "receipt" | null>(null);
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  const handleDownloadReceipt = async (fee: typeof fees[0]) => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const doc = new jsPDF();
+
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = umatLogo;
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+        doc.addImage(img, "PNG", 85, 8, 20, 20);
+      } catch { /* continue */ }
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("University of Mines and Technology", 105, 35, { align: "center" });
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("School of Postgraduate Studies", 105, 42, { align: "center" });
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("FEE PAYMENT RECEIPT", 105, 52, { align: "center" });
+
+      doc.setDrawColor(34, 87, 50);
+      doc.line(20, 57, 190, 57);
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      const startY = 65;
+      const lines = [
+        ["Student Name:", user?.name || "N/A"],
+        ["Index Number:", user?.indexNumber || "N/A"],
+        ["Programme:", user?.program || "N/A"],
+        ["Department:", user?.department || "N/A"],
+        ["Semester:", fee.semester],
+        ["Total Fee:", fee.amount],
+        ["Amount Paid:", fee.paid],
+        ["Balance:", fee.balance],
+        ["Status:", fee.status],
+        ["Date:", new Date().toLocaleDateString("en-GB")],
+      ];
+
+      lines.forEach(([label, value], i) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(label, 25, startY + i * 8);
+        doc.setFont("helvetica", "normal");
+        doc.text(value, 80, startY + i * 8);
+      });
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "italic");
+      doc.text("This is a computer-generated receipt.", 105, 280, { align: "center" });
+      doc.text(`Generated on ${new Date().toLocaleDateString("en-GB")}`, 105, 285, { align: "center" });
+
+      doc.save(`UMaT_Fee_Receipt_${fee.semester.replace(/[\s,\/]/g, "_")}.pdf`);
+      toast({ title: "Receipt downloaded", description: `Payment receipt for ${fee.semester}` });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate receipt", variant: "destructive" });
+    }
+  };
 
   return (
     <DashboardLayout>
