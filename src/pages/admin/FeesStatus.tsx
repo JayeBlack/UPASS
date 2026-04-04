@@ -153,7 +153,9 @@ const FeesStatus = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
-          <p className="text-muted-foreground mt-1">Financial clearance for postgraduate students</p>
+          <p className="text-muted-foreground mt-1">
+            {isSuperAdmin ? "Financial clearance for postgraduate students" : `${adminDepartment} — Financial clearance`}
+          </p>
         </div>
         {isAccountant && (
           <button
