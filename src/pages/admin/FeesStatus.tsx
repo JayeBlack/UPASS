@@ -266,23 +266,25 @@ const FeesStatus = () => {
 
       {showFilterPanel && (
         <div className="bg-card rounded-xl border border-border p-5 mb-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by Department & Programme</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                  <input type="checkbox" checked={deptFilter === "all"} onChange={() => setDeptFilter("all")} className="rounded border-input" />
-                  All Departments
-                </label>
-                {allDepts.map((d) => (
-                  <label key={d} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                    <input type="checkbox" checked={deptFilter === d} onChange={() => setDeptFilter(deptFilter === d ? "all" : d)} className="rounded border-input" />
-                    {d}
+          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by {isSuperAdmin ? "Department & " : ""}Programme</h3>
+          <div className={`grid grid-cols-1 ${isSuperAdmin ? "sm:grid-cols-2" : ""} gap-4`}>
+            {isSuperAdmin && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={deptFilter === "all"} onChange={() => setDeptFilter("all")} className="rounded border-input" />
+                    All Departments
                   </label>
-                ))}
+                  {allDepts.map((d) => (
+                    <label key={d} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                      <input type="checkbox" checked={deptFilter === d} onChange={() => setDeptFilter(deptFilter === d ? "all" : d)} className="rounded border-input" />
+                      {d}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-2 block">Programmes</label>
               <div className="space-y-2">
