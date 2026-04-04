@@ -379,25 +379,25 @@ const Analytics = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <StatCard
           icon={<Users size={18} className="text-secondary-foreground" />}
-          label="Total Students" value={data.totalStudents.toString()}
-          sub="↑ 12% from last year" trend="up" accent
+          label="Total Students" value={displayTotalStudents.toString()}
+          sub={`${realActiveStudents} active`} trend="up" accent
           onClick={() => navigate("/admin/students")}
         />
         <StatCard
           icon={<GraduationCap size={18} className="text-muted-foreground" />}
-          label="Graduands (Eligible)" value={data.graduandsEligible.toString()}
+          label="Graduands (Eligible)" value={displayEligible.toString()}
           sub={`${eligiblePct}% eligibility rate`} trend="up"
           onClick={() => navigate("/admin/passlist")}
         />
         <StatCard
           icon={<Banknote size={18} className="text-muted-foreground" />}
-          label="Fees Collected" value={`GH₵ ${(data.feesCollected / 1000000).toFixed(2)}M`}
+          label="Fees Collected" value={displayFeesCollected >= 1000000 ? `GH₵ ${(displayFeesCollected / 1000000).toFixed(2)}M` : `GH₵ ${(displayFeesCollected / 1000).toFixed(0)}K`}
           sub={`${data.collectionRate}% collection rate`} trend="up"
           onClick={() => navigate("/admin/fees")}
         />
         <StatCard
           icon={<BookOpen size={18} className="text-muted-foreground" />}
-          label="Active Programs" value="12"
+          label="Active Programs" value={adminDepartment ? String(deptProgramMap[adminDepartment]?.length || 2) : "12"}
           sub={data.newPrograms}
         />
       </div>
