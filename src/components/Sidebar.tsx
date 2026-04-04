@@ -58,6 +58,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Manage Students", path: "/admin/students", icon: <Users size={20} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={20} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={20} /> },
+    { label: "System Log", path: "/admin/log", icon: <FileText size={20} /> },
   ],
   Dean: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
