@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Clock, Filter, Users, Shield, BookOpen, Banknote, FileText } from "lucide-react";
 import { useState } from "react";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface LogEntry {
   id: string;
