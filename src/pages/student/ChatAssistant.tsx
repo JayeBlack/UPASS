@@ -290,7 +290,7 @@ const ChatAssistant = () => {
                   handleSend();
                 }
               }}
-              placeholder="Ask about programmes, fees, admissions, seminars…"
+              placeholder="Ask about fees, registration, thesis, clearance…"
               className="resize-none h-12 min-h-[48px]"
             />
             <Button
