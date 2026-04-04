@@ -35,11 +35,7 @@ const ManageStudents = () => {
   const [deptFilter, setDeptFilter] = useState("all");
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
-
-  // For departmental admin, filter by their department
-  const isSuperAdmin = user?.role === "Admin" && !user?.department?.includes("Department");
-  const adminDept = user?.department;
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const departments = [...new Set(students.map((s) => s.department))];
 
