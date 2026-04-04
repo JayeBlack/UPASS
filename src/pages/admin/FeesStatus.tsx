@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { CheckCircle, XCircle, Search, Filter, Upload } from "lucide-react";
 import { useState, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FeeRecord {
   name: string;
@@ -31,6 +32,8 @@ const departments = [...new Set(initialRecords.map((f) => f.department))];
 const programs = [...new Set(initialRecords.map((f) => f.program))];
 
 const FeesStatus = () => {
+  const { user } = useAuth();
+  const isAccountant = user?.role === "Accountant";
   const [records, setRecords] = useState<FeeRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "cleared" | "owing">("all");
@@ -149,12 +152,14 @@ const FeesStatus = () => {
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
           <p className="text-muted-foreground mt-1">Financial clearance for postgraduate students</p>
         </div>
-        <button
-          onClick={() => setShowImport(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <Upload size={14} /> Import Manual Payments (.csv)
-        </button>
+        {isAccountant && (
+          <button
+            onClick={() => setShowImport(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            <Upload size={14} /> Import Manual Payments (.csv)
+          </button>
+        )}
       </div>
 
       {/* Import Modal */}
