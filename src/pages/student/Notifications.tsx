@@ -69,10 +69,10 @@ const severityStyles: Record<string, string> = {
 
 const Notifications = () => {
   const { user } = useAuth();
-  const initialNotifications = roleNotifications[user?.role || "Student"];
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const initialNotifications = roleNotifications[user?.role || "Student"] || [];
+  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const { toast } = useToast();
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = (notifications || []).filter((n) => !n.read).length;
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
