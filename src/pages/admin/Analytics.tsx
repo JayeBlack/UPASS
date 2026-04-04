@@ -265,6 +265,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 const Analytics = () => {
   const [selectedYear, setSelectedYear] = useState("2025/2026");
   const navigate = useNavigate();
+  const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const data = academicYears[selectedYear];
 
   const graduationEligibility = [
