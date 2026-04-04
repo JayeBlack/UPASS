@@ -463,10 +463,10 @@ const Analytics = () => {
         </div>
 
         <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="font-display text-lg font-bold text-foreground mb-1">Enrollment by Department</h2>
+          <h2 className="font-display text-lg font-bold text-foreground mb-1">{adminDepartment ? "Enrollment Overview" : "Enrollment by Department"}</h2>
           <p className="text-xs text-muted-foreground mb-4">Gender breakdown — {data.label}</p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={data.enrollmentByDept}>
+            <BarChart data={filteredEnrollmentByDept}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(80 12% 88%)" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(120 8% 45%)" />
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(120 8% 45%)" />
