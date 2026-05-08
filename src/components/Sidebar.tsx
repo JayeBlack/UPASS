@@ -83,6 +83,31 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Students", path: "/admin/students", icon: <Users size={18} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={18} /> },
   ],
+  ViceDean: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
+    { label: "Analytics", path: "/admin/analytics", icon: <PieChart size={18} /> },
+    { label: "Manage Students", path: "/admin/students", icon: <Users size={18} /> },
+    { label: "Clearance Approvals", path: "/dean/clearance", icon: <ClipboardCheck size={18} /> },
+    { label: "Pass List", path: "/admin/passlist", icon: <ListChecks size={18} /> },
+    { label: "CWA Results", path: "/dean/results", icon: <BarChart3 size={18} /> },
+  ],
+  Registrar: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
+    { label: "Manage Students", path: "/admin/students", icon: <Users size={18} /> },
+    { label: "System Log", path: "/admin/log", icon: <FileText size={18} /> },
+    { label: "Pass List", path: "/admin/passlist", icon: <ListChecks size={18} /> },
+  ],
+  AdminAssistant: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
+    { label: "Manage Students", path: "/admin/students", icon: <Users size={18} /> },
+    { label: "Fee Notices", path: "/accountant/announcements", icon: <Bell size={18} /> },
+  ],
+  AccountingAssistant: [
+    { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
+    { label: "Student Fees", path: "/admin/fees", icon: <Banknote size={18} /> },
+    { label: "Fee Analytics", path: "/accountant/analytics", icon: <PieChart size={18} /> },
+    { label: "Export Reports", path: "/accountant/reports", icon: <FileText size={18} /> },
+  ],
 };
 
 const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
