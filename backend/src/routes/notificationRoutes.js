@@ -6,5 +6,5 @@ router.get("/", ctrl.getForUser);
 router.put("/:id/read", ctrl.markRead);
 router.put("/read-all", ctrl.markAllRead);
 router.delete("/:id", ctrl.remove);
-router.post("/", authorize("Admin", "Dean", "ExamsOfficer"), ctrl.create);
+router.post("/", authorize("Admin", "Dean", "ViceDean", "ExamsOfficer"), ctrl.create);
 module.exports = router;
