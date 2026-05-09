@@ -52,7 +52,13 @@ exports.login = async (req, res) => {
     if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        department_id: user.department_id || null,
+        is_super_admin: !!user.is_super_admin,
+      },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
@@ -90,6 +96,8 @@ exports.login = async (req, res) => {
         first_name: user.first_name,
         last_name: user.last_name,
         avatar_url: user.avatar_url,
+        department_id: user.department_id || null,
+        is_super_admin: !!user.is_super_admin,
         ...profile,
       },
     });
