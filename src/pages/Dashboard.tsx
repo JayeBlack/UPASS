@@ -208,7 +208,7 @@ const Dashboard = () => {
     ],
   };
 
-  const recentActivity = roleActivities[user?.role || "Student"];
+  const recentActivity = roleActivities[user?.role || "Student"] ?? roleActivities.Admin;
 
   const quickActions = user?.role === "Student"
     ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
