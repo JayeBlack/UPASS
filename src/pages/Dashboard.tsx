@@ -115,8 +115,9 @@ const Dashboard = () => {
 
   const roleStatsMap: Record<string, StatItem[]> = {
     Student: studentStats, Supervisor: supervisorStats, Admin: adminStats, Dean: deanStats, Accountant: accountantStats, ExamsOfficer: examsOfficerStats,
+    ViceDean: deanStats, Registrar: adminStats, AdminAssistant: adminStats, AccountingAssistant: accountantStats,
   };
-  const stats = roleStatsMap[user?.role || "Student"];
+  const stats = roleStatsMap[user?.role || "Student"] ?? studentStats;
 
   const quickActionRoutes: Record<string, string> = {
     "Register Courses": "/courses/register",
