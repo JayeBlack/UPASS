@@ -55,16 +55,19 @@ exports.getById = async (req, res) => {
 // POST /api/students (enroll)
 exports.create = async (req, res) => {
   try {
-    const { user_id, index_number, program_id, department_id, admission_year, study_mode } = req.body;
+    const {
+      user_id, index_number, program_id, department_id,
+      admission_year, study_mode, admission_cycle,
+    } = req.body;
     if (!user_id || !index_number || !program_id || !department_id || !admission_year) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const result = await db.query(
-      `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year, study_mode)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year, study_mode, admission_cycle)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [user_id, index_number, program_id, department_id, admission_year, study_mode || "Full-time"]
+      [user_id, index_number, program_id, department_id, admission_year, study_mode || "Full-time", admission_cycle || "January"]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
