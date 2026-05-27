@@ -61,12 +61,12 @@ const ReviewSubmissions = () => {
     setFileUrl(null);
     setDownloadUrl(null);
     setPreparingDownload(true);
-    const { data } = supabase.storage.from("thesis-files").getPublicUrl(sub.file_path);
-    setFileUrl(data.publicUrl);
     try {
       const { data, error } = await supabase.storage.from("thesis-files").download(sub.file_path);
       if (error || !data) throw error || new Error("No file");
-      setDownloadUrl(URL.createObjectURL(data));
+      const objectUrl = URL.createObjectURL(data);
+      setFileUrl(objectUrl);
+      setDownloadUrl(objectUrl);
     } catch (err: any) {
       toast({ title: "File preparation failed", description: err.message, variant: "destructive" });
     } finally {
