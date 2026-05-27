@@ -1,18 +1,97 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Upload, FileText, CheckCircle, Clock } from "lucide-react";
-import { useState } from "react";
+import { Upload, FileText, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const stages = ["Proposal", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Defense"];
 
-const ThesisUpload = () => {
-  const [currentStage] = useState(2);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+interface Submission {
+  id: string;
+  stage: string;
+  file_name: string;
+  status: string;
+  feedback: string | null;
+  submitted_at: string;
+}
 
-  const submissions = [
-    { stage: "Proposal", date: "Oct 12, 2025", status: "Approved" },
-    { stage: "Chapter 1", date: "Dec 5, 2025", status: "Approved" },
-    { stage: "Chapter 2", date: "Jan 28, 2026", status: "Pending" },
-  ];
+const ThesisUpload = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [stage, setStage] = useState<string>(stages[0]);
+  const [uploading, setUploading] = useState(false);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadSubmissions = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("thesis_submissions")
+      .select("id, stage, file_name, status, feedback, submitted_at")
+      .eq("student_id", user.id)
+      .order("submitted_at", { ascending: false });
+    if (error) toast({ title: "Failed to load submissions", description: error.message, variant: "destructive" });
+    else setSubmissions(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadSubmissions(); }, [user?.id]);
+
+  const currentStage = (() => {
+    const approved = submissions.filter((s) => s.status === "Approved").map((s) => stages.indexOf(s.stage));
+    return approved.length ? Math.max(...approved) + 1 : 0;
+  })();
+
+  const handleFilePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.size > 50 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum size is 50 MB", variant: "destructive" });
+      return;
+    }
+    setSelectedFile(f);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedFile || !user) return;
+    setUploading(true);
+    try {
+      const ext = selectedFile.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}-${stage.replace(/\s+/g, "_")}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("thesis-files")
+        .upload(path, selectedFile, { contentType: selectedFile.type });
+      if (upErr) throw upErr;
+
+      const { error: insErr } = await supabase.from("thesis_submissions").insert({
+        student_id: user.id,
+        student_name: user.name,
+        student_index: user.indexNumber,
+        department: user.department,
+        stage,
+        file_path: path,
+        file_name: selectedFile.name,
+        file_size: selectedFile.size,
+      });
+      if (insErr) throw insErr;
+
+      toast({ title: "Submitted", description: `${stage} sent for review.` });
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      loadSubmissions();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   return (
     <DashboardLayout>
@@ -42,19 +121,41 @@ const ThesisUpload = () => {
         {/* Upload */}
         <div className="bg-card rounded-xl border border-border p-4 sm:p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Upload Chapter</h2>
+          <label className="block mb-3">
+            <span className="text-xs font-medium text-muted-foreground">Stage</span>
+            <select
+              value={stage}
+              onChange={(e) => setStage(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            >
+              {stages.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleFilePick}
+            className="hidden"
+          />
           <div
             className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary transition-colors"
-            onClick={() => setSelectedFile("Chapter_3_Draft.pdf")}
+            onClick={() => fileInputRef.current?.click()}
           >
             <Upload size={32} className="mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-foreground font-medium">
-              {selectedFile || "Click to upload or drag and drop"}
+              {selectedFile?.name || "Click to upload"}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">PDF, DOC up to 50MB</p>
+            <p className="text-xs text-muted-foreground mt-1">PDF, DOC, DOCX up to 50MB</p>
           </div>
           {selectedFile && (
-            <button className="mt-4 w-full py-3 rounded-lg gradient-gold text-secondary-foreground font-semibold text-sm hover:opacity-90 transition-opacity">
-              Submit for Review
+            <button
+              onClick={handleSubmit}
+              disabled={uploading}
+              className="mt-4 w-full py-3 rounded-lg gradient-gold text-secondary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {uploading && <Loader2 size={14} className="animate-spin" />}
+              {uploading ? "Uploading..." : "Submit for Review"}
             </button>
           )}
         </div>
@@ -62,25 +163,40 @@ const ThesisUpload = () => {
         {/* History */}
         <div className="bg-card rounded-xl border border-border p-4 sm:p-6">
           <h2 className="font-display text-lg font-bold text-foreground mb-4">Submission History</h2>
-          <div className="space-y-3">
-            {submissions.map((sub) => (
-              <div key={sub.stage} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center gap-3">
-                  <FileText size={18} className="text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{sub.stage}</p>
-                    <p className="text-xs text-muted-foreground">{sub.date}</p>
+          {loading ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Loading...</p>
+          ) : submissions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No submissions yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {submissions.map((sub) => (
+                <div key={sub.id} className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <FileText size={18} className="text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{sub.stage}</p>
+                        <p className="text-xs text-muted-foreground truncate">{sub.file_name} · {formatDate(sub.submitted_at)}</p>
+                      </div>
+                    </div>
+                    <span className={`flex items-center gap-1 text-xs font-medium shrink-0 ${
+                      sub.status === "Approved" ? "text-success" :
+                      sub.status === "Rejected" ? "text-destructive" : "text-warning"
+                    }`}>
+                      {sub.status === "Approved" ? <CheckCircle size={14} /> :
+                       sub.status === "Rejected" ? <XCircle size={14} /> : <Clock size={14} />}
+                      {sub.status}
+                    </span>
                   </div>
+                  {sub.feedback && (
+                    <p className="mt-3 text-xs text-muted-foreground bg-background/60 border-l-2 border-secondary px-3 py-2 rounded">
+                      <span className="font-medium text-foreground">Supervisor feedback: </span>{sub.feedback}
+                    </p>
+                  )}
                 </div>
-                <span className={`flex items-center gap-1 text-xs font-medium ${
-                  sub.status === "Approved" ? "text-success" : "text-warning"
-                }`}>
-                  {sub.status === "Approved" ? <CheckCircle size={14} /> : <Clock size={14} />}
-                  {sub.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>
