@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -39,6 +40,8 @@ const ReviewSubmissions = () => {
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [publicFileUrl, setPublicFileUrl] = useState<string | null>(null);
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [fileKind, setFileKind] = useState<"pdf" | "docx" | "image" | "other" | null>(null);
   const [numPages, setNumPages] = useState<number | null>(null);
   const [previewWidth, setPreviewWidth] = useState(720);
   const [preparingDownload, setPreparingDownload] = useState(false);
@@ -87,6 +90,8 @@ const ReviewSubmissions = () => {
     setFileUrl(null);
     setDownloadUrl(null);
     setPublicFileUrl(null);
+    setDocxHtml(null);
+    setFileKind(null);
     setNumPages(null);
     setPreparingDownload(true);
     try {
@@ -97,6 +102,24 @@ const ReviewSubmissions = () => {
       setDownloadUrl(objectUrl);
       const { data: pub } = supabase.storage.from("thesis-files").getPublicUrl(sub.file_path);
       setPublicFileUrl(pub.publicUrl);
+
+      const name = sub.file_name.toLowerCase();
+      if (name.endsWith(".pdf")) {
+        setFileKind("pdf");
+      } else if (name.endsWith(".docx")) {
+        setFileKind("docx");
+        try {
+          const arrayBuffer = await data.arrayBuffer();
+          const result = await mammoth.convertToHtml({ arrayBuffer });
+          setDocxHtml(result.value);
+        } catch (e: any) {
+          setDocxHtml(null);
+        }
+      } else if (/\.(png|jpe?g|gif|webp|svg)$/.test(name)) {
+        setFileKind("image");
+      } else {
+        setFileKind("other");
+      }
     } catch (err: any) {
       toast({ title: "File preparation failed", description: err.message, variant: "destructive" });
     } finally {
