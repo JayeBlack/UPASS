@@ -14,7 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      thesis_submissions: {
+        Row: {
+          department: string | null
+          feedback: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          stage: string
+          status: string
+          student_id: string
+          student_index: string | null
+          student_name: string
+          submitted_at: string
+        }
+        Insert: {
+          department?: string | null
+          feedback?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stage: string
+          status?: string
+          student_id: string
+          student_index?: string | null
+          student_name: string
+          submitted_at?: string
+        }
+        Update: {
+          department?: string | null
+          feedback?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          stage?: string
+          status?: string
+          student_id?: string
+          student_index?: string | null
+          student_name?: string
+          submitted_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

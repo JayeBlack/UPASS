@@ -1,64 +1,88 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { FileText, CheckCircle, Clock, Eye, Send, MessageSquare, ArrowLeft, Bot } from "lucide-react";
-import { useState } from "react";
+import { FileText, CheckCircle, Clock, Eye, Send, MessageSquare, ArrowLeft, Bot, Download, XCircle, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import AIFeedbackPanel from "@/components/supervisor/AIFeedbackPanel";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface Submission {
   id: string;
-  student: string;
-  chapter: string;
-  date: string;
-  status: "Pending" | "Reviewed";
-  fileUrl?: string;
+  student_id: string;
+  student_name: string;
+  student_index: string | null;
+  stage: string;
+  status: string;
+  feedback: string | null;
+  file_path: string;
+  file_name: string;
+  submitted_at: string;
 }
-
-interface Remark {
-  id: string;
-  submissionId: string;
-  text: string;
-  date: string;
-  author: string;
-}
-
-const submissions: Submission[] = [
-  { id: "sub1", student: "Kwame Mensah", chapter: "Chapter 3", date: "Feb 10, 2026", status: "Pending", fileUrl: "/placeholder.svg" },
-  { id: "sub2", student: "Ama Serwaa", chapter: "Chapter 2", date: "Feb 8, 2026", status: "Pending", fileUrl: "/placeholder.svg" },
-  { id: "sub3", student: "Efua Dankwah", chapter: "Chapter 4", date: "Feb 5, 2026", status: "Reviewed", fileUrl: "/placeholder.svg" },
-  { id: "sub4", student: "Kofi Adjei", chapter: "Chapter 1", date: "Feb 3, 2026", status: "Reviewed", fileUrl: "/placeholder.svg" },
-];
-
-const initialRemarks: Remark[] = [
-  { id: "r1", submissionId: "sub3", text: "Excellent analysis. Minor formatting corrections needed.", date: "Feb 6, 2026", author: "Dr. Abena Osei" },
-  { id: "r2", submissionId: "sub4", text: "Introduction needs more context on problem statement.", date: "Feb 4, 2026", author: "Dr. Abena Osei" },
-  { id: "r1b", submissionId: "sub1", text: "Please revisit your methodology section references.", date: "Feb 11, 2026", author: "Dr. Abena Osei" },
-];
 
 const ReviewSubmissions = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [remarks, setRemarks] = useState<Remark[]>(initialRemarks);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [newRemark, setNewRemark] = useState("");
+  const [saving, setSaving] = useState(false);
   const [showAI, setShowAI] = useState(true);
 
-  const handleSendRemark = () => {
-    if (!newRemark.trim() || !selectedSubmission) return;
-    const remark: Remark = {
-      id: `r${Date.now()}`,
-      submissionId: selectedSubmission.id,
-      text: newRemark.trim(),
-      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      author: "Dr. Abena Osei",
-    };
-    setRemarks((prev) => [remark, ...prev]);
+  const loadSubmissions = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("thesis_submissions")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+    if (error) toast({ title: "Failed to load", description: error.message, variant: "destructive" });
+    else setSubmissions((data as Submission[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadSubmissions(); }, []);
+
+  const openSubmission = async (sub: Submission) => {
+    setSelectedSubmission(sub);
+    setNewRemark(sub.feedback || "");
+    setFileUrl(null);
+    const { data, error } = await supabase.storage
+      .from("thesis-files")
+      .createSignedUrl(sub.file_path, 3600);
+    if (error) toast({ title: "Could not load file", description: error.message, variant: "destructive" });
+    else setFileUrl(data.signedUrl);
+  };
+
+  const submitReview = async (status: "Approved" | "Rejected" | "Reviewed") => {
+    if (!selectedSubmission) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("thesis_submissions")
+      .update({
+        status,
+        feedback: newRemark.trim() || null,
+        reviewed_by: user?.name,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", selectedSubmission.id);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `Submission ${status.toLowerCase()}` });
+    await loadSubmissions();
+    setSelectedSubmission(null);
     setNewRemark("");
   };
 
-  const submissionRemarks = selectedSubmission
-    ? remarks.filter((r) => r.submissionId === selectedSubmission.id)
-    : [];
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   // ── Detail view ──
   if (selectedSubmission) {
@@ -77,10 +101,11 @@ const ReviewSubmissions = () => {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-3xl font-bold font-display text-foreground">
-                {selectedSubmission.student}
+                {selectedSubmission.student_name}
               </h1>
               <p className="text-muted-foreground mt-1">
-                {selectedSubmission.chapter} · Submitted {selectedSubmission.date}
+                {selectedSubmission.stage} · Submitted {formatDate(selectedSubmission.submitted_at)}
+                {selectedSubmission.student_index ? ` · ${selectedSubmission.student_index}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -92,12 +117,13 @@ const ReviewSubmissions = () => {
               </div>
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                  selectedSubmission.status === "Pending"
-                    ? "bg-warning/10 text-warning"
-                    : "bg-success/10 text-success"
+                  selectedSubmission.status === "Pending" ? "bg-warning/10 text-warning" :
+                  selectedSubmission.status === "Rejected" ? "bg-destructive/10 text-destructive" :
+                  "bg-success/10 text-success"
                 }`}
               >
-                {selectedSubmission.status === "Pending" ? <Clock size={12} /> : <CheckCircle size={12} />}
+                {selectedSubmission.status === "Pending" ? <Clock size={12} /> :
+                 selectedSubmission.status === "Rejected" ? <XCircle size={12} /> : <CheckCircle size={12} />}
                 {selectedSubmission.status}
               </span>
             </div>
@@ -109,70 +135,48 @@ const ReviewSubmissions = () => {
           <div className="space-y-6 min-w-0">
             {/* Document viewer */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-muted/30">
-                <FileText size={16} className="text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">
-                  {selectedSubmission.student.replace(" ", "_")}_{selectedSubmission.chapter.replace(" ", "_")}.pdf
-                </span>
-              </div>
-              <div className="h-72 md:h-96 flex items-center justify-center bg-muted/10 text-muted-foreground text-sm">
-                <div className="text-center space-y-2">
-                  <FileText size={48} className="mx-auto text-muted-foreground/40" />
-                  <p>Document preview will appear here</p>
-                  <p className="text-xs text-muted-foreground/60">PDF viewer integration coming soon</p>
+              <div className="flex items-center justify-between gap-2 px-5 py-3 border-b border-border bg-muted/30">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText size={16} className="text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium text-foreground truncate">{selectedSubmission.file_name}</span>
                 </div>
+                {fileUrl && (
+                  <a href={fileUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                    <Button variant="outline" size="sm"><Download size={14} className="mr-1.5" />Download</Button>
+                  </a>
+                )}
+              </div>
+              <div className="h-[600px] bg-muted/10">
+                {fileUrl ? (
+                  <iframe src={fileUrl} title={selectedSubmission.file_name} className="w-full h-full" />
+                ) : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                    <Loader2 size={20} className="animate-spin mr-2" /> Loading document...
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Remark input */}
             <div className="bg-card rounded-xl border border-border p-5">
-              <h2 className="font-display text-lg font-bold text-foreground mb-3">Add Remark</h2>
+              <h2 className="font-display text-lg font-bold text-foreground mb-3">Feedback</h2>
               <Textarea
                 value={newRemark}
                 onChange={(e) => setNewRemark(e.target.value)}
                 placeholder="Type your feedback for this submission..."
                 className="resize-none h-24 mb-3"
               />
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSendRemark}
-                  disabled={!newRemark.trim()}
-                  className="gradient-gold text-secondary-foreground hover:opacity-90"
-                >
-                  <Send size={14} className="mr-1.5" />
-                  Send Remark
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button onClick={() => submitReview("Approved")} disabled={saving} className="gradient-gold text-secondary-foreground hover:opacity-90">
+                  <CheckCircle size={14} className="mr-1.5" /> Approve
+                </Button>
+                <Button onClick={() => submitReview("Rejected")} disabled={saving} variant="destructive">
+                  <XCircle size={14} className="mr-1.5" /> Reject
+                </Button>
+                <Button onClick={() => submitReview("Reviewed")} disabled={saving || !newRemark.trim()} variant="outline">
+                  <Send size={14} className="mr-1.5" /> Save Feedback
                 </Button>
               </div>
-            </div>
-
-            {/* Previous remarks */}
-            <div className="bg-card rounded-xl border border-border p-5">
-              <h2 className="font-display text-lg font-bold text-foreground mb-4">
-                Previous Remarks
-                {submissionRemarks.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({submissionRemarks.length})
-                  </span>
-                )}
-              </h2>
-              {submissionRemarks.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No remarks yet for this submission.</p>
-              ) : (
-                <ScrollArea className="max-h-72">
-                  <div className="space-y-3">
-                    {submissionRemarks.map((r) => (
-                      <div key={r.id} className="p-4 rounded-lg bg-muted/50 border-l-4 border-secondary">
-                        <div className="flex items-center gap-2 mb-2">
-                          <MessageSquare size={14} className="text-secondary" />
-                          <span className="text-sm font-medium text-foreground">{r.author}</span>
-                          <span className="text-xs text-muted-foreground ml-auto">{r.date}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{r.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
             </div>
           </div>
 
@@ -180,8 +184,8 @@ const ReviewSubmissions = () => {
           {showAI && (
             <div className="space-y-4">
               <AIFeedbackPanel
-                studentName={selectedSubmission.student}
-                chapter={selectedSubmission.chapter}
+                studentName={selectedSubmission.student_name}
+                chapter={selectedSubmission.stage}
                 visible={showAI}
                 onToggle={() => setShowAI(!showAI)}
                 onUseSuggestion={(text) => setNewRemark((prev) => (prev ? prev + "\n\n" + text : text))}
@@ -201,30 +205,39 @@ const ReviewSubmissions = () => {
         <p className="text-muted-foreground mt-1">Pending and reviewed thesis submissions</p>
       </div>
 
-      <div className="space-y-4">
-        {submissions.map((sub) => (
-          <div key={sub.id} className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-4">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${sub.status === "Pending" ? "bg-warning/10" : "bg-success/10"}`}>
-                {sub.status === "Pending" ? <Clock size={18} className="text-warning" /> : <CheckCircle size={18} className="text-success" />}
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground"><Loader2 className="animate-spin inline mr-2" size={16} /> Loading...</div>
+      ) : submissions.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">No submissions yet.</div>
+      ) : (
+        <div className="space-y-4">
+          {submissions.map((sub) => {
+            const isPending = sub.status === "Pending";
+            const isRejected = sub.status === "Rejected";
+            return (
+              <div key={sub.id} className="bg-card rounded-xl border border-border p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isPending ? "bg-warning/10" : isRejected ? "bg-destructive/10" : "bg-success/10"
+                  }`}>
+                    {isPending ? <Clock size={18} className="text-warning" /> :
+                     isRejected ? <XCircle size={18} className="text-destructive" /> :
+                     <CheckCircle size={18} className="text-success" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{sub.student_name} — {sub.stage}</p>
+                    <p className="text-xs text-muted-foreground">{sub.file_name} · {formatDate(sub.submitted_at)}</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => openSubmission(sub)}>
+                  <Eye size={14} className="mr-1.5" />
+                  {isPending ? "Review" : "View"}
+                </Button>
               </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">{sub.student} — {sub.chapter}</p>
-                <p className="text-xs text-muted-foreground">{sub.date}</p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full sm:w-auto"
-              onClick={() => setSelectedSubmission(sub)}
-            >
-              <Eye size={14} className="mr-1.5" />
-              {sub.status === "Pending" ? "Review" : "View"}
-            </Button>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </DashboardLayout>
   );
 };
