@@ -197,9 +197,35 @@ const ReviewSubmissions = () => {
                   )}
                 </div>
               </div>
-              <div className="h-[600px] bg-muted/10">
+              <div ref={previewRef} className="h-[600px] overflow-auto bg-muted/10 px-4 py-5">
                 {fileUrl ? (
-                  <iframe src={fileUrl} title={selectedSubmission.file_name} className="w-full h-full" />
+                  <Document
+                    file={fileUrl}
+                    loading={
+                      <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                        <Loader2 size={20} className="animate-spin mr-2" /> Loading preview...
+                      </div>
+                    }
+                    error={
+                      <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm text-center">
+                        <FileWarning size={28} />
+                        <span>Preview unavailable. Please download the file to view it.</span>
+                      </div>
+                    }
+                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                  >
+                    <div className="flex flex-col items-center gap-4">
+                      {Array.from(new Array(numPages || 0), (_el, index) => (
+                        <Page
+                          key={`page_${index + 1}`}
+                          pageNumber={index + 1}
+                          width={previewWidth}
+                          renderAnnotationLayer={false}
+                          className="overflow-hidden rounded-md border border-border shadow-sm"
+                        />
+                      ))}
+                    </div>
+                  </Document>
                 ) : (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                     <Loader2 size={20} className="animate-spin mr-2" /> Loading document...
