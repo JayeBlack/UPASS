@@ -157,11 +157,16 @@ const ReviewSubmissions = () => {
                   <FileText size={16} className="text-muted-foreground shrink-0" />
                   <span className="text-sm font-medium text-foreground truncate">{selectedSubmission.file_name}</span>
                 </div>
-                {fileUrl && (
-                  <a href={fileUrl} target="_blank" rel="noreferrer" className="shrink-0">
-                    <Button variant="outline" size="sm"><Download size={14} className="mr-1.5" />Download</Button>
-                  </a>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {fileUrl && (
+                    <a href={fileUrl} target="_blank" rel="noreferrer">
+                      <Button variant="outline" size="sm"><Eye size={14} className="mr-1.5" />Open</Button>
+                    </a>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleDownload}>
+                    <Download size={14} className="mr-1.5" />Download
+                  </Button>
+                </div>
               </div>
               <div className="h-[600px] bg-muted/10">
                 {fileUrl ? (
