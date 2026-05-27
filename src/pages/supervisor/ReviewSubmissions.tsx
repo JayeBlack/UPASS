@@ -51,11 +51,28 @@ const ReviewSubmissions = () => {
     setSelectedSubmission(sub);
     setNewRemark(sub.feedback || "");
     setFileUrl(null);
-    const { data, error } = await supabase.storage
-      .from("thesis-files")
-      .createSignedUrl(sub.file_path, 3600);
-    if (error) toast({ title: "Could not load file", description: error.message, variant: "destructive" });
-    else setFileUrl(data.signedUrl);
+    const { data } = supabase.storage.from("thesis-files").getPublicUrl(sub.file_path);
+    setFileUrl(data.publicUrl);
+  };
+
+  const handleDownload = async () => {
+    if (!selectedSubmission) return;
+    try {
+      const { data, error } = await supabase.storage
+        .from("thesis-files")
+        .download(selectedSubmission.file_path);
+      if (error || !data) throw error || new Error("No file");
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = selectedSubmission.file_name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const submitReview = async (status: "Approved" | "Rejected" | "Reviewed") => {
