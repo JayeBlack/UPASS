@@ -30,6 +30,8 @@ const ReviewSubmissions = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [preparingDownload, setPreparingDownload] = useState(false);
   const [newRemark, setNewRemark] = useState("");
   const [saving, setSaving] = useState(false);
   const [showAI, setShowAI] = useState(true);
@@ -47,31 +49,28 @@ const ReviewSubmissions = () => {
 
   useEffect(() => { loadSubmissions(); }, []);
 
+  useEffect(() => {
+    return () => {
+      if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+    };
+  }, [downloadUrl]);
+
   const openSubmission = async (sub: Submission) => {
     setSelectedSubmission(sub);
     setNewRemark(sub.feedback || "");
     setFileUrl(null);
+    setDownloadUrl(null);
+    setPreparingDownload(true);
     const { data } = supabase.storage.from("thesis-files").getPublicUrl(sub.file_path);
     setFileUrl(data.publicUrl);
-  };
-
-  const handleDownload = async () => {
-    if (!selectedSubmission) return;
     try {
-      const { data, error } = await supabase.storage
-        .from("thesis-files")
-        .download(selectedSubmission.file_path);
+      const { data, error } = await supabase.storage.from("thesis-files").download(sub.file_path);
       if (error || !data) throw error || new Error("No file");
-      const url = URL.createObjectURL(data);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = selectedSubmission.file_name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      setDownloadUrl(URL.createObjectURL(data));
     } catch (err: any) {
-      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+      toast({ title: "File preparation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setPreparingDownload(false);
     }
   };
 
@@ -110,7 +109,7 @@ const ReviewSubmissions = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setSelectedSubmission(null); setNewRemark(""); }}
+            onClick={() => { setSelectedSubmission(null); setNewRemark(""); setDownloadUrl(null); }}
             className="mb-3 -ml-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft size={16} className="mr-1" /> Back to submissions
@@ -158,14 +157,18 @@ const ReviewSubmissions = () => {
                   <span className="text-sm font-medium text-foreground truncate">{selectedSubmission.file_name}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {fileUrl && (
-                    <a href={fileUrl} target="_blank" rel="noreferrer">
-                      <Button variant="outline" size="sm"><Eye size={14} className="mr-1.5" />Open</Button>
-                    </a>
+                  {downloadUrl ? (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={downloadUrl} download={selectedSubmission.file_name}>
+                        <Download size={14} className="mr-1.5" />Download
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled>
+                      {preparingDownload ? <Loader2 size={14} className="mr-1.5 animate-spin" /> : <Download size={14} className="mr-1.5" />}
+                      {preparingDownload ? "Preparing" : "Download"}
+                    </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={handleDownload}>
-                    <Download size={14} className="mr-1.5" />Download
-                  </Button>
                 </div>
               </div>
               <div className="h-[600px] bg-muted/10">
