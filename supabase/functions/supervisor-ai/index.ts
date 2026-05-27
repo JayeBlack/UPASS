@@ -109,7 +109,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gemini-2.5-pro",
+          model: "gemini-2.5-flash",
           messages: allMessages,
           stream: isStreaming,
         }),
@@ -117,23 +117,14 @@ serve(async (req) => {
     );
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Gemini API error:", response.status, t);
+      const msg = response.status === 429
+        ? "Gemini quota reached. Wait a minute or switch to a smaller model."
+        : `Gemini error ${response.status}: ${t.slice(0, 300)}`;
       return new Response(
-        JSON.stringify({ error: "AI service error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: msg }),
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
