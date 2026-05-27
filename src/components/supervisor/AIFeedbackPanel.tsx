@@ -31,6 +31,7 @@ const categoryColors: Record<string, string> = {
 
 const AIFeedbackPanel = ({ studentName, chapter, visible, onToggle, onUseSuggestion }: AIFeedbackPanelProps) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [source, setSource] = useState<"live" | "sample">("live");
   const [loading, setLoading] = useState(false);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
@@ -68,9 +69,11 @@ const AIFeedbackPanel = ({ studentName, chapter, visible, onToggle, onUseSuggest
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        setSource("live");
         setSuggestions(parsed.map((s: any) => ({ ...s, helpful: null })));
       } else {
         // Fallback mock suggestions if AI doesn't return proper JSON
+        setSource("sample");
         setSuggestions([
           { text: "The methodology section could benefit from a clearer description of the research design and sampling strategy.", category: "methodology", helpful: null },
           { text: "Consider adding more recent references (2023-2026) to strengthen the literature foundation.", category: "references", helpful: null },
@@ -80,6 +83,7 @@ const AIFeedbackPanel = ({ studentName, chapter, visible, onToggle, onUseSuggest
       }
     } catch (e) {
       // Fallback suggestions
+      setSource("sample");
       setSuggestions([
         { text: "The methodology section could benefit from a clearer description of the research design.", category: "methodology", helpful: null },
         { text: "Consider adding more recent references to strengthen the literature foundation.", category: "references", helpful: null },
@@ -112,7 +116,7 @@ const AIFeedbackPanel = ({ studentName, chapter, visible, onToggle, onUseSuggest
           <span className="text-sm font-bold text-foreground font-display">AI Suggestions</span>
         </div>
         <Badge variant="outline" className="text-[10px]">
-          <Sparkles size={8} className="mr-1" /> AI-generated
+          <Sparkles size={8} className="mr-1" /> {source === "live" ? "Live AI" : "Sample fallback"}
         </Badge>
       </div>
 
