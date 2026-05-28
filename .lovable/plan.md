@@ -66,3 +66,35 @@
 
 ### 6.4 Out of scope (Phase 6)
 - Hubtel / MoMo / Paystack online payment providers — removed from roadmap.
+
+---
+
+## Phase 7: Exams Officer — Grade Entry, CWA & Publishing
+
+### 7.1 Grading scale (UMaT)
+| Marks | Grade | Meaning |
+|-------|-------|---------|
+| 80–100 | A | Excellent |
+| 70–79  | B | Very Good |
+| 60–69  | C | Good |
+| 50–59  | D | Pass |
+| 0–49   | F | Fail |
+
+- Examiner enters **marks only**; system derives the letter grade from the scale above.
+- System trusts whatever the examiner types in the marks column (no plausibility checks).
+
+### 7.2 CWA calculation
+- Credit-weighted average of raw marks (not grade points):
+  `CWA = Σ(marks × credit_hours) / Σ(credit_hours)`, rounded to 2 dp.
+- Computed across all courses with recorded marks for the student.
+- **Display CWA only.** No class-of-degree bands (Distinction / Second Upper / etc.).
+
+### 7.3 Draft → Publish workflow
+- New batch starts in **Draft**. Examiner can edit marks freely; students do not see them.
+- "Publish Results" flips the batch to **Published**, snapshots marks/grades/CWA, and exposes them to students + dean.
+- Published batch can be unpublished/deleted by the examiner (already in Phase 4).
+
+### 7.4 Out of scope (Phase 7)
+- Class-of-degree banding.
+- Grade-point GPA (we use raw-mark CWA).
+- Resit / supplementary logic.
