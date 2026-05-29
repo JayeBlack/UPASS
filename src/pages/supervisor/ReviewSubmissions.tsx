@@ -1,9 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { FileText, CheckCircle, Clock, Eye, Send, ArrowLeft, Bot, Download, XCircle, Loader2, FileWarning } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+import { FileText, CheckCircle, Clock, Eye, Send, ArrowLeft, Bot, Download, XCircle, Loader2, FileWarning, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
 import mammoth from "mammoth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +9,6 @@ import AIFeedbackPanel from "@/components/supervisor/AIFeedbackPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 interface Submission {
   id: string;
@@ -41,14 +33,11 @@ const ReviewSubmissions = () => {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [publicFileUrl, setPublicFileUrl] = useState<string | null>(null);
   const [docxHtml, setDocxHtml] = useState<string | null>(null);
-  const [fileKind, setFileKind] = useState<"pdf" | "docx" | "image" | "other" | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [previewWidth, setPreviewWidth] = useState(720);
+  const [fileKind, setFileKind] = useState<"pdf" | "docx" | "doc" | "image" | "other" | null>(null);
   const [preparingDownload, setPreparingDownload] = useState(false);
   const [newRemark, setNewRemark] = useState("");
   const [saving, setSaving] = useState(false);
   const [showAI, setShowAI] = useState(true);
-  const previewRef = useRef<HTMLDivElement | null>(null);
 
   const loadSubmissions = async () => {
     setLoading(true);
@@ -69,21 +58,6 @@ const ReviewSubmissions = () => {
     };
   }, [downloadUrl]);
 
-  useEffect(() => {
-    const previewElement = previewRef.current;
-    if (!previewElement) return;
-
-    const updatePreviewWidth = () => {
-      setPreviewWidth(Math.max(280, Math.min(previewElement.clientWidth - 32, 900)));
-    };
-
-    updatePreviewWidth();
-    const observer = new ResizeObserver(updatePreviewWidth);
-    observer.observe(previewElement);
-
-    return () => observer.disconnect();
-  }, [selectedSubmission, showAI]);
-
   const openSubmission = async (sub: Submission) => {
     setSelectedSubmission(sub);
     setNewRemark(sub.feedback || "");
@@ -92,29 +66,51 @@ const ReviewSubmissions = () => {
     setPublicFileUrl(null);
     setDocxHtml(null);
     setFileKind(null);
-    setNumPages(null);
     setPreparingDownload(true);
     try {
+      const name = sub.file_name.toLowerCase();
       const { data, error } = await supabase.storage.from("thesis-files").download(sub.file_path);
       if (error || !data) throw error || new Error("No file");
-      const objectUrl = URL.createObjectURL(data);
+      // Force a proper MIME type so the browser's built-in PDF viewer renders inline
+      const mime = name.endsWith(".pdf")
+        ? "application/pdf"
+        : name.endsWith(".docx")
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : name.endsWith(".doc")
+        ? "application/msword"
+        : data.type || "application/octet-stream";
+      const typedBlob = data.type === mime ? data : new Blob([await data.arrayBuffer()], { type: mime });
+      const objectUrl = URL.createObjectURL(typedBlob);
       setFileUrl(objectUrl);
       setDownloadUrl(objectUrl);
       const { data: pub } = supabase.storage.from("thesis-files").getPublicUrl(sub.file_path);
       setPublicFileUrl(pub.publicUrl);
 
-      const name = sub.file_name.toLowerCase();
       if (name.endsWith(".pdf")) {
         setFileKind("pdf");
       } else if (name.endsWith(".docx")) {
         setFileKind("docx");
         try {
-          const arrayBuffer = await data.arrayBuffer();
-          const result = await mammoth.convertToHtml({ arrayBuffer });
+          const arrayBuffer = await typedBlob.arrayBuffer();
+          const result = await mammoth.convertToHtml(
+            { arrayBuffer },
+            {
+              styleMap: [
+                "p[style-name='Title'] => h1.doc-title:fresh",
+                "p[style-name='Subtitle'] => h2.doc-subtitle:fresh",
+                "p[style-name='Heading 1'] => h1:fresh",
+                "p[style-name='Heading 2'] => h2:fresh",
+                "p[style-name='Heading 3'] => h3:fresh",
+                "p[style-name='Quote'] => blockquote:fresh",
+              ],
+            }
+          );
           setDocxHtml(result.value);
         } catch (e: any) {
           setDocxHtml(null);
         }
+      } else if (name.endsWith(".doc")) {
+        setFileKind("doc");
       } else if (/\.(png|jpe?g|gif|webp|svg)$/.test(name)) {
         setFileKind("image");
       } else {
@@ -210,6 +206,13 @@ const ReviewSubmissions = () => {
                   <span className="text-sm font-medium text-foreground truncate">{selectedSubmission.file_name}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {fileUrl && (fileKind === "pdf" || fileKind === "image") && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink size={14} className="mr-1.5" />Open
+                      </a>
+                    </Button>
+                  )}
                   {downloadUrl ? (
                     <Button variant="outline" size="sm" asChild>
                       <a href={downloadUrl} download={selectedSubmission.file_name}>
@@ -224,55 +227,43 @@ const ReviewSubmissions = () => {
                   )}
                 </div>
               </div>
-              <div ref={previewRef} className="h-[600px] overflow-auto bg-muted/10 px-4 py-5">
+              <div className="h-[720px] bg-muted/20">
                 {!fileUrl ? (
                   <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                     <Loader2 size={20} className="animate-spin mr-2" /> Loading document...
                   </div>
                 ) : fileKind === "pdf" ? (
-                  <Document
-                    file={fileUrl}
-                    loading={
-                      <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                        <Loader2 size={20} className="animate-spin mr-2" /> Loading preview...
-                      </div>
-                    }
-                    error={
-                      <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm text-center">
-                        <FileWarning size={28} />
-                        <span>Preview unavailable. Please download the file to view it.</span>
-                      </div>
-                    }
-                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                  >
-                    <div className="flex flex-col items-center gap-4">
-                      {Array.from(new Array(numPages || 0), (_el, index) => (
-                        <Page
-                          key={`page_${index + 1}`}
-                          pageNumber={index + 1}
-                          width={previewWidth}
-                          renderAnnotationLayer={false}
-                          className="overflow-hidden rounded-md border border-border shadow-sm"
-                        />
-                      ))}
-                    </div>
-                  </Document>
+                  <iframe
+                    src={`${fileUrl}#view=FitH&toolbar=1&navpanes=0`}
+                    title={selectedSubmission.file_name}
+                    className="w-full h-full border-0 bg-background"
+                  />
                 ) : fileKind === "docx" ? (
                   docxHtml ? (
-                    <div className="mx-auto max-w-3xl bg-card rounded-md border border-border shadow-sm p-8">
-                      <div
-                        className="prose prose-sm max-w-none text-foreground"
-                        dangerouslySetInnerHTML={{ __html: docxHtml }}
-                      />
+                    <div className="h-full overflow-auto px-4 py-6">
+                      <div className="mx-auto max-w-[8.5in] bg-white text-neutral-900 rounded-md border border-border shadow-md px-[1in] py-[0.85in] docx-page">
+                        <div
+                          className="docx-content"
+                          dangerouslySetInnerHTML={{ __html: docxHtml }}
+                        />
+                      </div>
                     </div>
                   ) : (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                       <Loader2 size={20} className="animate-spin mr-2" /> Converting document...
                     </div>
                   )
+                ) : fileKind === "doc" ? (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
+                    <FileWarning size={28} className="text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground max-w-sm">
+                      Legacy <code className="px-1 py-0.5 rounded bg-muted text-xs">.doc</code> files can't be previewed in the browser.
+                      Ask the student to re-upload as <strong>.docx</strong> or <strong>.pdf</strong>, or download to view.
+                    </p>
+                  </div>
                 ) : fileKind === "image" ? (
-                  <div className="flex items-center justify-center">
-                    <img src={fileUrl} alt={selectedSubmission.file_name} className="max-w-full rounded-md border border-border shadow-sm" />
+                  <div className="h-full overflow-auto flex items-center justify-center p-4">
+                    <img src={fileUrl} alt={selectedSubmission.file_name} className="max-w-full max-h-full rounded-md border border-border shadow-sm" />
                   </div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm text-center">
