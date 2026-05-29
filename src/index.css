@@ -152,3 +152,43 @@
     box-shadow: none !important;
   }
 }
+
+/* DOCX preview — paper-like Word document */
+.docx-page {
+  font-family: "Calibri", "Segoe UI", system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.55;
+  color: #1a1a1a;
+}
+.docx-content h1 { font-size: 1.8rem; font-weight: 700; margin: 1.2rem 0 0.6rem; line-height: 1.25; }
+.docx-content h2 { font-size: 1.45rem; font-weight: 700; margin: 1.1rem 0 0.5rem; line-height: 1.3; }
+.docx-content h3 { font-size: 1.2rem; font-weight: 600; margin: 1rem 0 0.4rem; }
+.docx-content h4 { font-size: 1.05rem; font-weight: 600; margin: 0.9rem 0 0.35rem; }
+.docx-content h1.doc-title { font-size: 2rem; text-align: center; margin: 0 0 0.25rem; }
+.docx-content h2.doc-subtitle { font-size: 1.1rem; font-weight: 500; text-align: center; color: #555; margin: 0 0 1.2rem; }
+.docx-content p { margin: 0 0 0.7rem; }
+.docx-content ul, .docx-content ol { margin: 0 0 0.8rem 1.4rem; padding-left: 0.4rem; }
+.docx-content li { margin-bottom: 0.25rem; }
+.docx-content a { color: hsl(var(--primary)); text-decoration: underline; }
+.docx-content blockquote {
+  border-left: 3px solid hsl(var(--border));
+  padding: 0.25rem 0 0.25rem 1rem;
+  margin: 0.8rem 0;
+  color: #555;
+  font-style: italic;
+}
+.docx-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8rem 0;
+  font-size: 10.5pt;
+}
+.docx-content th, .docx-content td {
+  border: 1px solid #d4d4d4;
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.docx-content th { background: #f3f4f6; font-weight: 600; }
+.docx-content img { max-width: 100%; height: auto; margin: 0.6rem 0; }
+.docx-content strong { font-weight: 600; }
