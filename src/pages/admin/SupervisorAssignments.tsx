@@ -18,10 +18,6 @@ const SupervisorAssignments = () => {
   const [isPrimary, setIsPrimary] = useState(true);
   const [deptFilter, setDeptFilter] = useState("all");
 
-  if (!user?.isSuperAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const departments = useMemo(
     () => [...new Set([...students.map((s) => s.department), ...supervisors.map((s) => s.department)])],
     [students, supervisors]
@@ -40,6 +36,10 @@ const SupervisorAssignments = () => {
         return { student: s, links };
       });
   }, [students, assignments, supervisors, deptFilter]);
+
+  if (!user?.isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleAssign = () => {
     if (!studentId || !supervisorId) {
