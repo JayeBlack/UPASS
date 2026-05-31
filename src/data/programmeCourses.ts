@@ -4,6 +4,8 @@
 
 export type CourseCategory = "core" | "elective" | "mandatory";
 
+export type AdmissionCycle = "January" | "July";
+
 export interface ProgrammeCourse {
   code: string;
   name: string;
@@ -19,6 +21,8 @@ export interface ProgrammeCourseCatalog {
   department: string;
   /** Degree levels these courses apply to */
   levels: string[];
+  /** Admission cycle this catalog applies to (UMaT runs dual January/July intakes). */
+  admissionCycle?: AdmissionCycle;
   courses: ProgrammeCourse[];
   /** Optional notes shown to the student (graduation requirements, prerequisites, etc.) */
   notes?: string[];
@@ -36,6 +40,7 @@ const GEOMATIC_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Geomatic Engineering (MSc / MPhil)",
   department: "Geomatic Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "Applicants without a Geomatic Engineering background must take and pass Introduction to Geomatics Engineering as a prerequisite.",
   ],
@@ -73,6 +78,7 @@ const GEOMATIC_PHD: ProgrammeCourseCatalog = {
   label: "Geomatic Engineering (PhD)",
   department: "Geomatic Engineering",
   levels: ["PhD"],
+  admissionCycle: "January",
   notes: [
     "GM 656 University Teaching Experience is compulsory only for UMaT staff pursuing PhD.",
   ],
@@ -94,6 +100,7 @@ const EEE_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Electrical and Electronic Engineering (MSc / MPhil)",
   department: "Electrical and Electronic Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "MSc requires a minimum of 57 credit hours: 7 compulsory core modules (≥21 credits), at least 3 electives, Postgraduate Seminar (3), Field/Laboratory Work (3) and Thesis (21).",
     "MPhil requires a minimum of 60 credit hours: 7 compulsory core modules (≥21 credits), at least 1 elective, Postgraduate Seminar (3), Field/Laboratory Work (3) and Thesis (30).",
@@ -133,6 +140,7 @@ const EEE_PHD: ProgrammeCourseCatalog = {
   label: "Electrical and Electronic Engineering (PhD)",
   department: "Electrical and Electronic Engineering",
   levels: ["PhD"],
+  admissionCycle: "January",
   notes: [
     "Minimum 57 credit hours: Thesis (45), two Seminars (6), Research Methods (3) and Individual Studies (3).",
     "Preparatory modules (EL 401, EL 403, EL 405, EL 407) are mandatory for all PhD students.",
@@ -175,6 +183,7 @@ const MECH_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Mechanical Engineering (MSc / MPhil)",
   department: "Mechanical Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "MC 401, MC 403, MC 405 and MC 407 are audit courses for students without a Mechanical Engineering background (offered on demand).",
     "Registration closes one (1) week before the commencement of each module.",
@@ -217,6 +226,7 @@ const MECH_PHD: ProgrammeCourseCatalog = {
   label: "Mechanical Engineering (PhD)",
   department: "Mechanical Engineering",
   levels: ["PhD"],
+  admissionCycle: "January",
   notes: [
     "MC 551 Research Methods and MC 655 Individual Studies are compulsory for all PhD candidates.",
     "MC 656 University Teaching Experience is compulsory only for Postgraduate Assistants.",
@@ -243,6 +253,7 @@ const MATH_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Mathematics (MSc / MPhil)",
   department: "Mathematics",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "Participation fee: GH¢1,000.00 per module (registered students), GH¢1,400.00 per module (other participants), US$500.00 per module (foreign participants).",
     "Registration closes one (1) week before the commencement of each module.",
@@ -283,6 +294,7 @@ const MATH_PHD: ProgrammeCourseCatalog = {
   label: "Mathematics (PhD)",
   department: "Mathematics",
   levels: ["PhD"],
+  admissionCycle: "January",
   notes: [
     "MA 600 PhD Thesis, MA 551 Research Methods and MA 655 Individual Studies are compulsory for all PhD candidates.",
     "MA 656 University Teaching Experience is compulsory only for Postgraduate Assistants.",
@@ -315,6 +327,7 @@ const MINERALS_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Minerals Engineering (MSc / MPhil)",
   department: "Minerals Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "MR 491 Introduction to Minerals Processing and MR 493 Introduction to Extractive Metallurgy are pre-requisite modules for non-Minerals Engineers.",
     "Participation fee: GH¢1,000.00 per module (registered students), GH¢1,400.00 per module (other participants), US$500.00 per module (foreign participants).",
@@ -347,6 +360,7 @@ const GEOLOGICAL_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Geological Engineering (MSc / MPhil)",
   department: "Geological Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "GL 261 Introductory Geology is a prerequisite module for candidates without a Geology background.",
     "Registration closes one (1) week before the commencement of each module.",
@@ -390,6 +404,7 @@ const PETROLEUM_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Petroleum Engineering (MSc / MPhil)",
   department: "Petroleum Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "PE 511 Introduction to Petroleum Engineering and PE 513 Introduction to Engineering Mechanics are prerequisite modules for candidates without a Petroleum Engineering background.",
     "Participation fee: GH¢1,000.00 per module (registered students), GH¢1,400.00 per module (other participants), US$500.00 per module (foreign participants).",
@@ -421,6 +436,7 @@ const PETROLEUM_PHD: ProgrammeCourseCatalog = {
   label: "Petroleum Engineering (PhD)",
   department: "Petroleum Engineering",
   levels: ["PhD"],
+  admissionCycle: "January",
   notes: [
     "PE 500 Thesis, PE 550 Graduate Seminar and PE 665 Individual Study are compulsory for all PhD candidates.",
     "PE 656 University Teaching Experience is compulsory only for Postgraduate Assistants.",
@@ -452,6 +468,7 @@ const CSE_MSC_MPHIL: ProgrammeCourseCatalog = {
   label: "Computer Science and Engineering (MSc / MPhil)",
   department: "Computer Science and Engineering",
   levels: ["MSc", "MPhil"],
+  admissionCycle: "January",
   notes: [
     "Electives are grouped into specialisation tracks: Artificial Intelligence, Software Systems, Embedded Systems and Control, Information and Cyber Security, and Data Communication and Networks.",
     "Registration closes one (1) week before the commencement of each module.",
