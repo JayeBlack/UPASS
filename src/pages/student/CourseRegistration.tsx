@@ -1,6 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { BookOpen, CheckCircle, Lock } from "lucide-react";
 import { useState } from "react";
+import { PROGRAMME_COURSE_CATALOGS, type ProgrammeCourse } from "@/data/programmeCourses";
 
 interface Course {
   code: string;
@@ -10,27 +11,34 @@ interface Course {
   registered: boolean;
 }
 
-const mockCourses: Course[] = [
-  { code: "CS 601", name: "Advanced Database Systems", credits: 3, type: "core", registered: true },
-  { code: "CS 603", name: "Research Methodology", credits: 3, type: "core", registered: true },
-  { code: "CS 605", name: "Machine Learning", credits: 3, type: "elective", registered: false },
-  { code: "CS 607", name: "Network Security", credits: 3, type: "elective", registered: true },
-  { code: "CS 609", name: "Software Engineering II", credits: 3, type: "elective", registered: false },
-  { code: "CS 611", name: "Data Mining & Analytics", credits: 3, type: "elective", registered: false },
-  { code: "CS 613", name: "Cloud Computing", credits: 3, type: "elective", registered: false },
-  { code: "CS 615", name: "Artificial Intelligence", credits: 3, type: "elective", registered: false },
-];
+const toCourse = (c: ProgrammeCourse): Course => ({
+  code: c.code,
+  name: c.name,
+  credits: c.credits,
+  // Treat both 'core' and 'mandatory' (seminars/research) as required for the student
+  type: c.category === "elective" ? "elective" : "core",
+  registered: c.category !== "elective",
+});
 
 const CourseRegistration = () => {
-  const [courses, setCourses] = useState(mockCourses);
+  const [programmeKey, setProgrammeKey] = useState<string>(PROGRAMME_COURSE_CATALOGS[0].key);
+  const catalog =
+    PROGRAMME_COURSE_CATALOGS.find((c) => c.key === programmeKey) ?? PROGRAMME_COURSE_CATALOGS[0];
+  const [coursesByProgramme, setCoursesByProgramme] = useState<Record<string, Course[]>>(() =>
+    Object.fromEntries(
+      PROGRAMME_COURSE_CATALOGS.map((c) => [c.key, c.courses.map(toCourse)])
+    )
+  );
+  const courses = coursesByProgramme[catalog.key];
 
   const toggle = (code: string) => {
-    setCourses((prev) =>
-      prev.map((c) => {
+    setCoursesByProgramme((prev) => ({
+      ...prev,
+      [catalog.key]: prev[catalog.key].map((c) => {
         if (c.code !== code || c.type === "core") return c;
         return { ...c, registered: !c.registered };
-      })
-    );
+      }),
+    }));
   };
 
   const coreCourses = courses.filter((c) => c.type === "core");
@@ -117,6 +125,27 @@ const CourseRegistration = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold font-display text-foreground">Course Registration</h1>
         <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
+      </div>
+
+      <div className="mb-6 bg-card rounded-xl border border-border p-4">
+        <label htmlFor="programme-select" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+          Programme
+        </label>
+        <select
+          id="programme-select"
+          value={programmeKey}
+          onChange={(e) => setProgrammeKey(e.target.value)}
+          className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {PROGRAMME_COURSE_CATALOGS.map((c) => (
+            <option key={c.key} value={c.key}>{c.label}</option>
+          ))}
+        </select>
+        {catalog.notes && catalog.notes.length > 0 && (
+          <ul className="mt-3 text-xs text-muted-foreground list-disc list-inside space-y-1">
+            {catalog.notes.map((n, i) => <li key={i}>{n}</li>)}
+          </ul>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
