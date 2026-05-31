@@ -88,6 +88,7 @@ const GEOMATIC_PHD: ProgrammeCourseCatalog = {
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
+  // EEE catalogs appended below
 ];
 
 export const getCatalogByKey = (key: string) =>
