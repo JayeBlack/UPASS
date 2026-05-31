@@ -679,6 +679,40 @@ const MINING_MSC_MPHIL_JULY: ProgrammeCourseCatalog = {
   ],
 };
 
+// ─── Geological Engineering (July intake) ────────────────────────────────
+// Source: UMaT SPS — Faculty of Mineral Resources Technology, Geological
+// Engineering Department postgraduate modular programme (July 2025 intake).
+
+const GEOLOGICAL_MSC_MPHIL_JULY: ProgrammeCourseCatalog = {
+  key: "geological-msc-mphil-july",
+  label: "Geological Engineering (MSc / MPhil) — July",
+  department: "Geological Engineering",
+  levels: ["MSc", "MPhil"],
+  admissionCycle: "July",
+  notes: [
+    "July 2025 intake schedule. Modules run from 14th July 2025 to 12th December 2025.",
+    "Participation fee: GH¢1,000.00 per module for registered students / GH¢1,400.00 per other participants / $500.00 per foreign participant.",
+    "Registration closes one (1) week before the commencement of each module. Contact: The Administrator, Geological Engineering Department, UMaT (+233 362 20306, gl@umat.edu.gh).",
+  ],
+  courses: [
+    // Compulsory modules
+    { code: "GL 551", name: "Research Methods", credits: C, category: "mandatory" },
+    { code: "GL 553", name: "Operations Research", credits: C, category: "core" },
+    { code: "GL 554", name: "Mine Economic and Financial Evaluation", credits: C, category: "core" },
+    { code: "GL 555", name: "Statistical Models", credits: C, category: "core" },
+    { code: "GL 561", name: "Computer Applications in Geological Engineering", credits: C, category: "core" },
+    { code: "GL 574", name: "Remote Sensing and GIS", credits: C, category: "core" },
+    { code: "GL 579", name: "Applied Artificial Intelligence in Geological Engineering", credits: C, category: "core" },
+    // Elective / additional taught modules
+    { code: "GL 261", name: "Introductory Geology", credits: C, category: "elective" },
+    { code: "GL 552", name: "Mineral Resource Evaluation", credits: C, category: "elective" },
+    { code: "GL 559", name: "Applied Rock Mechanics", credits: C, category: "elective" },
+    { code: "GL 575", name: "Mineral Exploration Geochemistry", credits: C, category: "elective" },
+    { code: "GL 577", name: "Water Resources Management", credits: C, category: "elective" },
+    { code: "GL 578", name: "Industrial Minerals", credits: C, category: "elective" },
+  ],
+};
+
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
@@ -694,6 +728,7 @@ export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   MINERALS_MSC_MPHIL,
   MINING_MSC_MPHIL_JULY,
   GEOLOGICAL_MSC_MPHIL,
+  GEOLOGICAL_MSC_MPHIL_JULY,
   PETROLEUM_MSC_MPHIL,
   PETROLEUM_PHD,
   CSE_MSC_MPHIL,
