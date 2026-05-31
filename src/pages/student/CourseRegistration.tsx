@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, CheckCircle, Lock } from "lucide-react";
-import { useState } from "react";
+import { BookOpen, CheckCircle, Lock, Building2, CalendarDays, GraduationCap } from "lucide-react";
+import { useMemo, useState } from "react";
 import { PROGRAMME_COURSE_CATALOGS, type ProgrammeCourse } from "@/data/programmeCourses";
 
 interface Course {
@@ -21,9 +21,39 @@ const toCourse = (c: ProgrammeCourse): Course => ({
 });
 
 const CourseRegistration = () => {
-  const [programmeKey, setProgrammeKey] = useState<string>(PROGRAMME_COURSE_CATALOGS[0].key);
+  // Filters
+  const [cycleFilter, setCycleFilter] = useState<"All" | "January" | "July">("All");
+  const departments = useMemo(
+    () => Array.from(new Set(PROGRAMME_COURSE_CATALOGS.map((c) => c.department))).sort(),
+    []
+  );
+  const [department, setDepartment] = useState<string>(departments[0]);
+
+  const programmesInDept = useMemo(
+    () =>
+      PROGRAMME_COURSE_CATALOGS.filter(
+        (c) =>
+          c.department === department &&
+          (cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter)
+      ),
+    [department, cycleFilter]
+  );
+
+  const [programmeKey, setProgrammeKey] = useState<string>(
+    PROGRAMME_COURSE_CATALOGS.find((c) => c.department === departments[0])?.key ??
+      PROGRAMME_COURSE_CATALOGS[0].key
+  );
+
+  // Keep selected programme valid when filters change
+  const effectiveProgrammeKey =
+    programmesInDept.find((c) => c.key === programmeKey)?.key ??
+    programmesInDept[0]?.key ??
+    PROGRAMME_COURSE_CATALOGS[0].key;
+
   const catalog =
-    PROGRAMME_COURSE_CATALOGS.find((c) => c.key === programmeKey) ?? PROGRAMME_COURSE_CATALOGS[0];
+    PROGRAMME_COURSE_CATALOGS.find((c) => c.key === effectiveProgrammeKey) ??
+    PROGRAMME_COURSE_CATALOGS[0];
+
   const [coursesByProgramme, setCoursesByProgramme] = useState<Record<string, Course[]>>(() =>
     Object.fromEntries(
       PROGRAMME_COURSE_CATALOGS.map((c) => [c.key, c.courses.map(toCourse)])
@@ -127,25 +157,104 @@ const CourseRegistration = () => {
         <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
       </div>
 
-      <div className="mb-6 bg-card rounded-xl border border-border p-4">
-        <label htmlFor="programme-select" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-          Programme
-        </label>
-        <select
-          id="programme-select"
-          value={programmeKey}
-          onChange={(e) => setProgrammeKey(e.target.value)}
-          className="w-full sm:w-auto bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-        >
-          {PROGRAMME_COURSE_CATALOGS.map((c) => (
-            <option key={c.key} value={c.key}>{c.label}</option>
-          ))}
-        </select>
-        {catalog.notes && catalog.notes.length > 0 && (
-          <ul className="mt-3 text-xs text-muted-foreground list-disc list-inside space-y-1">
-            {catalog.notes.map((n, i) => <li key={i}>{n}</li>)}
-          </ul>
-        )}
+      {/* Programme picker — Department → Cycle → Programme */}
+      <div className="mb-6 bg-card rounded-xl border border-border p-4 sm:p-5 space-y-4">
+        {/* Admission cycle chips */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <CalendarDays size={14} className="text-muted-foreground" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admission Cycle</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(["All", "January", "July"] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => setCycleFilter(c)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                  cycleFilter === c
+                    ? "gradient-gold text-secondary-foreground border-transparent"
+                    : "bg-background border-border text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Department */}
+          <div>
+            <label htmlFor="department-select" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <Building2 size={14} /> Department
+            </label>
+            <select
+              id="department-select"
+              value={department}
+              onChange={(e) => {
+                setDepartment(e.target.value);
+                const firstInDept = PROGRAMME_COURSE_CATALOGS.find(
+                  (c) =>
+                    c.department === e.target.value &&
+                    (cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter)
+                );
+                if (firstInDept) setProgrammeKey(firstInDept.key);
+              }}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {departments.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Programme */}
+          <div>
+            <label htmlFor="programme-select" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              <GraduationCap size={14} /> Programme
+            </label>
+            <select
+              id="programme-select"
+              value={effectiveProgrammeKey}
+              onChange={(e) => setProgrammeKey(e.target.value)}
+              disabled={programmesInDept.length === 0}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            >
+              {programmesInDept.length === 0 ? (
+                <option>No programmes for this cycle</option>
+              ) : (
+                programmesInDept.map((c) => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* Selected programme summary */}
+        <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-primary/10 text-primary">
+              <Building2 size={11} /> {catalog.department}
+            </span>
+            {catalog.admissionCycle && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold gradient-gold text-secondary-foreground">
+                <CalendarDays size={11} /> {catalog.admissionCycle} intake
+              </span>
+            )}
+            {catalog.levels?.map((lvl) => (
+              <span key={lvl} className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium border border-border text-muted-foreground">
+                {lvl}
+              </span>
+            ))}
+          </div>
+          <p className="text-sm font-semibold text-foreground">{catalog.label}</p>
+          {catalog.notes && catalog.notes.length > 0 && (
+            <ul className="mt-2 text-xs text-muted-foreground list-disc list-inside space-y-1">
+              {catalog.notes.map((n, i) => <li key={i}>{n}</li>)}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
