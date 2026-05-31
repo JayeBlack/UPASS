@@ -44,7 +44,7 @@ const Login = () => {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
             <img src={umatLogo} alt="UMaT Logo" className="w-20 h-auto" />
-            <h1 className="font-display text-xl font-bold text-center">Postgraduate Administrative Support System</h1>
+            <p className="font-display text-xl font-bold text-center">Postgraduate Administrative Support System</p>
           </div>
 
           <h2 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h2>
