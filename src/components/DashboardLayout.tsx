@@ -53,6 +53,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               onClick={() => navigate("/notifications")}
               className="relative p-2.5 rounded-xl hover:bg-muted transition-colors"
               title="Notifications"
+              aria-label="Notifications"
             >
               <Bell size={18} className="text-muted-foreground" />
               <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive ring-2 ring-background" />

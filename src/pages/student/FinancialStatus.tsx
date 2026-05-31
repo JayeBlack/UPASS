@@ -325,7 +325,7 @@ const FinancialStatus = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <button onClick={() => handleDownloadReceipt(f)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Download receipt">
+                      <button onClick={() => handleDownloadReceipt(f)} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground" title="Download receipt" aria-label="Download receipt">
                         <Download size={16} />
                       </button>
                     </td>
