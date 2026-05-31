@@ -60,7 +60,6 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Manage Students", path: "/admin/students", icon: <Users size={18} /> },
     { label: "Fees Status", path: "/admin/fees", icon: <Banknote size={18} /> },
     { label: "Generate Pass List", path: "/admin/passlist", icon: <ListChecks size={18} /> },
-    { label: "System Log", path: "/admin/log", icon: <FileText size={18} /> },
   ],
   Dean: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
@@ -97,7 +96,6 @@ const navByRole: Record<UserRole, NavItem[]> = {
   Registrar: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
     { label: "Manage Students", path: "/admin/students", icon: <Users size={18} /> },
-    { label: "System Log", path: "/admin/log", icon: <FileText size={18} /> },
     { label: "Pass List", path: "/admin/passlist", icon: <ListChecks size={18} /> },
   ],
   AdminAssistant: [
@@ -126,6 +124,7 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
       ? [
           { label: "Manage Users", path: "/admin/users", icon: <UserCog size={18} /> },
           { label: "Supervisor Assignments", path: "/admin/assignments", icon: <Link2 size={18} /> },
+          { label: "System Log", path: "/admin/log", icon: <FileText size={18} /> },
         ]
       : [];
   const items = [...baseItems, ...superAdminExtras];

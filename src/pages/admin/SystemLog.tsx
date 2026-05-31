@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Clock, Filter, Users, Shield, BookOpen, Banknote, FileText } from "lucide-react";
 import { useState } from "react";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
+import { Navigate } from "react-router-dom";
 
 interface LogEntry {
   id: string;
@@ -43,6 +44,8 @@ const SystemLog = () => {
   const [catFilter, setCatFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+
+  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
 
   const filtered = mockLogs.filter((l) => {
     const matchesCat = catFilter === "all" || l.category === catFilter;
