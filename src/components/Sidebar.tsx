@@ -221,7 +221,7 @@ export const MobileHeader = () => {
     <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 py-3 md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <button className="p-2 rounded-lg hover:bg-muted transition-colors">
+          <button className="p-2 rounded-lg hover:bg-muted transition-colors" aria-label="Open navigation menu">
             <Menu size={20} className="text-foreground" />
           </button>
         </SheetTrigger>
