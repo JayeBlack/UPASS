@@ -959,6 +959,38 @@ const OHS_MSC_MPHIL_PHD_JULY: ProgrammeCourseCatalog = {
   ],
 };
 
+// ─── Mining Engineering — Postgraduate Diploma (July 2025) ───
+// Source: UMaT SPS — Postgraduate Diploma in Mining Engineering timetable.
+const PGD_MINING_JULY: ProgrammeCourseCatalog = {
+  key: "pgd-mining-july",
+  label: "Postgraduate Diploma in Mining Engineering (July)",
+  department: "Mining Engineering",
+  levels: ["PgD"],
+  admissionCycle: "July",
+  notes: [
+    "July 2025 intake. Modules run 14 Jul 2025 – 12 Dec 2025.",
+    "MN 588 Lab/Fieldwork & Report, MN 551 Research Methods, MN 550 Seminar and MN 500 Thesis Defence are for registered students only.",
+    "Participation fee: GH¢1,000.00 per module for registered students / GH¢1,400.00 per other participants / $500.00 per foreign participant.",
+    "Registration closes one (1) week before the commencement of each module.",
+    "Contact: The Secretary, Mining Engineering Department, UMaT Tarkwa — +233 241103208.",
+  ],
+  courses: [
+    { code: "MN 575", name: "Fundamentals of Mining Engineering", credits: C, category: "core" },
+    { code: "MN 580", name: "Mining Systems and Development", credits: C, category: "core" },
+    { code: "MN 577", name: "Explosives and Ground Fragmentation", credits: C, category: "core" },
+    { code: "MN 585", name: "Surface and Underground Mine Planning and Design", credits: C, category: "core" },
+    { code: "MN 581", name: "Mine Mechanisation and Materials Handling", credits: C, category: "core" },
+    { code: "MN 579", name: "Mine Drainage and Dewatering", credits: C, category: "core" },
+    { code: "MN 583", name: "Mine Safety and Emergency Management", credits: C, category: "core" },
+    { code: "MN 586", name: "Mine Rock Mechanics", credits: C, category: "core" },
+    { code: "MN 587", name: "Mine Ventilation and Air Conditioning", credits: C, category: "core" },
+    { code: "MN 588", name: "Lab work/Fieldwork and Report", credits: C, category: "mandatory" },
+    { code: "MN 551", name: "Research Methods", credits: C, category: "mandatory" },
+    { code: "MN 500", name: "Thesis / Thesis Defence", credits: C, category: "mandatory" },
+    { code: "MN 550", name: "Seminar", credits: C, category: "mandatory" },
+  ],
+};
+
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
@@ -985,6 +1017,7 @@ export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   MBTM_HR_JULY,
   MSC_ENG_MGMT_JULY,
   OHS_MSC_MPHIL_PHD_JULY,
+  PGD_MINING_JULY,
 ];
 
 export const getCatalogByKey = (key: string) =>
