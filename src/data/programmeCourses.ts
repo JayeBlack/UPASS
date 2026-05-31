@@ -443,6 +443,64 @@ const PETROLEUM_PHD: ProgrammeCourseCatalog = {
   ],
 };
 
+// ─── Computer Science and Engineering ────────────────────────────────────
+// Source: UMaT SPS — Department of Computer Science and Engineering
+// postgraduate modular programme (2026 academic year).
+
+const CSE_MSC_MPHIL: ProgrammeCourseCatalog = {
+  key: "cse-msc-mphil",
+  label: "Computer Science and Engineering (MSc / MPhil)",
+  department: "Computer Science and Engineering",
+  levels: ["MSc", "MPhil"],
+  notes: [
+    "Electives are grouped into specialisation tracks: Artificial Intelligence, Software Systems, Embedded Systems and Control, Information and Cyber Security, and Data Communication and Networks.",
+    "Registration closes one (1) week before the commencement of each module.",
+  ],
+  courses: [
+    // University mandatory / research
+    { code: "CE 500", name: "MSc Thesis", credits: 21, category: "mandatory" },
+    { code: "CE 550", name: "MSc Seminar", credits: 3, category: "mandatory" },
+    { code: "CE 551", name: "Research Methods", credits: 3, category: "mandatory" },
+    { code: "CE 556", name: "Field/Laboratory Work", credits: 3, category: "mandatory" },
+    // Core modules (*)
+    { code: "CE 571", name: "Very Large Scale Integration (VLSI)", credits: 3, category: "core" },
+    { code: "CE 573", name: "Optimisation Methods and Applications", credits: 3, category: "core" },
+    { code: "CE 575", name: "Realtime Systems", credits: 3, category: "core" },
+    { code: "CE 577", name: "Parallel Computing", credits: 3, category: "core" },
+    { code: "CE 579", name: "Data Mining", credits: 3, category: "core" },
+    { code: "CE 589", name: "Information Theory and Coding", credits: 3, category: "core" },
+    // Artificial Intelligence electives
+    { code: "CE 581", name: "Probability and Random Processes", credits: 3, category: "elective" },
+    { code: "CE 583", name: "Computational Intelligence", credits: 3, category: "elective" },
+    { code: "CE 572", name: "Multi-Agent Systems", credits: 3, category: "elective" },
+    { code: "CE 574", name: "Computer Vision and Pattern Recognition", credits: 3, category: "elective" },
+    { code: "CE 576", name: "Natural Language Processing", credits: 3, category: "elective" },
+    // Software Systems electives
+    { code: "CE 585", name: "Information Systems Analysis, Modeling and Design", credits: 3, category: "elective" },
+    { code: "CE 587", name: "Software Testing and Quality Assurance", credits: 3, category: "elective" },
+    { code: "CE 578", name: "Advanced Data Modeling", credits: 3, category: "elective" },
+    { code: "CE 580", name: "Advanced Database Systems", credits: 3, category: "elective" },
+    { code: "CE 582", name: "Pattern Based Software Development", credits: 3, category: "elective" },
+    // Embedded Systems and Control electives
+    { code: "CE 597", name: "Advanced Embedded Systems Design", credits: 3, category: "elective" },
+    { code: "CE 599", name: "Implementation of Digital Signal Processing Systems", credits: 3, category: "elective" },
+    { code: "CE 562", name: "Internet of Things Technology and Applications", credits: 3, category: "elective" },
+    { code: "CE 594", name: "Systems-On-Chip Design", credits: 3, category: "elective" },
+    { code: "CE 598", name: "Adaptive Signal Processing", credits: 3, category: "elective" },
+    // Information and Cyber Security electives
+    { code: "CE 593", name: "Information Security Concepts and Cryptography", credits: 3, category: "elective" },
+    { code: "CE 595", name: "Cyber Threat Intelligence", credits: 3, category: "elective" },
+    { code: "CE 588", name: "Computer Network Security", credits: 3, category: "elective" },
+    { code: "CE 590", name: "Computer Networks: Architectures, Protocols and Standards", credits: 3, category: "elective" },
+    { code: "CE 592", name: "Cyber Incident Handling and Reporting", credits: 3, category: "elective" },
+    { code: "CE 596", name: "Malware and Email Security Analysis", credits: 3, category: "elective" },
+    // Data Communication and Networks electives
+    { code: "CE 591", name: "Mobile and Ad-hoc Computing", credits: 3, category: "elective" },
+    { code: "CE 584", name: "Digital Communications", credits: 3, category: "elective" },
+    { code: "CE 586", name: "Software Defined Networks", credits: 3, category: "elective" },
+  ],
+};
+
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
@@ -456,6 +514,7 @@ export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOLOGICAL_MSC_MPHIL,
   PETROLEUM_MSC_MPHIL,
   PETROLEUM_PHD,
+  CSE_MSC_MPHIL,
 ];
 
 export const getCatalogByKey = (key: string) =>
