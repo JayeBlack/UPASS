@@ -38,14 +38,14 @@ const Login = () => {
           <p className="text-sm text-primary-foreground/60 mt-4">
             University of Mines and Technology, Tarkwa
           </p>
-          <p className="text-xs text-primary-foreground/40 mt-1 italic">
+          <p className="text-xs text-primary-foreground/70 mt-1 italic">
             Knowledge, Truth and Excellence
           </p>
         </div>
       </div>
 
       {/* Right panel - form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <main className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
             <img src={umatLogo} alt="UMaT Logo" className="w-20 h-auto" />
@@ -98,7 +98,7 @@ const Login = () => {
             © {new Date().getFullYear()} UMaT School of Postgraduate Studies
           </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
