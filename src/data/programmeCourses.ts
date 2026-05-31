@@ -4,6 +4,8 @@
 
 export type CourseCategory = "core" | "elective" | "mandatory";
 
+export type AdmissionCycle = "January" | "July";
+
 export interface ProgrammeCourse {
   code: string;
   name: string;
@@ -19,6 +21,8 @@ export interface ProgrammeCourseCatalog {
   department: string;
   /** Degree levels these courses apply to */
   levels: string[];
+  /** Admission cycle this catalog applies to (UMaT runs dual January/July intakes). */
+  admissionCycle?: AdmissionCycle;
   courses: ProgrammeCourse[];
   /** Optional notes shown to the student (graduation requirements, prerequisites, etc.) */
   notes?: string[];
