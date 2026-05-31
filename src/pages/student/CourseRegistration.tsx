@@ -23,28 +23,38 @@ const toCourse = (c: ProgrammeCourse): Course => ({
 const CourseRegistration = () => {
   // Filters
   const [cycleFilter, setCycleFilter] = useState<"All" | "January" | "July">("All");
+  const matchesCycle = (c: (typeof PROGRAMME_COURSE_CATALOGS)[number]) =>
+    cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter;
+
+  // Only surface departments that actually have programmes in the active cycle
   const departments = useMemo(
-    () => Array.from(new Set(PROGRAMME_COURSE_CATALOGS.map((c) => c.department))).sort(),
-    []
+    () =>
+      Array.from(
+        new Set(PROGRAMME_COURSE_CATALOGS.filter(matchesCycle).map((c) => c.department))
+      ).sort(),
+    [cycleFilter]
   );
-  const [department, setDepartment] = useState<string>(departments[0]);
+
+  const [department, setDepartment] = useState<string>(
+    () =>
+      Array.from(new Set(PROGRAMME_COURSE_CATALOGS.map((c) => c.department))).sort()[0]
+  );
+  const effectiveDepartment = departments.includes(department)
+    ? department
+    : departments[0];
 
   const programmesInDept = useMemo(
     () =>
       PROGRAMME_COURSE_CATALOGS.filter(
-        (c) =>
-          c.department === department &&
-          (cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter)
+        (c) => c.department === effectiveDepartment && matchesCycle(c)
       ),
-    [department, cycleFilter]
+    [effectiveDepartment, cycleFilter]
   );
 
   const [programmeKey, setProgrammeKey] = useState<string>(
-    PROGRAMME_COURSE_CATALOGS.find((c) => c.department === departments[0])?.key ??
-      PROGRAMME_COURSE_CATALOGS[0].key
+    PROGRAMME_COURSE_CATALOGS[0].key
   );
 
-  // Keep selected programme valid when filters change
   const effectiveProgrammeKey =
     programmesInDept.find((c) => c.key === programmeKey)?.key ??
     programmesInDept[0]?.key ??
@@ -53,6 +63,25 @@ const CourseRegistration = () => {
   const catalog =
     PROGRAMME_COURSE_CATALOGS.find((c) => c.key === effectiveProgrammeKey) ??
     PROGRAMME_COURSE_CATALOGS[0];
+
+  const handleCycleChange = (c: "All" | "January" | "July") => {
+    setCycleFilter(c);
+    const nextDepts = Array.from(
+      new Set(
+        PROGRAMME_COURSE_CATALOGS.filter(
+          (p) => c === "All" || (p.admissionCycle ?? "January") === c
+        ).map((p) => p.department)
+      )
+    ).sort();
+    const nextDept = nextDepts.includes(department) ? department : nextDepts[0];
+    setDepartment(nextDept);
+    const firstProg = PROGRAMME_COURSE_CATALOGS.find(
+      (p) =>
+        p.department === nextDept &&
+        (c === "All" || (p.admissionCycle ?? "January") === c)
+    );
+    if (firstProg) setProgrammeKey(firstProg.key);
+  };
 
   const [coursesByProgramme, setCoursesByProgramme] = useState<Record<string, Course[]>>(() =>
     Object.fromEntries(
