@@ -234,6 +234,77 @@ const MECH_PHD: ProgrammeCourseCatalog = {
   ],
 };
 
+// ─── Mathematics ─────────────────────────────────────────────────────────
+// Source: UMaT SPS — Faculty of Computing and Mathematical Sciences,
+// Mathematics Department postgraduate modular programme (2025 academic year).
+
+const MATH_MSC_MPHIL: ProgrammeCourseCatalog = {
+  key: "math-msc-mphil",
+  label: "Mathematics (MSc / MPhil)",
+  department: "Mathematics",
+  levels: ["MSc", "MPhil"],
+  notes: [
+    "Participation fee: GH¢1,000.00 per module (registered students), GH¢1,400.00 per module (other participants), US$500.00 per module (foreign participants).",
+    "Registration closes one (1) week before the commencement of each module.",
+  ],
+  courses: [
+    // University mandatory
+    { code: "MA 500", name: "Thesis", credits: C, category: "mandatory" },
+    { code: "MA 551", name: "Research Methods", credits: C, category: "mandatory" },
+    { code: "MA 556", name: "Labwork/Fieldwork and Report", credits: C, category: "mandatory" },
+    // Compulsory modules (*)
+    { code: "MA 275", name: "Numerical Methods", credits: C, category: "core" },
+    { code: "MA 553", name: "Operations Research", credits: C, category: "core" },
+    { code: "MA 571", name: "Numerical Methods for Linear and Nonlinear Equations", credits: C, category: "core" },
+    { code: "MA 573", name: "Time Series and Forecasting", credits: C, category: "core" },
+    { code: "MA 577", name: "Advanced Probability and Statistics", credits: C, category: "core" },
+    { code: "MA 579", name: "Computer Programming", credits: C, category: "core" },
+    // Electives (**)
+    { code: "MA 572", name: "Multivariate Analysis", credits: C, category: "elective" },
+    { code: "MA 574", name: "Design and Analysis of Experiments", credits: C, category: "elective" },
+    { code: "MA 576", name: "Stochastic Processes with Applications", credits: C, category: "elective" },
+    { code: "MA 578", name: "Statistical Models", credits: C, category: "elective" },
+    { code: "MA 581", name: "Computational Finance", credits: C, category: "elective" },
+    { code: "MA 582", name: "Optimisation Models in Economics and Finance", credits: C, category: "elective" },
+    { code: "MA 583", name: "Investment Analysis and Portfolio Theory", credits: C, category: "elective" },
+    { code: "MA 584", name: "Macroeconomics", credits: C, category: "elective" },
+    { code: "MA 586", name: "Risk Analysis and Management", credits: C, category: "elective" },
+    { code: "MA 588", name: "Sample Survey", credits: C, category: "elective" },
+    { code: "MA 591", name: "Application of Numerical Analysis to ODEs", credits: C, category: "elective" },
+    { code: "MA 592", name: "Advanced Numerical Methods", credits: C, category: "elective" },
+    { code: "MA 593", name: "Application of Numerical Analysis to PDEs", credits: C, category: "elective" },
+    { code: "MA 594", name: "Computational Methods in Optimisation", credits: C, category: "elective" },
+    { code: "MA 596", name: "Computational Methods for Optimal Control Problems", credits: C, category: "elective" },
+  ],
+};
+
+const MATH_PHD: ProgrammeCourseCatalog = {
+  key: "math-phd",
+  label: "Mathematics (PhD)",
+  department: "Mathematics",
+  levels: ["PhD"],
+  notes: [
+    "MA 600 PhD Thesis, MA 551 Research Methods and MA 655 Individual Studies are compulsory for all PhD candidates.",
+    "MA 656 University Teaching Experience is compulsory only for Postgraduate Assistants.",
+  ],
+  courses: [
+    { code: "MA 600", name: "PhD Thesis", credits: C, category: "mandatory" },
+    { code: "MA 551", name: "Research Methods", credits: C, category: "mandatory" },
+    { code: "MA 655", name: "Individual Studies", credits: C, category: "mandatory" },
+    { code: "MA 656", name: "University Teaching Experience", credits: C, category: "mandatory" },
+    // Specialisation electives (selected with supervisor)
+    { code: "MA 571", name: "Numerical Methods for Linear and Nonlinear Equations", credits: C, category: "elective" },
+    { code: "MA 576", name: "Stochastic Processes with Applications", credits: C, category: "elective" },
+    { code: "MA 581", name: "Computational Finance", credits: C, category: "elective" },
+    { code: "MA 582", name: "Optimisation Models in Economics and Finance", credits: C, category: "elective" },
+    { code: "MA 591", name: "Application of Numerical Analysis to ODEs", credits: C, category: "elective" },
+    { code: "MA 592", name: "Advanced Numerical Methods", credits: C, category: "elective" },
+    { code: "MA 593", name: "Application of Numerical Analysis to PDEs", credits: C, category: "elective" },
+    { code: "MA 594", name: "Computational Methods in Optimisation", credits: C, category: "elective" },
+    { code: "MA 596", name: "Computational Methods for Optimal Control Problems", credits: C, category: "elective" },
+  ],
+};
+
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
@@ -241,6 +312,8 @@ export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   EEE_PHD,
   MECH_MSC_MPHIL,
   MECH_PHD,
+  MATH_MSC_MPHIL,
+  MATH_PHD,
 ];
 
 export const getCatalogByKey = (key: string) =>
