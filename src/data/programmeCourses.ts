@@ -305,6 +305,38 @@ const MATH_PHD: ProgrammeCourseCatalog = {
   ],
 };
 
+// ─── Minerals Engineering ────────────────────────────────────────────────
+// Source: UMaT SPS — Faculty of Mineral Resources Technology, Minerals
+// Engineering Department postgraduate modular programme (January admission,
+// 2025/2026 academic year).
+
+const MINERALS_MSC_MPHIL: ProgrammeCourseCatalog = {
+  key: "minerals-msc-mphil",
+  label: "Minerals Engineering (MSc / MPhil)",
+  department: "Minerals Engineering",
+  levels: ["MSc", "MPhil"],
+  notes: [
+    "MR 491 Introduction to Minerals Processing and MR 493 Introduction to Extractive Metallurgy are pre-requisite modules for non-Minerals Engineers.",
+    "Participation fee: GH¢1,000.00 per module (registered students), GH¢1,400.00 per module (other participants), US$500.00 per module (foreign participants).",
+    "Registration closes one (1) week before the commencement of each module.",
+  ],
+  courses: [
+    // Compulsory (**)
+    { code: "MR 554", name: "Economic and Financial Evaluation", credits: C, category: "core" },
+    { code: "MR 556", name: "Labwork/Fieldwork and Report", credits: C, category: "mandatory" },
+    { code: "MR 576", name: "Mineral Process Design and Control", credits: C, category: "core" },
+    { code: "MR 579", name: "Aqueous Processes in Mineral Engineering", credits: C, category: "core" },
+    // Pre-requisites for non-Minerals Engineers (*)
+    { code: "MR 491", name: "Introduction to Minerals Processing", credits: C, category: "elective" },
+    { code: "MR 493", name: "Introduction to Extractive Metallurgy", credits: C, category: "elective" },
+    // Other taught modules (electives)
+    { code: "MR 572", name: "Industrial Minerals Beneficiation", credits: C, category: "elective" },
+    { code: "MR 573", name: "Advanced Process Mineralogy", credits: C, category: "elective" },
+    { code: "MR 578", name: "Mine Waste Management", credits: C, category: "elective" },
+    { code: "MR 580", name: "Non-ferrous Metal Beneficiation", credits: C, category: "elective" },
+  ],
+};
+
 export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   GEOMATIC_MSC_MPHIL,
   GEOMATIC_PHD,
@@ -314,6 +346,7 @@ export const PROGRAMME_COURSE_CATALOGS: ProgrammeCourseCatalog[] = [
   MECH_PHD,
   MATH_MSC_MPHIL,
   MATH_PHD,
+  MINERALS_MSC_MPHIL,
 ];
 
 export const getCatalogByKey = (key: string) =>
