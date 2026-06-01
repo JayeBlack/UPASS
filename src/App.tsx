@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { DataStoreProvider } from "@/contexts/DataStoreContext";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import ChangePassword from "./pages/ChangePassword";
+import RequireAuth from "./components/RequireAuth";
 import CourseRegistration from "./pages/student/CourseRegistration";
 import ThesisUpload from "./pages/student/ThesisUpload";
 import Results from "./pages/student/Results";
@@ -50,41 +52,42 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/change-password" element={<RequireAuth><ChangePassword /></RequireAuth>} />
+            <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
             {/* Student */}
-            <Route path="/courses/register" element={<CourseRegistration />} />
-            <Route path="/thesis/upload" element={<ThesisUpload />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/finances" element={<FinancialStatus />} />
-            <Route path="/transcript" element={<DocumentRequests />} />
-            <Route path="/documents" element={<DocumentRequests />} />
-            <Route path="/clearance" element={<Clearance />} />
-            <Route path="/student/chat" element={<ChatAssistant />} />
-            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/courses/register" element={<RequireAuth><CourseRegistration /></RequireAuth>} />
+            <Route path="/thesis/upload" element={<RequireAuth><ThesisUpload /></RequireAuth>} />
+            <Route path="/results" element={<RequireAuth><Results /></RequireAuth>} />
+            <Route path="/finances" element={<RequireAuth><FinancialStatus /></RequireAuth>} />
+            <Route path="/transcript" element={<RequireAuth><DocumentRequests /></RequireAuth>} />
+            <Route path="/documents" element={<RequireAuth><DocumentRequests /></RequireAuth>} />
+            <Route path="/clearance" element={<RequireAuth><Clearance /></RequireAuth>} />
+            <Route path="/student/chat" element={<RequireAuth><ChatAssistant /></RequireAuth>} />
+            <Route path="/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
             {/* Supervisor */}
-            <Route path="/students" element={<AssignedStudents />} />
-            <Route path="/submissions" element={<ReviewSubmissions />} />
-            <Route path="/supervisor/templates" element={<TemplatesAnnouncements />} />
-            <Route path="/supervisor/ai" element={<AIAssistant />} />
+            <Route path="/students" element={<RequireAuth><AssignedStudents /></RequireAuth>} />
+            <Route path="/submissions" element={<RequireAuth><ReviewSubmissions /></RequireAuth>} />
+            <Route path="/supervisor/templates" element={<RequireAuth><TemplatesAnnouncements /></RequireAuth>} />
+            <Route path="/supervisor/ai" element={<RequireAuth><AIAssistant /></RequireAuth>} />
             {/* Admin */}
-            <Route path="/admin/students" element={<ManageStudents />} />
-            <Route path="/admin/fees" element={<FeesStatus />} />
-            <Route path="/admin/passlist" element={<PassList />} />
-            <Route path="/admin/analytics" element={<Analytics />} />
-            <Route path="/admin/log" element={<SystemLog />} />
-            <Route path="/admin/users" element={<ManageUsers />} />
-            <Route path="/admin/assignments" element={<SupervisorAssignments />} />
+            <Route path="/admin/students" element={<RequireAuth><ManageStudents /></RequireAuth>} />
+            <Route path="/admin/fees" element={<RequireAuth><FeesStatus /></RequireAuth>} />
+            <Route path="/admin/passlist" element={<RequireAuth><PassList /></RequireAuth>} />
+            <Route path="/admin/analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
+            <Route path="/admin/log" element={<RequireAuth><SystemLog /></RequireAuth>} />
+            <Route path="/admin/users" element={<RequireAuth><ManageUsers /></RequireAuth>} />
+            <Route path="/admin/assignments" element={<RequireAuth><SupervisorAssignments /></RequireAuth>} />
             {/* Dean */}
-            <Route path="/dean/clearance" element={<ClearanceApprovals />} />
-            <Route path="/dean/results" element={<CWAResults />} />
+            <Route path="/dean/clearance" element={<RequireAuth><ClearanceApprovals /></RequireAuth>} />
+            <Route path="/dean/results" element={<RequireAuth><CWAResults /></RequireAuth>} />
             {/* Accountant */}
-            <Route path="/accountant/analytics" element={<FeeAnalytics />} />
-            <Route path="/accountant/reports" element={<ExportReports />} />
-            <Route path="/accountant/announcements" element={<FeeAnnouncements />} />
+            <Route path="/accountant/analytics" element={<RequireAuth><FeeAnalytics /></RequireAuth>} />
+            <Route path="/accountant/reports" element={<RequireAuth><ExportReports /></RequireAuth>} />
+            <Route path="/accountant/announcements" element={<RequireAuth><FeeAnnouncements /></RequireAuth>} />
             {/* Exams Officer */}
-            <Route path="/exams/grades" element={<GradeEntry />} />
-            <Route path="/exams/passlist" element={<GeneratePassList />} />
-            <Route path="/exams/publish" element={<PublishResults />} />
+            <Route path="/exams/grades" element={<RequireAuth><GradeEntry /></RequireAuth>} />
+            <Route path="/exams/passlist" element={<RequireAuth><GeneratePassList /></RequireAuth>} />
+            <Route path="/exams/publish" element={<RequireAuth><PublishResults /></RequireAuth>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
