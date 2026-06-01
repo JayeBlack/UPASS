@@ -267,6 +267,13 @@ const ManageUsers = () => {
                   <td className="px-6 py-4 text-right">
                     <div className="inline-flex items-center gap-1">
                       <button
+                        onClick={() => handleResetPassword(u)}
+                        title="Reset password to email local-part"
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <KeyRound size={15} />
+                      </button>
+                      <button
                         onClick={() => toggleSystemUserActive(u.id)}
                         title={u.isActive ? "Deactivate" : "Reactivate"}
                         className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"

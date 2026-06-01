@@ -1,10 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Users, Search, Trash2, X, Upload } from "lucide-react";
+import { Users, Search, Trash2, X, Upload, KeyRound } from "lucide-react";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
 import { useDataStore, type Student } from "@/contexts/DataStoreContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, ApiError } from "@/lib/api";
 import * as XLSX from "xlsx";
 
 const ManageStudents = () => {
@@ -17,6 +19,7 @@ const ManageStudents = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+  const { user } = useAuth();
 
   const departments = [...new Set(students.map((s) => s.department))];
 
@@ -145,6 +148,20 @@ const ManageStudents = () => {
     removeStudent(id);
     setDeleteConfirm(null);
     toast({ title: "Student removed", description: `${student?.name} has been removed from the system` });
+  };
+
+  const handleResetPassword = async (s: Student) => {
+    if (!confirm(`Reset ${s.name}'s password to their index number (${s.index})?`)) return;
+    try {
+      const res = await apiFetch<{ default_password: string }>("/auth/admin/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ user_id: Number(s.id) }),
+      });
+      toast({ title: "Password reset", description: `New password: ${res.default_password}` });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Could not reset password";
+      toast({ title: "Failed", description: msg, variant: "destructive" });
+    }
   };
 
   return (
@@ -290,9 +307,20 @@ const ManageStudents = () => {
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.status === "Active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{s.status}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button onClick={() => setDeleteConfirm(s.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Delete student">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="inline-flex items-center gap-1 justify-end">
+                      {user?.isSuperAdmin && (
+                        <button
+                          onClick={() => handleResetPassword(s)}
+                          className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          title="Reset password to index number"
+                        >
+                          <KeyRound size={16} />
+                        </button>
+                      )}
+                      <button onClick={() => setDeleteConfirm(s.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Delete student">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
