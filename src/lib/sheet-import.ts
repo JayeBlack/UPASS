@@ -1,26 +1,12 @@
-import * as XLSX from "xlsx";
-
 /**
  * Reads an uploaded .csv, .xlsx, or .xls file and returns rows of strings
  * (including the header row). First sheet is used for Excel files.
+ * 
+ * @deprecated Use server-side parsing via backend endpoints instead
+ * This function is no longer supported to avoid client-side XLSX vulnerabilities
  */
 export async function readSheetFile(file: File): Promise<string[][]> {
-  const name = file.name.toLowerCase();
-  const isExcel = name.endsWith(".xlsx") || name.endsWith(".xls");
-  const isCsv = name.endsWith(".csv");
-  if (!isExcel && !isCsv) {
-    throw new Error("Unsupported file type. Upload a .csv, .xlsx, or .xls file.");
-  }
-  const buffer = await file.arrayBuffer();
-  const wb = XLSX.read(buffer, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<string[]>(sheet, {
-    header: 1,
-    raw: false,
-    defval: "",
-    blankrows: false,
-  });
-  return rows.map((r) => r.map((c) => (c == null ? "" : String(c).trim())));
+  throw new Error("Client-side file parsing is no longer supported. Use backend parsing endpoints instead.");
 }
 
 export const SHEET_ACCEPT = ".csv,.xlsx,.xls";

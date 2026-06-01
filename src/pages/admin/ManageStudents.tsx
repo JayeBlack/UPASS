@@ -7,7 +7,6 @@ import { useAdminDepartment } from "@/hooks/use-admin-department";
 import { useDataStore, type Student } from "@/contexts/DataStoreContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
-import * as XLSX from "xlsx";
 
 const ManageStudents = () => {
   const { students, addStudent, addStudents, removeStudent } = useDataStore();
@@ -34,111 +33,115 @@ const ManageStudents = () => {
     return matchesSearch && matchesDept;
   });
 
-  const handleEnroll = () => {
+  const handleEnroll = async () => {
     if (!form.name.trim() || !form.index.trim() || !form.email.trim() || !form.program.trim() || !form.department.trim()) {
       toast({ title: "Missing fields", description: "Please fill in all required fields", variant: "destructive" });
       return;
     }
-    const newStudent: Student = { id: `s${Date.now()}`, ...form };
-    addStudent(newStudent);
-    setForm({ name: "", index: "", email: "", program: "", department: "", status: "Active" });
-    setShowEnrollForm(false);
-    toast({ title: "Student enrolled", description: `${form.name} has been added to the system` });
+    try {
+      const payload = {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        index: form.index.trim(),
+        program: form.program,
+        department: form.department,
+        admission_year: new Date().getFullYear(),
+      };
+      const res = await apiFetch<{ student: any; default_password?: string }>("/students/enroll", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      const s = res.student;
+      const created: Student = {
+        id: String(s.id),
+        name: `${s.first_name || form.name.split(" ")[0]} ${s.last_name || form.name.split(" ").slice(1).join(" ")}`.trim(),
+        index: s.index_number || form.index,
+        email: s.email || form.email,
+        program: s.program_name || form.program,
+        department: s.department_name || form.department,
+        status: s.status || "Active",
+      };
+      addStudent(created);
+      setForm({ name: "", index: "", email: "", program: "", department: "", status: "Active" });
+      setShowEnrollForm(false);
+      toast({ title: "Student enrolled", description: `${created.name} has been added to the system` });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Could not enroll student";
+      toast({ title: "Failed", description: msg, variant: "destructive" });
+    }
   };
 
   const normalizeHeader = (h: string) => h.toLowerCase().replace(/[^a-z]/g, "");
 
-  const mapColumns = (headers: string[]): Record<string, number> => {
-    const normalized = headers.map(normalizeHeader);
-    const colMap: Record<string, number> = {};
-    const knownCols: Record<string, string[]> = {
-      name: ["name", "fullname", "studentname", "student"],
-      index: ["index", "indexnumber", "indexno", "studentid", "regno", "regnumber"],
-      email: ["email", "emailaddress", "mail"],
-      program: ["program", "programme", "course", "programname", "programmename"],
-      department: ["department", "dept", "departmentname"],
-    };
-    for (const [field, aliases] of Object.entries(knownCols)) {
-      const idx = normalized.findIndex((h) => aliases.includes(h));
-      if (idx !== -1) colMap[field] = idx;
-    }
-    if (Object.keys(colMap).length < 2) {
-      colMap.name = 0; colMap.index = 1; colMap.email = 2; colMap.program = 3; colMap.department = 4;
-    }
-    return colMap;
-  };
-
-  const parseRows = (rows: string[][]): Student[] => {
-    if (rows.length < 2) return [];
-    const colMap = mapColumns(rows[0]);
-    return rows.slice(1).map((cols, i) => ({
-      id: `bulk${i}${Date.now()}`,
-      name: (cols[colMap.name ?? 0] || "").toString().trim(),
-      index: (cols[colMap.index ?? 1] || "").toString().trim(),
-      email: (cols[colMap.email ?? 2] || "").toString().trim(),
-      program: (cols[colMap.program ?? 3] || "").toString().trim(),
-      department: (cols[colMap.department ?? 4] || adminDepartment || "").toString().trim(),
-      status: "Active" as const,
-    })).filter((s) => s.name && s.index);
-  };
-
-  const handleBulkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const isExcel = /\.(xlsx?|xls)$/i.test(file.name);
 
-    if (isExcel) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-          const newStudents = parseRows(rows);
-          if (newStudents.length === 0) {
-            toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
-            return;
-          }
-          addStudents(newStudents);
-          setShowBulkUpload(false);
-          toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
-        } catch {
-          toast({ title: "File read error", description: "Could not parse the Excel file.", variant: "destructive" });
+    try {
+      // Step 1: Parse file on backend
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const parseRes = await apiFetch<{ rows: Array<{ name: string; index: string; email: string; program: string; department: string }> }>(
+        "/students/parse-bulk",
+        {
+          method: "POST",
+          body: formData,
+          headers: {},
         }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        try {
-          const text = ev.target?.result as string;
-          const lines = text.split(/\r?\n/).filter((l) => l.trim());
-          const rows = lines.map((line) => {
-            const result: string[] = [];
-            let current = "";
-            let inQuotes = false;
-            for (const ch of line) {
-              if (ch === '"') inQuotes = !inQuotes;
-              else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ""; }
-              else current += ch;
-            }
-            result.push(current.trim());
-            return result;
-          });
-          const newStudents = parseRows(rows);
-          if (newStudents.length === 0) {
-            toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
-            return;
-          }
-          addStudents(newStudents);
-          setShowBulkUpload(false);
-          toast({ title: `${newStudents.length} students enrolled`, description: "Students from the uploaded file have been added" });
-        } catch {
-          toast({ title: "File read error", description: "Could not parse the CSV file.", variant: "destructive" });
+      );
+
+      if (!parseRes.rows || parseRes.rows.length === 0) {
+        toast({ title: "No valid students found", description: "Ensure columns: Name, Index Number, Email, Programme, Department", variant: "destructive" });
+        e.target.value = "";
+        return;
+      }
+
+      // Step 2: Enroll all students
+      const enrollRes = await apiFetch<{ enrolled: any[]; errors?: string[] }>(
+        "/students/enroll-bulk",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            students: parseRes.rows.map((row) => ({
+              name: row.name,
+              email: row.email,
+              index: row.index,
+              program: row.program,
+              department: row.department || adminDepartment,
+              admission_year: new Date().getFullYear(),
+            })),
+          }),
         }
-      };
-      reader.readAsText(file);
+      );
+
+      if (enrollRes.enrolled && enrollRes.enrolled.length > 0) {
+        const newStudents: Student[] = enrollRes.enrolled.map((s: any) => ({
+          id: String(s.id),
+          name: `${s.first_name || ""} ${s.last_name || ""}`.trim(),
+          index: s.index_number || "",
+          email: s.email || "",
+          program: s.program_name || "",
+          department: s.department_name || "",
+          status: s.status || "Active",
+        }));
+
+        addStudents(newStudents);
+
+        const msg =
+          enrollRes.errors && enrollRes.errors.length > 0
+            ? `${enrollRes.enrolled.length} enrolled. Issues: ${enrollRes.errors.join("; ")}`
+            : `${enrollRes.enrolled.length} students successfully enrolled`;
+
+        toast({ title: "Bulk enrollment completed", description: msg });
+      } else if (enrollRes.errors?.length) {
+        toast({ title: "No students enrolled", description: enrollRes.errors.join("; "), variant: "destructive" });
+      }
+
+      setShowBulkUpload(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Could not process bulk upload";
+      toast({ title: "Failed", description: msg, variant: "destructive" });
     }
     e.target.value = "";
   };

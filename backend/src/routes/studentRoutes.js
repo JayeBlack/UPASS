@@ -1,9 +1,13 @@
 const router = require("express").Router();
 const ctrl = require("../controllers/studentController");
 const { authenticate, authorize } = require("../middleware/auth");
+const upload = require("../middleware/upload");
 router.use(authenticate);
+router.post("/parse-bulk", upload.single("file"), ctrl.parseBulk);
+router.post("/enroll-bulk", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.enrollBulk);
 router.get("/", ctrl.getAll);
 router.get("/:id", ctrl.getById);
+router.post("/enroll", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.enroll);
 router.post("/", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.create);
 router.put("/:id", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.update);
 router.delete("/:id", authorize("Admin"), ctrl.remove);

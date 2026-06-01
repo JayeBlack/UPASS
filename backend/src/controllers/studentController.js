@@ -1,4 +1,6 @@
 const db = require("../db");
+const bcrypt = require("bcryptjs");
+const XLSX = require("xlsx");
 
 // GET /api/students
 exports.getAll = async (req, res) => {
@@ -76,6 +78,91 @@ exports.create = async (req, res) => {
   }
 };
 
+// POST /api/students/enroll
+// Accepts: { name, email, index, program, department, admission_year }
+// Creates a user (role=Student) and student record; creates program/department if missing
+exports.enroll = async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    const { name, email, index, program, department, admission_year } = req.body;
+    if (!name || !email || !index) return res.status(400).json({ error: "Missing required fields" });
+
+    const [first_name, ...rest] = name.trim().split(/\s+/);
+    const last_name = rest.join(" ") || "";
+    const defaultPwd = String(index).trim();
+
+    await client.query("BEGIN");
+
+    // ensure email not registered
+    const existing = await client.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (existing.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "Email already registered" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(defaultPwd, salt);
+
+    const userInsert = await client.query(
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password)
+       VALUES ($1, $2, 'Student', $3, $4, TRUE)
+       RETURNING id, email`,
+      [email, hash, first_name, last_name]
+    );
+    const userId = userInsert.rows[0].id;
+
+    // find or create program
+    let programId = null;
+    if (program) {
+      const p = await client.query("SELECT id FROM programs WHERE LOWER(name) = LOWER($1)", [program]);
+      if (p.rows.length > 0) programId = p.rows[0].id;
+      else {
+        const np = await client.query("INSERT INTO programs (name, is_active) VALUES ($1, TRUE) RETURNING id", [program]);
+        programId = np.rows[0].id;
+      }
+    }
+
+    // find or create department
+    let deptId = null;
+    if (department) {
+      const d = await client.query("SELECT id FROM departments WHERE LOWER(name) = LOWER($1)", [department]);
+      if (d.rows.length > 0) deptId = d.rows[0].id;
+      else {
+        const nd = await client.query("INSERT INTO departments (name, is_active) VALUES ($1, TRUE) RETURNING id", [department]);
+        deptId = nd.rows[0].id;
+      }
+    }
+
+    const admYear = admission_year || new Date().getFullYear();
+
+    const stud = await client.query(
+      `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [userId, index, programId, deptId, admYear]
+    );
+
+    // fetch full student record with joined names
+    const out = await client.query(
+      `SELECT s.*, u.first_name, u.last_name, u.email, p.name AS program_name, d.name AS department_name
+       FROM students s
+       JOIN users u ON s.user_id = u.id
+       LEFT JOIN programs p ON s.program_id = p.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE s.id = $1`,
+      [stud.rows[0].id]
+    );
+
+    await client.query("COMMIT");
+    res.status(201).json({ student: out.rows[0], default_password: defaultPwd });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    if (err.code === "23505") return res.status(409).json({ error: "Student already exists" });
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+};
+
 // PUT /api/students/:id
 exports.update = async (req, res) => {
   try {
@@ -101,6 +188,193 @@ exports.remove = async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Student not found" });
     res.json({ message: "Student deactivated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/students/parse-bulk
+// Accepts multipart file (CSV or XLSX)
+// Returns parsed rows: { rows: [{ name, index, email, program, department }, ...] }
+exports.parseBulk = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const { mimetype, buffer } = req.file;
+    const isExcel = /\.(xlsx?|xls)$|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|application\/vnd\.ms-excel/i.test(
+      mimetype || req.file.originalname
+    );
+
+    let rows = [];
+    if (isExcel) {
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    } else {
+      const text = buffer.toString("utf-8");
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      rows = lines.map((line) => {
+        const result = [];
+        let current = "";
+        let inQuotes = false;
+        for (const ch of line) {
+          if (ch === '"') inQuotes = !inQuotes;
+          else if (ch === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = "";
+          } else current += ch;
+        }
+        result.push(current.trim());
+        return result;
+      });
+    }
+
+    if (rows.length < 2) return res.status(400).json({ error: "File must contain header and at least one row" });
+
+    // map columns
+    const headers = rows[0];
+    const normalized = headers.map((h) => String(h).toLowerCase().replace(/[^a-z]/g, ""));
+    const colMap = {};
+    const knownCols = {
+      name: ["name", "fullname", "studentname", "student"],
+      index: ["index", "indexnumber", "indexno", "studentid", "regno", "regnumber"],
+      email: ["email", "emailaddress", "mail"],
+      program: ["program", "programme", "course", "programname", "programmename"],
+      department: ["department", "dept", "departmentname"],
+    };
+    for (const [field, aliases] of Object.entries(knownCols)) {
+      const idx = normalized.findIndex((h) => aliases.includes(h));
+      if (idx !== -1) colMap[field] = idx;
+    }
+    if (Object.keys(colMap).length < 2) {
+      colMap.name = 0;
+      colMap.index = 1;
+      colMap.email = 2;
+      colMap.program = 3;
+      colMap.department = 4;
+    }
+
+    // parse rows
+    const parsed = rows.slice(1).map((cols) => ({
+      name: (cols[colMap.name ?? 0] || "").toString().trim(),
+      index: (cols[colMap.index ?? 1] || "").toString().trim(),
+      email: (cols[colMap.email ?? 2] || "").toString().trim(),
+      program: (cols[colMap.program ?? 3] || "").toString().trim(),
+      department: (cols[colMap.department ?? 4] || "").toString().trim(),
+    })).filter((s) => s.name && s.index);
+
+    if (parsed.length === 0) {
+      return res.status(400).json({ error: "No valid student records found" });
+    }
+
+    res.json({ rows: parsed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/students/enroll-bulk
+// Accepts: { students: [{ name, email, index, program, department, admission_year }, ...] }
+// Enrolls multiple students at once
+exports.enrollBulk = async (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: "No students to enroll" });
+    }
+
+    const enrolled = [];
+    const errors = [];
+
+    for (let i = 0; i < students.length; i++) {
+      const { name, email, index, program, department, admission_year } = students[i];
+      if (!name || !email || !index) {
+        errors.push(`Row ${i + 1}: Missing required fields`);
+        continue;
+      }
+
+      const client = await db.pool.connect();
+      try {
+        const [first_name, ...rest] = name.trim().split(/\s+/);
+        const last_name = rest.join(" ") || "";
+        const defaultPwd = String(index).trim();
+
+        await client.query("BEGIN");
+
+        // check email exists
+        const existing = await client.query("SELECT id FROM users WHERE email = $1", [email]);
+        if (existing.rows.length > 0) {
+          await client.query("ROLLBACK");
+          errors.push(`Row ${i + 1}: Email already registered`);
+          continue;
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(defaultPwd, salt);
+
+        const userInsert = await client.query(
+          `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password)
+           VALUES ($1, $2, 'Student', $3, $4, TRUE)
+           RETURNING id, email`,
+          [email, hash, first_name, last_name]
+        );
+        const userId = userInsert.rows[0].id;
+
+        // find or create program
+        let programId = null;
+        if (program) {
+          const p = await client.query("SELECT id FROM programs WHERE LOWER(name) = LOWER($1)", [program]);
+          if (p.rows.length > 0) programId = p.rows[0].id;
+          else {
+            const np = await client.query("INSERT INTO programs (name, is_active) VALUES ($1, TRUE) RETURNING id", [program]);
+            programId = np.rows[0].id;
+          }
+        }
+
+        // find or create department
+        let deptId = null;
+        if (department) {
+          const d = await client.query("SELECT id FROM departments WHERE LOWER(name) = LOWER($1)", [department]);
+          if (d.rows.length > 0) deptId = d.rows[0].id;
+          else {
+            const nd = await client.query("INSERT INTO departments (name, is_active) VALUES ($1, TRUE) RETURNING id", [department]);
+            deptId = nd.rows[0].id;
+          }
+        }
+
+        const admYear = admission_year || new Date().getFullYear();
+
+        const stud = await client.query(
+          `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year)
+           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+          [userId, index, programId, deptId, admYear]
+        );
+
+        // fetch full student record
+        const out = await client.query(
+          `SELECT s.*, u.first_name, u.last_name, u.email, p.name AS program_name, d.name AS department_name
+           FROM students s
+           JOIN users u ON s.user_id = u.id
+           LEFT JOIN programs p ON s.program_id = p.id
+           LEFT JOIN departments d ON s.department_id = d.id
+           WHERE s.id = $1`,
+          [stud.rows[0].id]
+        );
+
+        await client.query("COMMIT");
+        enrolled.push(out.rows[0]);
+      } catch (err) {
+        try { await client.query("ROLLBACK"); } catch {}
+        if (err.code === "23505") {
+          errors.push(`Row ${i + 1}: Student already exists`);
+        } else {
+          errors.push(`Row ${i + 1}: ${err.message}`);
+        }
+      } finally {
+        client.release();
+      }
+    }
+
+    res.status(201).json({ enrolled, errors: errors.length > 0 ? errors : undefined });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
