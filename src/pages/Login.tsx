@@ -1,20 +1,40 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Mail, Lock } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
 import SEO from "@/components/SEO";
+import { useToast } from "@/hooks/use-toast";
+import { ApiError } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  if (user) {
+    return <Navigate to={user.mustChangePassword ? "/change-password" : "/dashboard"} replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login(email, password);
-    navigate("/dashboard");
+    if (!email || !password) {
+      toast({ title: "Missing credentials", description: "Enter your email and password", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await login(email, password);
+      // Navigation handled by the redirect above on next render
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Sign in failed";
+      toast({ title: "Sign in failed", description: msg, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -88,9 +108,10 @@ const Login = () => {
 
             <button
               type="submit"
+              disabled={submitting}
               className="w-full py-3 rounded-lg gradient-gold text-secondary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
             >
-              Sign In
+              {submitting ? "Signing in…" : "Sign In"}
             </button>
           </form>
 

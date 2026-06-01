@@ -1,11 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Navigate } from "react-router-dom";
 import { useState } from "react";
-import { ShieldCheck, UserPlus, X, Trash2, Search, Power } from "lucide-react";
+import { ShieldCheck, UserPlus, X, Trash2, Search, Power, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDataStore, type SystemRole, type SystemUser, type Supervisor } from "@/contexts/DataStoreContext";
+import { apiFetch, ApiError } from "@/lib/api";
 
 const ROLES: SystemRole[] = [
   "Student",
@@ -101,38 +102,82 @@ const ManageUsers = () => {
       return;
     }
 
-    const id = `u${Date.now()}`;
-    const newUser: SystemUser = {
-      id,
-      name: form.name.trim(),
-      email: form.email.trim().toLowerCase(),
-      role: form.role,
-      department: form.department || undefined,
-      phone: form.phone || undefined,
-      isActive: true,
-      isSuperAdmin: form.role === "Admin" ? form.isSuperAdmin : false,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    addSystemUser(newUser);
+    const email = form.email.trim().toLowerCase();
+    const [first_name, ...rest] = form.name.trim().split(/\s+/);
+    const last_name = rest.join(" ") || first_name;
 
-    // Mirror Supervisor into the supervisor roster so they appear in assignments
-    if (form.role === "Supervisor") {
-      const sv: Supervisor = {
-        id: `sv${Date.now()}`,
-        staffId: form.staffId.trim() || `UMaT/ST/${Math.floor(Math.random() * 900 + 100)}`,
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        title: form.title || "Dr.",
-        department: form.department || "Computer Science",
-        specialization: form.specialization || undefined,
-        isActive: true,
-      };
-      addSupervisor(sv);
+    (async () => {
+      try {
+        const res = await apiFetch<{ user: { id: number; email: string }; default_password: string }>(
+          "/auth/admin/create-staff",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              email,
+              first_name,
+              last_name,
+              role: form.role,
+              phone: form.phone || undefined,
+              is_super_admin: form.role === "Admin" ? form.isSuperAdmin : false,
+            }),
+          },
+        );
+
+        const newUser: SystemUser = {
+          id: String(res.user.id),
+          name: form.name.trim(),
+          email,
+          role: form.role,
+          department: form.department || undefined,
+          phone: form.phone || undefined,
+          isActive: true,
+          isSuperAdmin: form.role === "Admin" ? form.isSuperAdmin : false,
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
+        addSystemUser(newUser);
+
+        if (form.role === "Supervisor") {
+          const sv: Supervisor = {
+            id: `sv${res.user.id}`,
+            staffId: form.staffId.trim() || `UMaT/ST/${res.user.id}`,
+            name: form.name.trim(),
+            email,
+            title: form.title || "Dr.",
+            department: form.department || "Computer Science",
+            specialization: form.specialization || undefined,
+            isActive: true,
+          };
+          addSupervisor(sv);
+        }
+
+        toast({
+          title: "Staff account created",
+          description: `Default password: ${res.default_password} — share securely. They will be required to change it on first login.`,
+        });
+        resetForm();
+        setShowForm(false);
+      } catch (err) {
+        const msg = err instanceof ApiError ? err.message : "Could not create staff account";
+        toast({ title: "Failed", description: msg, variant: "destructive" });
+      }
+    })();
+  };
+
+  const handleResetPassword = async (u: SystemUser) => {
+    if (!confirm(`Reset password for ${u.name}? They will be required to change it on next login.`)) return;
+    try {
+      const res = await apiFetch<{ default_password: string }>("/auth/admin/reset-password", {
+        method: "POST",
+        body: JSON.stringify({ user_id: Number(u.id) }),
+      });
+      toast({
+        title: "Password reset",
+        description: `New password: ${res.default_password}`,
+      });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Could not reset password";
+      toast({ title: "Failed", description: msg, variant: "destructive" });
     }
-
-    toast({ title: "User created", description: `${newUser.name} added as ${newUser.role}` });
-    resetForm();
-    setShowForm(false);
   };
 
   const handleDelete = (id: string) => {
@@ -221,6 +266,13 @@ const ManageUsers = () => {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => handleResetPassword(u)}
+                        title="Reset password to email local-part"
+                        className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <KeyRound size={15} />
+                      </button>
                       <button
                         onClick={() => toggleSystemUserActive(u.id)}
                         title={u.isActive ? "Deactivate" : "Reactivate"}
