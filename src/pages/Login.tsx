@@ -5,7 +5,6 @@ import { Mail, Lock } from "lucide-react";
 import umatLogo from "@/assets/umat-logo.png";
 import SEO from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
-import { ApiError } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -30,7 +29,7 @@ const Login = () => {
       await login(email, password);
       // Navigation handled by the redirect above on next render
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Sign in failed";
+      const msg = err instanceof Error ? err.message : "Sign in failed";
       toast({ title: "Sign in failed", description: msg, variant: "destructive" });
     } finally {
       setSubmitting(false);
