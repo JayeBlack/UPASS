@@ -201,6 +201,15 @@ const AIAssistant = () => {
     }
     if (!resp.body) throw new Error("No response body");
 
+    // Handle structured fallback (AI gateway returned 200 JSON with an error)
+    const contentType = resp.headers.get("Content-Type") || "";
+    if (contentType.includes("application/json")) {
+      const data = await resp.json().catch(() => ({}));
+      if (data?.fallback || data?.error) {
+        throw new Error(data.error || "AI service temporarily unavailable. Please try again shortly.");
+      }
+    }
+
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
