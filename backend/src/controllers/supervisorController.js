@@ -114,3 +114,89 @@ exports.assignStudent = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// GET /api/supervisors/current/stats — Get dashboard stats for current supervisor
+exports.getDashboardStats = async (req, res) => {
+  try {
+    // Get supervisor ID from user_id in the request (from auth middleware)
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    // Get supervisor record for this user
+    const supervisorResult = await db.query(
+      "SELECT id FROM supervisors WHERE user_id = $1",
+      [userId]
+    );
+    if (supervisorResult.rows.length === 0) {
+      return res.status(404).json({ error: "Supervisor record not found" });
+    }
+    const supervisorId = supervisorResult.rows[0].id;
+
+    // Get assigned students count
+    const studentsResult = await db.query(
+      "SELECT COUNT(*) as count FROM student_supervisors WHERE supervisor_id = $1",
+      [supervisorId]
+    );
+    const assignedStudents = parseInt(studentsResult.rows[0].count, 10);
+
+    // Get pending reviews count (Pending status in Supabase thesis_submissions table)
+    // This is a placeholder - in a real scenario, you'd query Supabase or sync data to PostgreSQL
+    // For now, return 0 and frontend will fetch from Supabase
+    const pendingReviews = 0;
+
+    res.json({
+      assignedStudents,
+      pendingReviews,
+      approvedThisMonth: 0,
+      avgReviewTime: "—",
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/supervisors/current/submissions — Get thesis submissions for current supervisor's students
+exports.getCurrentSupervisorSubmissions = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    // Get supervisor record
+    const supervisorResult = await db.query(
+      "SELECT id FROM supervisors WHERE user_id = $1",
+      [userId]
+    );
+    if (supervisorResult.rows.length === 0) {
+      return res.status(404).json({ error: "Supervisor record not found" });
+    }
+    const supervisorId = supervisorResult.rows[0].id;
+
+    // Get students assigned to this supervisor
+    const studentsResult = await db.query(
+      "SELECT student_id FROM student_supervisors WHERE supervisor_id = $1",
+      [supervisorId]
+    );
+    const studentIds = studentsResult.rows.map(row => row.student_id);
+
+    if (studentIds.length === 0) {
+      return res.json([]);
+    }
+
+    // Get student names and index numbers for filtering
+    const studentNames = await db.query(
+      `SELECT s.id, CONCAT(u.first_name, ' ', u.last_name) as name, s.index_number
+       FROM students s
+       JOIN users u ON s.user_id = u.id
+       WHERE s.id = ANY($1)`,
+      [studentIds]
+    );
+
+    // Return both student IDs for backend filtering and student info for frontend
+    res.json({
+      studentIds,
+      students: studentNames.rows,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
