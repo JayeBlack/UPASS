@@ -1,4 +1,25 @@
 const db = require("../db");
+const path = require("path");
+const fs = require("fs").promises;
+const { createNotification } = require("./notificationController");
+
+// GET /api/documents (all — admin/registrar)
+exports.getAll = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT dr.*, u.first_name, u.last_name, s.index_number, p.name AS program_name, d.name AS department_name
+       FROM document_requests dr
+       JOIN students s ON dr.student_id = s.id
+       JOIN users u ON s.user_id = u.id
+       LEFT JOIN programs p ON s.program_id = p.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       ORDER BY dr.requested_at DESC`,
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 // GET /api/documents/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -38,6 +59,82 @@ exports.updateStatus = async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Request not found" });
     res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/documents/dean/upload
+// Upload document and send to selected students
+exports.uploadForStudents = async (req, res) => {
+  const client = await db.pool.connect();
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    
+    const { title, student_ids } = req.body;
+    if (!title || !student_ids) {
+      return res.status(400).json({ error: "Missing title or student_ids" });
+    }
+
+    const studentIdArray = JSON.parse(student_ids);
+    if (!Array.isArray(studentIdArray) || studentIdArray.length === 0) {
+      return res.status(400).json({ error: "No students selected" });
+    }
+
+    await client.query("BEGIN");
+
+    // Store file metadata
+    const fileUrl = `/uploads/documents/${req.file.filename}`;
+    const uploadResult = await client.query(
+      `INSERT INTO document_uploads (title, file_name, file_url, uploaded_by, recipient_count)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [title, req.file.originalname, fileUrl, req.user.id, studentIdArray.length]
+    );
+    const uploadId = uploadResult.rows[0].id;
+
+    // Create document records for each student and send notifications
+    for (const studentId of studentIdArray) {
+      await client.query(
+        `INSERT INTO document_requests (student_id, doc_type, purpose, status, file_url, upload_id)
+         VALUES ($1, $2, $3, 'Ready', $4, $5)`,
+        [studentId, title, `Uploaded by ${req.user.name || 'Dean'}`, fileUrl, uploadId]
+      );
+
+      // Get student's user_id for notification
+      const studentQuery = await client.query(
+        'SELECT user_id FROM students WHERE id = $1',
+        [studentId]
+      );
+      if (studentQuery.rows.length > 0) {
+        await createNotification(
+          studentQuery.rows[0].user_id,
+          'document',
+          'New Document Available',
+          `${title} has been uploaded for you. Check your documents page.`,
+          'info'
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+    res.status(201).json({ message: "Document sent to students", upload_id: uploadId });
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+};
+
+// GET /api/documents/dean/uploads
+// Get all uploads made by dean
+exports.getDeanUploads = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT * FROM document_uploads WHERE uploaded_by = $1 ORDER BY created_at DESC`,
+      [req.user.id]
+    );
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

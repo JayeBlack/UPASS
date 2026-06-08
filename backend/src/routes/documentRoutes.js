@@ -1,7 +1,18 @@
 const router = require("express").Router();
 const ctrl = require("../controllers/documentController");
 const { authenticate, authorize } = require("../middleware/auth");
+const upload = require("../middleware/upload");
+
+// Middleware to set upload subdirectory
+const setDocumentSubdir = (req, res, next) => {
+  req.uploadSubDir = "documents";
+  next();
+};
+
 router.use(authenticate);
+router.get("/", authorize("Admin", "Dean", "ViceDean", "Registrar", "AdminAssistant"), ctrl.getAll);
+router.get("/dean/uploads", authorize("Admin", "Dean", "ViceDean"), ctrl.getDeanUploads);
+router.post("/dean/upload", authorize("Admin", "Dean", "ViceDean"), setDocumentSubdir, upload.single("file"), ctrl.uploadForStudents);
 router.get("/student/:studentId", ctrl.getByStudent);
 router.post("/", ctrl.create);
 router.put("/:id/status", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.updateStatus);

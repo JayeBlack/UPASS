@@ -1,32 +1,79 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { CheckCircle, XCircle, Clock, Filter } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle, XCircle, Clock, Filter, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
-const pendingClearances = [
-  { id: 1, name: "Kwame Mensah", index: "UMaT/PG/0234/22", program: "MSc. Information Technology", department: "Computer Science", stage: "Library", submitted: "2024-01-10" },
-  { id: 2, name: "Esi Appiah", index: "UMaT/PG/0198/22", program: "MSc. Mining Engineering", department: "Mining Engineering", stage: "Department", submitted: "2024-01-08" },
-  { id: 3, name: "Yaw Boateng", index: "UMaT/PG/0301/22", program: "MSc. Environmental Science", department: "Environmental Science", stage: "Finance", submitted: "2024-01-12" },
-  { id: 4, name: "Akua Sarpong", index: "UMaT/PG/0156/22", program: "MSc. Geological Engineering", department: "Geological Engineering", stage: "Dean's Office", submitted: "2024-01-15" },
-  { id: 5, name: "Kofi Adjei", index: "UMaT/PG/0277/22", program: "MSc. Computer Science", department: "Computer Science", stage: "Dean's Office", submitted: "2024-01-14" },
-];
-
-const departments = [...new Set(pendingClearances.map((c) => c.department))];
+interface ClearanceStep {
+  id: string;
+  student_id: string;
+  index_number: string;
+  first_name: string;
+  last_name: string;
+  program_name: string;
+  department_name: string;
+  department: string;
+  description: string;
+  status: string;
+  step_order: number;
+  created_at: string;
+}
 
 const ClearanceApprovals = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [clearances, setClearances] = useState(pendingClearances);
+  const [steps, setSteps] = useState<ClearanceStep[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deptFilter, setDeptFilter] = useState<string>("all");
+  const [approvedCount, setApprovedCount] = useState(0);
 
-  const handleAction = (id: number, action: "approve" | "reject") => {
-    setClearances((prev) => prev.filter((c) => c.id !== id));
-    toast({
-      title: action === "approve" ? "Clearance Approved" : "Clearance Rejected",
-      description: `Student clearance has been ${action === "approve" ? "approved" : "rejected"}.`,
-    });
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<ClearanceStep[]>("/clearance/pending");
+      setSteps(data || []);
+
+      // also get total approved count
+      const all = await apiFetch<any[]>("/clearance/pending?include_cleared=true").catch(() => []);
+      setApprovedCount((all as any[]).filter((s: any) => s.status === "cleared").length);
+    } catch {
+      // backend offline
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filtered = clearances.filter((c) => deptFilter === "all" || c.department === deptFilter);
+  useEffect(() => { load(); }, []);
+
+  const handleApprove = async (id: string) => {
+    try {
+      await apiFetch(`/clearance/${id}/approve`, {
+        method: "PUT",
+        body: JSON.stringify({ cleared_by: user?.name }),
+      });
+      toast({ title: "Clearance Approved", description: "Student clearance step has been approved." });
+      load();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      await apiFetch(`/clearance/${id}/reject`, {
+        method: "PUT",
+        body: JSON.stringify({ note: "Rejected by " + user?.name }),
+      });
+      toast({ title: "Clearance Rejected", description: "Student clearance step has been rejected." });
+      load();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const departments = [...new Set(steps.map((s) => s.department_name).filter(Boolean))];
+  const filtered = steps.filter((s) => deptFilter === "all" || s.department_name === deptFilter);
 
   return (
     <DashboardLayout>
@@ -44,9 +91,7 @@ const ClearanceApprovals = () => {
           className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="all">All Departments</option>
-          {departments.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
+          {departments.map((d) => <option key={d} value={d}>{d}</option>)}
         </select>
       </div>
 
@@ -64,8 +109,8 @@ const ClearanceApprovals = () => {
           <div className="flex items-center gap-3">
             <CheckCircle size={20} className="text-success" />
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">42</p>
-              <p className="text-sm text-muted-foreground">Approved This Term</p>
+              <p className="text-2xl font-bold font-display text-foreground">{approvedCount}</p>
+              <p className="text-sm text-muted-foreground">Approved</p>
             </div>
           </div>
         </div>
@@ -73,7 +118,7 @@ const ClearanceApprovals = () => {
           <div className="flex items-center gap-3">
             <XCircle size={20} className="text-destructive" />
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">3</p>
+              <p className="text-2xl font-bold font-display text-foreground">—</p>
               <p className="text-sm text-muted-foreground">Rejected</p>
             </div>
           </div>
@@ -82,58 +127,64 @@ const ClearanceApprovals = () => {
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Student</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Index</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Program</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Department</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Stage</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Submitted</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.index}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.program}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.department}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      c.stage === "Dean's Office" ? "bg-secondary/20 text-secondary-foreground" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {c.stage}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.submitted}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAction(c.id, "approve")}
-                        className="px-3 py-1.5 rounded-lg bg-success text-success-foreground text-xs font-medium hover:opacity-90 transition-colors"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleAction(c.id, "reject")}
-                        className="px-3 py-1.5 rounded-lg border border-destructive text-destructive text-xs font-medium hover:bg-destructive/10 transition-colors"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <Loader2 size={18} className="animate-spin mr-2" /> Loading...
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Student</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Index</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Program</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Department</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Stage</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Submitted</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Actions</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No pending clearance requests</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((c) => (
+                  <tr key={c.id} className="border-b border-border last:border-0">
+                    <td className="px-4 py-3 font-medium text-foreground">{c.first_name} {c.last_name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.index_number}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.program_name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{c.department_name}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        c.department === "Dean of Postgraduate" ? "bg-secondary/20 text-secondary-foreground" : "bg-muted text-muted-foreground"
+                      }`}>
+                        {c.department}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(c.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApprove(c.id)}
+                          className="px-3 py-1.5 rounded-lg bg-success text-success-foreground text-xs font-medium hover:opacity-90 transition-colors"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(c.id)}
+                          className="px-3 py-1.5 rounded-lg border border-destructive text-destructive text-xs font-medium hover:bg-destructive/10 transition-colors"
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && !loading && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No pending clearance requests</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </DashboardLayout>

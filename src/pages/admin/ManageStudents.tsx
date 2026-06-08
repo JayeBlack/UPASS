@@ -1,10 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Search, Trash2, X, Upload, KeyRound, Loader2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
+import { PROGRAMME_COURSE_CATALOGS } from "@/data/programmeCourses";
 
 interface Student {
   id: string;
@@ -30,7 +31,24 @@ const ManageStudents = () => {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", index: "", email: "", program: "", department: "" });
+  const [form, setForm] = useState({ name: "", index: "", email: "", program: "", department: "", cohort: "January" });
+
+  // Get unique departments and programmes from course catalogs
+  const availableDepartments = useMemo(() => {
+    const depts = [...new Set(PROGRAMME_COURSE_CATALOGS.map(c => c.department))];
+    return depts.sort();
+  }, []);
+
+  const availableProgrammes = useMemo(() => {
+    if (!form.department || !form.cohort) return [];
+    return PROGRAMME_COURSE_CATALOGS
+      .filter(c => 
+        c.department === form.department && 
+        (c.admissionCycle === form.cohort || !c.admissionCycle)
+      )
+      .map(c => ({ label: c.label, cycle: c.admissionCycle }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [form.department, form.cohort]);
 
   const load = async () => {
     setLoading(true);
@@ -56,7 +74,7 @@ const ManageStudents = () => {
   });
 
   const handleEnroll = async () => {
-    if (!form.name || !form.index || !form.email || !form.program || !form.department) {
+    if (!form.name || !form.index || !form.email || !form.program || !form.department || !form.cohort) {
       toast({ title: "Missing fields", variant: "destructive" });
       return;
     }
@@ -70,11 +88,12 @@ const ManageStudents = () => {
           index: form.index, 
           program: form.program, 
           department: form.department, 
+          admission_cycle: form.cohort,
           admission_year: new Date().getFullYear() 
         }),
       });
       toast({ title: "Student enrolled", description: form.name });
-      setForm({ name: "", index: "", email: "", program: "", department: "" });
+      setForm({ name: "", index: "", email: "", program: "", department: "", cohort: "January" });
       setShowEnrollForm(false);
       load();
     } catch (err) {
@@ -101,7 +120,8 @@ const ManageStudents = () => {
         body: JSON.stringify({ 
           students: parseRes.rows.map((r) => ({ 
             ...r, 
-            admission_year: new Date().getFullYear() 
+            admission_year: new Date().getFullYear(),
+            admission_cycle: "January" // Default to January cohort for bulk upload
           })) 
         }),
       });
@@ -120,11 +140,11 @@ const ManageStudents = () => {
   const handleDelete = async (id: string) => {
     try {
       await apiFetch(`/students/${id}`, { method: "DELETE" });
+      toast({ title: "Student deleted successfully" });
       setStudents((prev) => prev.filter((s) => s.id !== id));
       setDeleteConfirm(null);
-      toast({ title: "Student removed" });
     } catch (err) {
-      toast({ title: "Failed", description: err instanceof ApiError ? err.message : "Error", variant: "destructive" });
+      toast({ title: "Delete failed", description: err instanceof ApiError ? err.message : "Error", variant: "destructive" });
     }
   };
 
@@ -166,7 +186,7 @@ const ManageStudents = () => {
               <button onClick={() => setShowBulkUpload(false)} className="p-1 rounded hover:bg-muted"><X size={18} className="text-muted-foreground" /></button>
             </div>
             <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing student details.</p>
-            <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Index Number, Email, Programme, Department</p>
+            <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Index Number, Email, Programme, Department, Cohort (optional: January or July)</p>
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
             <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
               <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
@@ -199,27 +219,52 @@ const ManageStudents = () => {
                   <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="student@umat.edu.gh" />
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Admission Cohort *</label>
+                <select 
+                  value={form.cohort} 
+                  onChange={(e) => setForm({ ...form, cohort: e.target.value, program: "" })} 
+                  className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
+                >
+                  <option value="January">January - June</option>
+                  <option value="July">July - December</option>
+                </select>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Programme *</label>
-                  <select value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                    <option value="">Select programme</option>
-                    <option>MSc. Information Technology</option>
-                    <option>MPhil Computer Science</option>
-                    <option>MSc. Mining Engineering</option>
-                    <option>MSc. Electrical Engineering</option>
-                    <option>MSc. Mechanical Engineering</option>
+                  <label className="text-xs font-medium text-muted-foreground">Department *</label>
+                  <select 
+                    value={form.department} 
+                    onChange={(e) => setForm({ ...form, department: e.target.value, program: "" })} 
+                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
+                  >
+                    <option value="">Select department</option>
+                    {availableDepartments.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Department *</label>
-                  <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                    <option value="">Select department</option>
-                    <option>Computer Science</option>
-                    <option>Mining Engineering</option>
-                    <option>Electrical Engineering</option>
-                    <option>Mechanical Engineering</option>
+                  <label className="text-xs font-medium text-muted-foreground">Programme *</label>
+                  <select 
+                    value={form.program} 
+                    onChange={(e) => setForm({ ...form, program: e.target.value })} 
+                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
+                    disabled={!form.department}
+                  >
+                    <option value="">Select programme</option>
+                    {availableProgrammes.map((prog) => (
+                      <option key={prog.label} value={prog.label}>
+                        {prog.label}
+                      </option>
+                    ))}
                   </select>
+                  {!form.department && (
+                    <p className="text-xs text-muted-foreground mt-1">Select department first</p>
+                  )}
+                  {form.department && availableProgrammes.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">No programmes available for {form.cohort} cohort</p>
+                  )}
                 </div>
               </div>
               <Button onClick={handleEnroll} disabled={saving} className="w-full gradient-gold text-secondary-foreground hover:opacity-90">

@@ -5,6 +5,8 @@ router.use(authenticate);
 router.get("/student/:studentId", ctrl.getByStudent);
 router.get("/cwa/:studentId", ctrl.getCWA);
 router.get("/batches", ctrl.getBatches);
+router.post("/grades/by-index", authorize("ExamsOfficer", "Admin", "Dean", "ViceDean"), ctrl.enterGradesByIndex);
 router.post("/grades", authorize("ExamsOfficer", "Admin", "Dean", "ViceDean"), ctrl.enterGrades);
 router.put("/batches/:id/publish", authorize("ExamsOfficer", "Admin", "Dean", "ViceDean"), ctrl.publishBatch);
+router.delete("/batches/:id", authorize("ExamsOfficer", "Admin", "Dean", "ViceDean"), ctrl.deleteBatch);
 module.exports = router;
