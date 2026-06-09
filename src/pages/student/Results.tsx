@@ -1,55 +1,150 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, TrendingUp, TrendingDown, Minus, FileText } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/api";
 
-const semesters = [
-  {
-    label: "Semester 1, 2023/2024",
-    short: "S1 23/24",
-    courses: [
-      { code: "CS 501", name: "Discrete Mathematics", credits: 3, grade: "B+", marks: 74 },
-      { code: "CS 503", name: "Data Structures & Algorithms", credits: 3, grade: "A", marks: 83 },
-      { code: "CS 505", name: "Statistics for Computing", credits: 3, grade: "A-", marks: 77 },
-    ],
-  },
-  {
-    label: "Semester 2, 2023/2024",
-    short: "S2 23/24",
-    courses: [
-      { code: "CS 502", name: "Software Engineering", credits: 3, grade: "A", marks: 85 },
-      { code: "CS 504", name: "Computer Networks", credits: 3, grade: "B+", marks: 73 },
-      { code: "CS 506", name: "Operating Systems", credits: 3, grade: "A", marks: 84 },
-    ],
-  },
-  {
-    label: "Semester 1, 2024/2025",
-    short: "S1 24/25",
-    courses: [
-      { code: "CS 601", name: "Advanced Database Systems", credits: 3, grade: "A", marks: 82 },
-      { code: "CS 603", name: "Research Methodology", credits: 3, grade: "B+", marks: 74 },
-      { code: "CS 605", name: "Machine Learning", credits: 3, grade: "A-", marks: 78 },
-      { code: "CS 607", name: "Network Security", credits: 3, grade: "A", marks: 85 },
-      { code: "CS 611", name: "Data Mining & Analytics", credits: 3, grade: "B+", marks: 73 },
-    ],
-  },
-];
+interface GradeData {
+  id: string;
+  code: string;
+  course_name: string;
+  credits: number;
+  grade: string;
+  marks: number;
+  semester: number;
+  academic_year: string;
+}
+
+interface SemesterResult {
+  label: string;
+  short: string;
+  courses: { code: string; name: string; credits: number; grade: string; marks: number }[];
+  cwa: number;
+}
 
 const calcCwa = (courses: { marks: number; credits: number }[]) => {
+  if (courses.length === 0) return 0;
   const totalCredits = courses.reduce((s, c) => s + c.credits, 0);
+  if (totalCredits === 0) return 0;
   return courses.reduce((s, c) => s + c.marks * c.credits, 0) / totalCredits;
 };
 
-const semesterData = semesters.map((sem) => ({
-  ...sem,
-  cwa: calcCwa(sem.courses),
-}));
-
-const allCourses = semesters.flatMap((s) => s.courses);
-const overallCwa = calcCwa(allCourses);
-
 const Results = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [semesterData, setSemesterData] = useState<SemesterResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        if (!user?.id) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch grades for the student
+        const grades = await apiFetch(`/results/student/${user.id}`);
+        
+        if (!grades || grades.length === 0) {
+          setSemesterData([]);
+          setLoading(false);
+          return;
+        }
+
+        // Group by semester and academic year
+        const grouped: Record<string, GradeData[]> = {};
+        grades.forEach((g: GradeData) => {
+          const key = `${g.academic_year}-S${g.semester}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(g);
+        });
+
+        // Transform into semester data
+        const semesters: SemesterResult[] = Object.entries(grouped)
+          .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
+          .map(([key, courses]) => {
+            const [academicYear, semester] = key.split("-");
+            const sem = parseInt(semester.replace("S", ""));
+            return {
+              label: `Semester ${sem}, ${academicYear}`,
+              short: `S${sem} ${academicYear.split("/").map(y => y.slice(-2)).join("/")}`,
+              courses: courses.map((c) => ({
+                code: c.code,
+                name: c.course_name,
+                credits: c.credits,
+                grade: c.grade,
+                marks: c.marks,
+              })),
+              cwa: 0,
+            };
+          });
+
+        // Calculate CWA for each semester
+        semesters.forEach((s) => {
+          s.cwa = calcCwa(s.courses);
+        });
+
+        setSemesterData(semesters);
+        setError(null);
+      } catch (err) {
+        setError((err as Error).message);
+        setSemesterData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, [user?.id]);
+
+  const allCourses = semesterData.flatMap((s) => s.courses);
+  const overallCwa = calcCwa(allCourses);
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-16">
+          <div className="text-center">
+            <Loader size={40} className="animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading your results...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive">
+          <p><strong>Error loading results:</strong> {error}</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (semesterData.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-display text-foreground">Academic Results</h1>
+            <p className="text-muted-foreground mt-1">Performance overview across all semesters</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-12 text-center">
+          <BarChart3 size={40} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">No results available</h3>
+          <p className="text-sm text-muted-foreground">Your results will appear here once they are published by the exams officer</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
