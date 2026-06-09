@@ -92,12 +92,12 @@ exports.create = async (req, res) => {
 };
 
 // POST /api/students/enroll
-// Accepts: { name, email, index, program, department, admission_year }
+// Accepts: { name, email, index, program, department, admission_year, admission_cycle }
 // Creates a user (role=Student) and student record; creates program/department if missing
 exports.enroll = async (req, res) => {
   const client = await db.pool.connect();
   try {
-    const { name, email, index, program, department, admission_year } = req.body;
+    const { name, email, index, program, department, admission_year, admission_cycle } = req.body;
     if (!name || !email || !index) return res.status(400).json({ error: "Missing required fields" });
 
     const [first_name, ...rest] = name.trim().split(/\s+/);
@@ -148,11 +148,12 @@ exports.enroll = async (req, res) => {
     }
 
     const admYear = admission_year || new Date().getFullYear();
+    const admCycle = admission_cycle || "January";
 
     const stud = await client.query(
-      `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, index, programId, deptId, admYear]
+      `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year, admission_cycle)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [userId, index, programId, deptId, admYear, admCycle]
     );
 
     // fetch full student record with joined names
@@ -193,17 +194,38 @@ exports.update = async (req, res) => {
   }
 };
 
-// DELETE /api/students/:id (soft delete via status)
+// DELETE /api/students/:id (hard delete)
 exports.remove = async (req, res) => {
+  const client = await db.pool.connect();
   try {
-    const result = await db.query(
-      "UPDATE students SET status = 'Inactive', updated_at = NOW() WHERE id = $1 RETURNING id",
+    await client.query("BEGIN");
+    
+    // Get student's user_id before deletion
+    const studentQuery = await client.query(
+      "SELECT user_id FROM students WHERE id = $1",
       [req.params.id]
     );
-    if (result.rows.length === 0) return res.status(404).json({ error: "Student not found" });
-    res.json({ message: "Student deactivated" });
+    
+    if (studentQuery.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Student not found" });
+    }
+    
+    const userId = studentQuery.rows[0].user_id;
+    
+    // Delete student record first (due to foreign key)
+    await client.query("DELETE FROM students WHERE id = $1", [req.params.id]);
+    
+    // Delete associated user account
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+    
+    await client.query("COMMIT");
+    res.json({ message: "Student deleted successfully" });
   } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 };
 
@@ -254,6 +276,7 @@ exports.parseBulk = async (req, res) => {
       email: ["email", "emailaddress", "mail"],
       program: ["program", "programme", "course", "programname", "programmename"],
       department: ["department", "dept", "departmentname"],
+      cohort: ["cohort", "admissioncycle", "cycle", "intake"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
       const idx = normalized.findIndex((h) => aliases.includes(h));
@@ -265,16 +288,25 @@ exports.parseBulk = async (req, res) => {
       colMap.email = 2;
       colMap.program = 3;
       colMap.department = 4;
+      colMap.cohort = 5;
     }
 
     // parse rows
-    const parsed = rows.slice(1).map((cols) => ({
-      name: (cols[colMap.name ?? 0] || "").toString().trim(),
-      index: (cols[colMap.index ?? 1] || "").toString().trim(),
-      email: (cols[colMap.email ?? 2] || "").toString().trim(),
-      program: (cols[colMap.program ?? 3] || "").toString().trim(),
-      department: (cols[colMap.department ?? 4] || "").toString().trim(),
-    })).filter((s) => s.name && s.index);
+    const parsed = rows.slice(1).map((cols) => {
+      const cohortVal = (cols[colMap.cohort ?? 5] || "").toString().trim().toLowerCase();
+      let cohort = "January"; // default
+      if (cohortVal.includes("july") || cohortVal.includes("jul") || cohortVal === "2") {
+        cohort = "July";
+      }
+      return {
+        name: (cols[colMap.name ?? 0] || "").toString().trim(),
+        index: (cols[colMap.index ?? 1] || "").toString().trim(),
+        email: (cols[colMap.email ?? 2] || "").toString().trim(),
+        program: (cols[colMap.program ?? 3] || "").toString().trim(),
+        department: (cols[colMap.department ?? 4] || "").toString().trim(),
+        admission_cycle: cohort,
+      };
+    }).filter((s) => s.name && s.index);
 
     if (parsed.length === 0) {
       return res.status(400).json({ error: "No valid student records found" });
@@ -300,7 +332,7 @@ exports.enrollBulk = async (req, res) => {
     const errors = [];
 
     for (let i = 0; i < students.length; i++) {
-      const { name, email, index, program, department, admission_year } = students[i];
+      const { name, email, index, program, department, admission_year, admission_cycle } = students[i];
       if (!name || !email || !index) {
         errors.push(`Row ${i + 1}: Missing required fields`);
         continue;
@@ -357,11 +389,12 @@ exports.enrollBulk = async (req, res) => {
         }
 
         const admYear = admission_year || new Date().getFullYear();
+        const admCycle = admission_cycle || "January";
 
         const stud = await client.query(
-          `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year)
-           VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-          [userId, index, programId, deptId, admYear]
+          `INSERT INTO students (user_id, index_number, program_id, department_id, admission_year, admission_cycle)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [userId, index, programId, deptId, admYear, admCycle]
         );
 
         // fetch full student record

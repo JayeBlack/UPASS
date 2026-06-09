@@ -1,7 +1,11 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+<<<<<<< HEAD
 import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, FileText, Loader } from "lucide-react";
+=======
+import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, FileText, Loader2 } from "lucide-react";
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
 import { readSheetFile, SHEET_ACCEPT } from "@/lib/sheet-import";
 import { apiFetch } from "@/lib/api";
 
@@ -18,7 +22,6 @@ interface GradeRow {
 
 const VALID_INDEX_PATTERN = /^UMaT\/PG\/\d{4}\/\d{2}$/;
 
-// UMaT grading scale
 const marksToGrade = (m: number): string => {
   if (m >= 80) return "A";
   if (m >= 70) return "B";
@@ -50,12 +53,25 @@ interface CWAResult {
 
 type BatchStatus = "Draft" | "Published";
 
+const currentYear = new Date().getFullYear();
+const academicYearOptions = [
+  `${currentYear - 1}/${currentYear}`,
+  `${currentYear}/${currentYear + 1}`,
+  `${currentYear + 1}/${currentYear + 2}`,
+];
+
 const GradeEntry = () => {
   const [rows, setRows] = useState<GradeRow[]>([]);
   const [cwaResults, setCwaResults] = useState<CWAResult[]>([]);
   const [status, setStatus] = useState<BatchStatus>("Draft");
+<<<<<<< HEAD
   const [isPublishing, setIsPublishing] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
+=======
+  const [publishing, setPublishing] = useState(false);
+  const [semester, setSemester] = useState("Semester 1");
+  const [academicYear, setAcademicYear] = useState(academicYearOptions[1]);
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -83,8 +99,8 @@ const GradeEntry = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const rows = await readSheetFile(file);
-      const dataRows = rows.slice(1).filter((r) => r.some((c) => c !== ""));
+      const data = await readSheetFile(file);
+      const dataRows = data.slice(1).filter((r) => r.some((c) => c !== ""));
       const newRows: GradeRow[] = dataRows.map((cols, i) => {
         const [indexNumber = "", studentName = "", courseName = "", credits = "", marks = ""] = cols;
         const { valid, errors } = validateRow({ indexNumber, studentName, courseName, credits, marks });
@@ -129,6 +145,7 @@ const GradeEntry = () => {
       toast({ title: "Calculate CWA first", description: "Run CWA calculation before publishing", variant: "destructive" });
       return;
     }
+<<<<<<< HEAD
 
     setIsPublishing(true);
     try {
@@ -181,13 +198,47 @@ const GradeEntry = () => {
     } catch (err) {
       toast({ title: "Delete failed", description: (err as Error).message, variant: "destructive" });
     }
+=======
+    setPublishing(true);
+    try {
+      const grades = rows.filter((r) => r.valid).map((r) => ({
+        student_index: r.indexNumber,
+        student_name: r.studentName,
+        course_name: r.courseName,
+        grade: marksToGrade(Number(r.marks)),
+        marks: Number(r.marks),
+        credits: Number(r.credits),
+      }));
+      const res = await apiFetch<{ message: string; errors?: string[] }>("/results/grades/by-index", {
+        method: "POST",
+        body: JSON.stringify({ grades, semester, academic_year: academicYear }),
+      });
+      if (res.errors?.length) {
+        toast({ title: `Published with ${res.errors.length} error(s)`, description: res.errors.slice(0, 3).join(", "), variant: "destructive" });
+      } else {
+        toast({ title: "Results published", description: `${res.message} — visible to students` });
+      }
+      setStatus("Published");
+    } catch (err: any) {
+      toast({ title: "Publish failed", description: err.message, variant: "destructive" });
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const clearAll = () => {
+    setCwaResults([]);
+    setRows([]);
+    setStatus("Draft");
+    toast({ title: "Cleared", description: "Grade entry has been reset" });
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
   };
 
   const allValid = rows.length > 0 && rows.every((r) => r.valid);
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold font-display text-foreground">Grade Entry</h1>
@@ -205,6 +256,23 @@ const GradeEntry = () => {
           <button onClick={addRow} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
             <Plus size={14} /> Add Row
           </button>
+        </div>
+      </div>
+
+      {/* Semester & Year selectors */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Semester</label>
+          <select value={semester} onChange={(e) => setSemester(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option>Semester 1</option>
+            <option>Semester 2</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
+          <select value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            {academicYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
       </div>
 
@@ -237,36 +305,36 @@ const GradeEntry = () => {
                   const marksNum = Number(r.marks);
                   const derivedGrade = r.marks !== "" && Number.isFinite(marksNum) && marksNum >= 0 && marksNum <= 100 ? marksToGrade(marksNum) : "—";
                   return (
-                  <tr key={r.id} className={`border-b border-border last:border-0 ${!r.valid ? "bg-destructive/5" : ""}`}>
-                    <td className="px-4 py-2">
-                      <input value={r.indexNumber} onChange={(e) => updateRow(r.id, "indexNumber", e.target.value)} placeholder="UMaT/PG/0234/22" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input value={r.studentName} onChange={(e) => updateRow(r.id, "studentName", e.target.value)} placeholder="Student name" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input value={r.courseName} onChange={(e) => updateRow(r.id, "courseName", e.target.value)} placeholder="Course name" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input type="number" min={1} step={1} value={r.credits} onChange={(e) => updateRow(r.id, "credits", e.target.value)} placeholder="3" className="w-20 px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring" />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input type="number" min={0} max={100} step="0.01" value={r.marks} onChange={(e) => updateRow(r.id, "marks", e.target.value)} placeholder="0–100" className="w-24 px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring" />
-                    </td>
-                    <td className="px-4 py-2 text-center text-sm font-semibold text-foreground">{derivedGrade}</td>
-                    <td className="px-4 py-2 text-center">
-                      {r.valid ? <CheckCircle size={16} className="inline text-success" /> : (
-                        <span className="inline-flex items-center gap-1 text-xs text-destructive" title={r.errors.join("; ")}>
-                          <AlertTriangle size={14} /> {r.errors.length} error{r.errors.length > 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <button onClick={() => removeRow(r.id)} className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-destructive">
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
+                    <tr key={r.id} className={`border-b border-border last:border-0 ${!r.valid ? "bg-destructive/5" : ""}`}>
+                      <td className="px-4 py-2">
+                        <input value={r.indexNumber} onChange={(e) => updateRow(r.id, "indexNumber", e.target.value)} placeholder="UMaT/PG/0234/22" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={r.studentName} onChange={(e) => updateRow(r.id, "studentName", e.target.value)} placeholder="Student name" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={r.courseName} onChange={(e) => updateRow(r.id, "courseName", e.target.value)} placeholder="Course name" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input type="number" min={1} step={1} value={r.credits} onChange={(e) => updateRow(r.id, "credits", e.target.value)} placeholder="3" className="w-20 px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input type="number" min={0} max={100} step="0.01" value={r.marks} onChange={(e) => updateRow(r.id, "marks", e.target.value)} placeholder="0–100" className="w-24 px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground text-center focus:outline-none focus:ring-1 focus:ring-ring" />
+                      </td>
+                      <td className="px-4 py-2 text-center text-sm font-semibold text-foreground">{derivedGrade}</td>
+                      <td className="px-4 py-2 text-center">
+                        {r.valid ? <CheckCircle size={16} className="inline text-success" /> : (
+                          <span className="inline-flex items-center gap-1 text-xs text-destructive" title={r.errors.join("; ")}>
+                            <AlertTriangle size={14} /> {r.errors.length} error{r.errors.length > 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <button onClick={() => removeRow(r.id)} className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-destructive">
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -276,10 +344,11 @@ const GradeEntry = () => {
       )}
 
       {rows.length > 0 && (
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-3 mb-8 flex-wrap">
           <button onClick={calculateCWA} disabled={!allValid} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             Calculate CWA
           </button>
+<<<<<<< HEAD
           <button onClick={publishResults} disabled={!allValid || cwaResults.length === 0 || status === "Published" || isPublishing} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">
             {isPublishing ? <Loader size={14} className="animate-spin" /> : null}
             {status === "Published" ? "Published" : "Publish Results"}
@@ -289,6 +358,19 @@ const GradeEntry = () => {
               {status === "Published" ? "Delete Published Results" : "Clear Draft"}
             </button>
           )}
+=======
+          <button
+            onClick={publishResults}
+            disabled={!allValid || cwaResults.length === 0 || status === "Published" || publishing}
+            className="px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {publishing && <Loader2 size={14} className="animate-spin" />}
+            {status === "Published" ? "Published" : "Publish Results"}
+          </button>
+          <button onClick={clearAll} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
+            {status === "Published" ? "Clear & Start New" : "Clear Draft"}
+          </button>
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
         </div>
       )}
 
@@ -303,7 +385,7 @@ const GradeEntry = () => {
       {cwaResults.length > 0 && (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-foreground">CWA Results</h2>
+            <h2 className="font-display text-lg font-bold text-foreground">CWA Results — {semester}, {academicYear}</h2>
             <span className="text-xs text-muted-foreground">Credit-weighted: Σ(marks × credits) / Σ(credits)</span>
           </div>
           <div className="overflow-x-auto">

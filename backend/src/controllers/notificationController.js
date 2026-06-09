@@ -1,5 +1,17 @@
 const db = require("../db");
 
+// Helper function to create notification
+async function createNotification(userId, type, title, message, severity = 'info') {
+  try {
+    await db.query(
+      `INSERT INTO notifications (user_id, title, message, type, severity) VALUES ($1, $2, $3, $4, $5)`,
+      [userId, title, message, type, severity]
+    );
+  } catch (err) {
+    console.error('Failed to create notification:', err);
+  }
+}
+
 // GET /api/notifications
 exports.getForUser = async (req, res) => {
   try {
@@ -56,3 +68,6 @@ exports.create = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Export helper for use in other controllers
+exports.createNotification = createNotification;

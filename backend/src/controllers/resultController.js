@@ -1,4 +1,5 @@
 const db = require("../db");
+const { createNotification } = require("./notificationController");
 
 // GET /api/results/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -32,14 +33,22 @@ exports.getByStudent = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 // POST /api/results/batch-upload (upload grades from CSV/Excel)
 exports.batchUpload = async (req, res) => {
   try {
     const { grades, semester, academicYear } = req.body;
+=======
+// POST /api/results/grades/by-index (batch grade entry by index number — used by GradeEntry UI)
+exports.enterGradesByIndex = async (req, res) => {
+  try {
+    const { grades, semester, academic_year } = req.body;
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
     if (!grades || !Array.isArray(grades) || grades.length === 0) {
       return res.status(400).json({ error: "Grades array required" });
     }
 
+<<<<<<< HEAD
     const results = [];
     const failedRows = [];
 
@@ -145,6 +154,78 @@ exports.deleteBatch = async (req, res) => {
     );
 
     res.json({ message: "Batch deleted successfully" });
+=======
+    // Convert semester string to number ("Semester 1" -> 1)
+    const semesterNum = typeof semester === 'string' ? parseInt(semester.replace(/\D/g, '')) || 1 : semester;
+
+    const results = [];
+    const errors = [];
+
+    for (const g of grades) {
+      try {
+        // resolve student by index number
+        const studentRes = await db.query(
+          "SELECT id FROM students WHERE index_number = $1",
+          [g.student_index]
+        );
+        if (studentRes.rows.length === 0) {
+          errors.push(`Student not found: ${g.student_index}`);
+          continue;
+        }
+        const student_id = studentRes.rows[0].id;
+
+        // find or create course by name
+        let courseRes = await db.query(
+          "SELECT id FROM courses WHERE LOWER(name) = LOWER($1)",
+          [g.course_name]
+        );
+        let course_id;
+        if (courseRes.rows.length > 0) {
+          course_id = courseRes.rows[0].id;
+        } else {
+          const newCourse = await db.query(
+            "INSERT INTO courses (name, code, credits) VALUES ($1, $2, $3) RETURNING id",
+            [g.course_name, g.course_name.substring(0, 10).toUpperCase().replace(/\s+/g, ""), g.credits || 3]
+          );
+          course_id = newCourse.rows[0].id;
+        }
+
+        const r = await db.query(
+          `INSERT INTO grades (student_id, course_id, grade, marks, semester, academic_year, entered_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (student_id, course_id, academic_year) DO UPDATE
+           SET grade = $3, marks = $4, entered_by = $7
+           RETURNING *`,
+          [student_id, course_id, g.grade, g.marks, semesterNum, academic_year, req.user.id]
+        );
+        results.push(r.rows[0]);
+      } catch (err) {
+        errors.push(`${g.student_index}: ${err.message}`);
+      }
+    }
+
+    // create a result batch record
+    if (results.length > 0) {
+      await db.query(
+        `INSERT INTO result_batches (semester, academic_year, status)
+         VALUES ($1, $2, 'Draft')`,
+        [semester, academic_year]
+      );
+    }
+
+    res.status(201).json({ message: `${results.length} grades entered`, errors: errors.length ? errors : undefined });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// DELETE /api/results/batches/:id
+exports.deleteBatch = async (req, res) => {
+  try {
+    const result = await db.query("DELETE FROM result_batches WHERE id = $1 RETURNING id", [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Batch not found" });
+    res.json({ message: "Batch deleted" });
+>>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -218,6 +299,28 @@ exports.publishBatch = async (req, res) => {
       [req.user.id, req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Batch not found" });
+    
+    const batch = result.rows[0];
+    
+    // Notify all students in the batch
+    const studentsQuery = await db.query(
+      `SELECT DISTINCT s.user_id 
+       FROM grades g
+       JOIN students s ON g.student_id = s.id
+       WHERE g.academic_year = $1 AND g.semester = $2`,
+      [batch.academic_year, batch.semester]
+    );
+    
+    for (const student of studentsQuery.rows) {
+      await createNotification(
+        student.user_id,
+        'exam',
+        'Results Published',
+        `Your ${batch.semester} results for ${batch.academic_year} are now available!`,
+        'success'
+      );
+    }
+    
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

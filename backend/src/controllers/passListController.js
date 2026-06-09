@@ -32,20 +32,29 @@ exports.getAll = async (req, res) => {
 exports.generate = async (req, res) => {
   try {
     const { academic_year, min_cwa } = req.body;
+    const year = academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+    const minCwa = parseFloat(min_cwa) || 45;
+    
+    // Delete existing graduands for this academic year to regenerate fresh
+    await db.query(`DELETE FROM graduands WHERE academic_year = $1`, [year]);
+    
     // Auto-generate pass list from grades
     const result = await db.query(`
       INSERT INTO graduands (student_id, academic_year, cwa, status)
       SELECT s.id, $1,
-             ROUND(SUM(g.marks * c.credits) / SUM(c.credits), 2),
-             CASE WHEN SUM(g.marks * c.credits) / SUM(c.credits) >= $2 THEN 'Eligible' ELSE 'Ineligible' END
+             ROUND(SUM(g.marks * c.credits) / NULLIF(SUM(c.credits), 0), 2),
+             CASE 
+               WHEN SUM(g.marks * c.credits) / NULLIF(SUM(c.credits), 0) >= $2 THEN 'Eligible' 
+               ELSE 'Ineligible' 
+             END
       FROM students s
       JOIN grades g ON g.student_id = s.id
       JOIN courses c ON g.course_id = c.id
       WHERE s.status = 'Active'
       GROUP BY s.id
-      ON CONFLICT DO NOTHING
+      HAVING COUNT(g.id) > 0
       RETURNING *
-    `, [academic_year || "2025/2026", min_cwa || 45]);
+    `, [year, minCwa]);
 
     res.json({ message: `${result.rows.length} graduands processed`, data: result.rows });
   } catch (err) {

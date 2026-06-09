@@ -1,4 +1,5 @@
 const db = require("../db");
+const { createNotification } = require("./notificationController");
 
 // GET /api/clearance/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -44,10 +45,24 @@ exports.approve = async (req, res) => {
   try {
     const result = await db.query(
       `UPDATE clearance_steps SET status = 'cleared', cleared_by = $1, cleared_at = NOW()
-       WHERE id = $2 RETURNING *`,
+       WHERE id = $2 RETURNING *, student_id, department`,
       [req.body.cleared_by || "System", req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Step not found" });
+    
+    // Notify student
+    const step = result.rows[0];
+    const studentQuery = await db.query('SELECT user_id FROM students WHERE id = $1', [step.student_id]);
+    if (studentQuery.rows.length > 0) {
+      await createNotification(
+        studentQuery.rows[0].user_id,
+        'clearance',
+        'Clearance Approved',
+        `Your ${step.department} clearance has been approved!`,
+        'success'
+      );
+    }
+    
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,10 +74,24 @@ exports.reject = async (req, res) => {
   try {
     const result = await db.query(
       `UPDATE clearance_steps SET status = 'not_started', note = $1
-       WHERE id = $2 RETURNING *`,
+       WHERE id = $2 RETURNING *, student_id, department`,
       [req.body.note || "Rejected", req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Step not found" });
+    
+    // Notify student
+    const step = result.rows[0];
+    const studentQuery = await db.query('SELECT user_id FROM students WHERE id = $1', [step.student_id]);
+    if (studentQuery.rows.length > 0) {
+      await createNotification(
+        studentQuery.rows[0].user_id,
+        'clearance',
+        'Clearance Requires Attention',
+        `Your ${step.department} clearance needs attention. Please check details.`,
+        'warning'
+      );
+    }
+    
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -26,6 +26,9 @@ export interface User {
   avatarUrl?: string;
   isSuperAdmin?: boolean;
   mustChangePassword?: boolean;
+  admissionCycle?: string;
+  departmentId?: number;
+  programId?: number;
 }
 
 interface AuthContextType {
@@ -49,10 +52,15 @@ type ApiUser = {
   role: string;
   department_name?: string;
   program_name?: string;
+  department?: string;  // Direct field from backend
+  program?: string;     // Direct field from backend
   index_number?: string;
   avatar_url?: string;
   is_super_admin?: boolean;
   must_change_password?: boolean;
+  admission_cycle?: string;
+  department_id?: number;
+  program_id?: number;
 };
 
 const mapUser = (u: ApiUser): User => ({
@@ -60,12 +68,17 @@ const mapUser = (u: ApiUser): User => ({
   email: u.email,
   name: u.name || `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || u.email,
   role: u.role as UserRole,
-  department: u.department_name || undefined,
-  program: u.program_name || undefined,
+  // Prioritize direct 'department' field from backend, fallback to 'department_name'
+  department: u.department || u.department_name || undefined,
+  // Prioritize direct 'program' field from backend, fallback to 'program_name'
+  program: u.program || u.program_name || undefined,
   indexNumber: u.index_number || undefined,
   avatarUrl: u.avatar_url || undefined,
   isSuperAdmin: !!u.is_super_admin,
   mustChangePassword: !!u.must_change_password,
+  admissionCycle: u.admission_cycle || undefined,
+  departmentId: u.department_id || undefined,
+  programId: u.program_id || undefined,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

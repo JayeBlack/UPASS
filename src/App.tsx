@@ -27,6 +27,7 @@ import GeneratePassList from "./pages/exams-officer/GeneratePassList";
 import PublishResults from "./pages/exams-officer/PublishResults";
 
 import ManageStudents from "./pages/admin/ManageStudents";
+import ManageDocuments from "./pages/admin/ManageDocuments";
 import FeesStatus from "./pages/admin/FeesStatus";
 import PassList from "./pages/admin/PassList";
 import Analytics from "./pages/admin/Analytics";
@@ -35,6 +36,7 @@ import ManageUsers from "./pages/admin/ManageUsers";
 import SupervisorAssignments from "./pages/admin/SupervisorAssignments";
 import ClearanceApprovals from "./pages/dean/ClearanceApprovals";
 import CWAResults from "./pages/dean/CWAResults";
+import DeanDocuments from "./pages/dean/DeanDocuments";
 import FeeAnalytics from "./pages/accountant/FeeAnalytics";
 import ExportReports from "./pages/accountant/ExportReports";
 import FeeAnnouncements from "./pages/accountant/FeeAnnouncements";
@@ -75,11 +77,13 @@ const App = () => (
             <Route path="/admin/passlist" element={<RequireAuth><PassList /></RequireAuth>} />
             <Route path="/admin/analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
             <Route path="/admin/log" element={<RequireAuth><SystemLog /></RequireAuth>} />
+            <Route path="/admin/documents" element={<RequireAuth><ManageDocuments /></RequireAuth>} />
             <Route path="/admin/users" element={<RequireAuth><ManageUsers /></RequireAuth>} />
             <Route path="/admin/assignments" element={<RequireAuth><SupervisorAssignments /></RequireAuth>} />
             {/* Dean */}
             <Route path="/dean/clearance" element={<RequireAuth><ClearanceApprovals /></RequireAuth>} />
             <Route path="/dean/results" element={<RequireAuth><CWAResults /></RequireAuth>} />
+            <Route path="/dean/documents" element={<RequireAuth><DeanDocuments /></RequireAuth>} />
             {/* Accountant */}
             <Route path="/accountant/analytics" element={<RequireAuth><FeeAnalytics /></RequireAuth>} />
             <Route path="/accountant/reports" element={<RequireAuth><ExportReports /></RequireAuth>} />

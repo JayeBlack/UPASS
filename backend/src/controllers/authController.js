@@ -63,45 +63,61 @@ exports.login = async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES_IN || "24h" }
     );
 
+    // Build base user object
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: `${user.first_name} ${user.last_name}`,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      avatar_url: user.avatar_url,
+      department_id: user.department_id || null,
+      is_super_admin: !!user.is_super_admin,
+      must_change_password: !!user.must_change_password,
+    };
+
     // Fetch role-specific profile data
-    let profile = {};
     if (user.role === "Student") {
       const s = await db.query(
-        `SELECT s.*, p.name as program_name, d.name as department_name
+        `SELECT s.index_number, s.program_id, s.department_id, s.admission_cycle, 
+                p.name as program_name, d.name as department_name
          FROM students s
          LEFT JOIN programs p ON s.program_id = p.id
          LEFT JOIN departments d ON s.department_id = d.id
          WHERE s.user_id = $1`,
         [user.id]
       );
-      if (s.rows.length > 0) profile = s.rows[0];
+      if (s.rows.length > 0) {
+        const studentData = s.rows[0];
+        // Map database fields to frontend expected fields
+        userResponse.index_number = studentData.index_number;
+        userResponse.program_id = studentData.program_id;
+        userResponse.department_id = studentData.department_id;
+        userResponse.program_name = studentData.program_name; // Keep for table display
+        userResponse.department_name = studentData.department_name; // Keep for table display
+        userResponse.program = studentData.program_name; // Frontend expects 'program'
+        userResponse.department = studentData.department_name; // Frontend expects 'department'
+        userResponse.admission_cycle = studentData.admission_cycle;
+      }
     } else if (user.role === "Supervisor") {
       const s = await db.query(
-        `SELECT s.*, d.name as department_name
+        `SELECT s.staff_id, s.department_id, d.name as department_name
          FROM supervisors s
          LEFT JOIN departments d ON s.department_id = d.id
          WHERE s.user_id = $1`,
         [user.id]
       );
-      if (s.rows.length > 0) profile = s.rows[0];
+      if (s.rows.length > 0) {
+        const supervisorData = s.rows[0];
+        userResponse.staff_id = supervisorData.staff_id;
+        userResponse.department_id = supervisorData.department_id;
+        userResponse.department_name = supervisorData.department_name;
+        userResponse.department = supervisorData.department_name;
+      }
     }
 
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: `${user.first_name} ${user.last_name}`,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        avatar_url: user.avatar_url,
-        department_id: user.department_id || null,
-        is_super_admin: !!user.is_super_admin,
-        must_change_password: !!user.must_change_password,
-        ...profile,
-      },
-    });
+    res.json({ token, user: userResponse });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -116,7 +132,9 @@ exports.me = async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "User not found" });
     const u = result.rows[0];
-    res.json({
+
+    // Build base user object
+    const userResponse = {
       id: u.id,
       email: u.email,
       role: u.role,
@@ -128,7 +146,48 @@ exports.me = async (req, res) => {
       department_id: u.department_id,
       is_super_admin: !!u.is_super_admin,
       must_change_password: !!u.must_change_password,
-    });
+    };
+
+    // Fetch role-specific profile data (same as login)
+    if (u.role === "Student") {
+      const s = await db.query(
+        `SELECT s.index_number, s.program_id, s.department_id, s.admission_cycle, 
+                p.name as program_name, d.name as department_name
+         FROM students s
+         LEFT JOIN programs p ON s.program_id = p.id
+         LEFT JOIN departments d ON s.department_id = d.id
+         WHERE s.user_id = $1`,
+        [u.id]
+      );
+      if (s.rows.length > 0) {
+        const studentData = s.rows[0];
+        userResponse.index_number = studentData.index_number;
+        userResponse.program_id = studentData.program_id;
+        userResponse.department_id = studentData.department_id;
+        userResponse.program_name = studentData.program_name;
+        userResponse.department_name = studentData.department_name;
+        userResponse.program = studentData.program_name; // Frontend expects 'program'
+        userResponse.department = studentData.department_name; // Frontend expects 'department'
+        userResponse.admission_cycle = studentData.admission_cycle;
+      }
+    } else if (u.role === "Supervisor") {
+      const s = await db.query(
+        `SELECT s.staff_id, s.department_id, d.name as department_name
+         FROM supervisors s
+         LEFT JOIN departments d ON s.department_id = d.id
+         WHERE s.user_id = $1`,
+        [u.id]
+      );
+      if (s.rows.length > 0) {
+        const supervisorData = s.rows[0];
+        userResponse.staff_id = supervisorData.staff_id;
+        userResponse.department_id = supervisorData.department_id;
+        userResponse.department_name = supervisorData.department_name;
+        userResponse.department = supervisorData.department_name;
+      }
+    }
+
+    res.json(userResponse);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

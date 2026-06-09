@@ -1,23 +1,36 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { FileText, Clock, CheckCircle, Plus, GraduationCap, Printer, Download } from "lucide-react";
-import { useState } from "react";
+import { FileText, Clock, CheckCircle, Plus, GraduationCap, Printer, Download, Loader2, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { apiFetch, ApiError } from "@/lib/api";
 
 type DocType = "Recommendation Letter" | "Attestation Letter" | "Transcript (Certified)" | "Letter of Good Standing" | "Other";
 type RequestStatus = "Pending" | "Processing" | "Ready";
 
 interface DocRequest {
   id: string;
-  type: DocType;
+  doc_type: DocType;
   purpose: string;
-  date: string;
+  requested_at: string;
   status: RequestStatus;
 }
 
-const mockRequests: DocRequest[] = [
-  { id: "REQ-001", type: "Recommendation Letter", purpose: "PhD Application – University of Cape Town", date: "2026-01-28", status: "Ready" },
-  { id: "REQ-002", type: "Attestation Letter", purpose: "Employer verification", date: "2026-02-05", status: "Processing" },
-  { id: "REQ-003", type: "Transcript (Certified)", purpose: "Scholarship application", date: "2026-02-10", status: "Pending" },
-];
+interface GradeRecord {
+  code: string;
+  course_name: string;
+  credits: number;
+  grade: string;
+  marks: number;
+  semester: string;
+  academic_year: string;
+}
+
+interface SemesterGroup {
+  label: string;
+  courses: { code: string; name: string; credits: number; grade: string; marks: number }[];
+  cwa: number;
+}
 
 const statusConfig: Record<RequestStatus, { icon: React.ReactNode; className: string }> = {
   Pending: { icon: <Clock size={14} />, className: "bg-muted text-muted-foreground" },
@@ -27,57 +40,99 @@ const statusConfig: Record<RequestStatus, { icon: React.ReactNode; className: st
 
 const docTypes: DocType[] = ["Recommendation Letter", "Attestation Letter", "Transcript (Certified)", "Letter of Good Standing", "Other"];
 
-/* ── Transcript Data ── */
-const semesters = [
-  {
-    label: "Semester 1, 2024/2025",
-    courses: [
-      { code: "CS 601", name: "Advanced Database Systems", credits: 3, grade: "A", marks: 82 },
-      { code: "CS 603", name: "Research Methodology", credits: 3, grade: "B+", marks: 74 },
-      { code: "CS 605", name: "Machine Learning", credits: 3, grade: "A-", marks: 78 },
-    ],
-    cwa: 78.0,
-  },
-  {
-    label: "Semester 2, 2023/2024",
-    courses: [
-      { code: "CS 502", name: "Software Engineering", credits: 3, grade: "A", marks: 85 },
-      { code: "CS 504", name: "Computer Networks", credits: 3, grade: "B+", marks: 73 },
-      { code: "CS 506", name: "Operating Systems", credits: 3, grade: "A", marks: 84 },
-    ],
-    cwa: 80.7,
-  },
-  {
-    label: "Semester 1, 2023/2024",
-    courses: [
-      { code: "CS 501", name: "Discrete Mathematics", credits: 3, grade: "B+", marks: 74 },
-      { code: "CS 503", name: "Data Structures & Algorithms", credits: 3, grade: "A", marks: 83 },
-      { code: "CS 505", name: "Statistics for Computing", credits: 3, grade: "A-", marks: 77 },
-    ],
-    cwa: 78.0,
-  },
-];
-const overallCwa = (semesters.reduce((s, sem) => s + sem.cwa, 0) / semesters.length).toFixed(1);
+const calcCwa = (courses: { marks: number; credits: number }[]) => {
+  const totalCredits = courses.reduce((s, c) => s + c.credits, 0);
+  if (totalCredits === 0) return 0;
+  return courses.reduce((s, c) => s + c.marks * c.credits, 0) / totalCredits;
+};
 
 const DocumentRequests = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"requests" | "transcript">("requests");
   const [showForm, setShowForm] = useState(false);
-  const [requests, setRequests] = useState<DocRequest[]>(mockRequests);
+  const [requests, setRequests] = useState<DocRequest[]>([]);
+  const [grades, setGrades] = useState<GradeRecord[]>([]);
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({ type: docTypes[0] as DocType, purpose: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newReq: DocRequest = {
-      id: `REQ-${String(requests.length + 1).padStart(3, "0")}`,
-      type: formData.type,
-      purpose: formData.purpose,
-      date: new Date().toISOString().split("T")[0],
-      status: "Pending",
-    };
-    setRequests([newReq, ...requests]);
-    setFormData({ type: docTypes[0], purpose: "" });
-    setShowForm(false);
+  // resolve student record once — only for Student role
+  useEffect(() => {
+    if (!user || user.role !== "Student") return;
+    apiFetch<any[]>("/students").then((data) => {
+      const me = data.find((s: any) => String(s.user_id) === String(user.id));
+      if (me) setStudentId(String(me.id));
+    }).catch(() => {});
+  }, [user?.id]);
+
+  const loadRequests = async (silent = false) => {
+    if (!studentId) return;
+    if (!silent) setLoadingRequests(true);
+    try {
+      const data = await apiFetch<DocRequest[]>(`/documents/student/${studentId}`);
+      setRequests(data || []);
+    } catch {
+      // backend offline
+    } finally {
+      if (!silent) setLoadingRequests(false);
+    }
   };
+
+  const loadTranscript = async () => {
+    if (!studentId) return;
+    setLoadingTranscript(true);
+    try {
+      const data = await apiFetch<GradeRecord[]>(`/results/student/${studentId}`);
+      setGrades(data || []);
+    } catch {
+      // backend offline
+    } finally {
+      setLoadingTranscript(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!studentId) return;
+    loadRequests();
+    loadTranscript();
+    const interval = setInterval(() => loadRequests(true), 30000);
+    return () => clearInterval(interval);
+  }, [studentId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentId) return;
+    setSubmitting(true);
+    try {
+      await apiFetch("/documents", {
+        method: "POST",
+        body: JSON.stringify({ student_id: studentId, doc_type: formData.type, purpose: formData.purpose }),
+      });
+      toast({ title: "Request submitted", description: `${formData.type} request has been submitted.` });
+      setFormData({ type: docTypes[0], purpose: "" });
+      setShowForm(false);
+      loadRequests();
+    } catch (err) {
+      toast({ title: "Failed", description: err instanceof ApiError ? err.message : "Error", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // build semester groups from grades
+  const semesterMap = new Map<string, SemesterGroup>();
+  grades.forEach((g) => {
+    const key = `${g.academic_year}__${g.semester}`;
+    if (!semesterMap.has(key)) {
+      semesterMap.set(key, { label: `${g.semester}, ${g.academic_year}`, courses: [], cwa: 0 });
+    }
+    semesterMap.get(key)!.courses.push({ code: g.code || "—", name: g.course_name, credits: g.credits, grade: g.grade, marks: g.marks });
+  });
+  const semesters: SemesterGroup[] = Array.from(semesterMap.values()).map((s) => ({ ...s, cwa: calcCwa(s.courses) }));
+  const overallCwa = grades.length > 0 ? calcCwa(grades.map((g) => ({ marks: g.marks, credits: g.credits }))).toFixed(1) : "—";
 
   return (
     <DashboardLayout>
@@ -90,17 +145,13 @@ const DocumentRequests = () => {
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab("requests")}
-          className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "requests" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "requests" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
         >
           Document Requests
         </button>
         <button
           onClick={() => setActiveTab("transcript")}
-          className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "transcript" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "transcript" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
         >
           Transcript
         </button>
@@ -113,8 +164,8 @@ const DocumentRequests = () => {
               onClick={() => setShowForm(!showForm)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
             >
-              <Plus size={16} />
-              New Request
+              {showForm ? <X size={16} /> : <Plus size={16} />}
+              {showForm ? "Cancel" : "New Request"}
             </button>
           </div>
 
@@ -129,9 +180,7 @@ const DocumentRequests = () => {
                     onChange={(e) => setFormData({ ...formData, type: e.target.value as DocType })}
                     className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    {docTypes.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
+                    {docTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
@@ -149,71 +198,84 @@ const DocumentRequests = () => {
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+                <button type="submit" disabled={submitting} className="px-5 py-2 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center gap-2">
+                  {submitting && <Loader2 size={14} className="animate-spin" />}
                   Submit Request
                 </button>
               </div>
             </form>
           )}
 
-          {/* Desktop table */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Purpose</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requests.map((r) => {
-                    const cfg = statusConfig[r.status];
-                    return (
-                      <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 text-sm font-mono font-medium text-foreground">{r.id}</td>
-                        <td className="px-6 py-4 text-sm text-foreground">{r.type}</td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{r.purpose}</td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{r.date}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
-                            {cfg.icon}
-                            {r.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {loadingRequests ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <Loader2 size={18} className="animate-spin mr-2" /> Loading requests...
             </div>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
-            {requests.map((r) => {
-              const cfg = statusConfig[r.status];
-              return (
-                <div key={r.id} className="bg-card rounded-xl border border-border p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-foreground">{r.type}</p>
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
-                      {cfg.icon}
-                      {r.status}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{r.purpose}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono">{r.id}</span>
-                    <span>{r.date}</span>
-                  </div>
+          ) : requests.length === 0 ? (
+            <div className="bg-card rounded-xl border border-border p-12 text-center">
+              <FileText size={40} className="mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No requests yet</h3>
+              <p className="text-sm text-muted-foreground">Submit a new request to get started.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="bg-card rounded-xl border border-border overflow-hidden hidden md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Document</th>
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Purpose</th>
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
+                        <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requests.map((r) => {
+                        const cfg = statusConfig[r.status] ?? statusConfig.Pending;
+                        return (
+                          <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                            <td className="px-6 py-4 text-sm font-mono font-medium text-foreground">#{r.id}</td>
+                            <td className="px-6 py-4 text-sm text-foreground">{r.doc_type}</td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">{r.purpose}</td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">{new Date(r.requested_at).toLocaleDateString()}</td>
+                            <td className="px-6 py-4 text-center">
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                                {cfg.icon}{r.status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-3 md:hidden">
+                {requests.map((r) => {
+                  const cfg = statusConfig[r.status] ?? statusConfig.Pending;
+                  return (
+                    <div key={r.id} className="bg-card rounded-xl border border-border p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">{r.doc_type}</p>
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                          {cfg.icon}{r.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{r.purpose}</p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span className="font-mono">#{r.id}</span>
+                        <span>{new Date(r.requested_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -230,62 +292,72 @@ const DocumentRequests = () => {
                 onClick={() => window.print()}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
               >
-                <Printer size={16} />
-                Print
+                <Printer size={16} /> Print
               </button>
               <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-                <Download size={16} />
-                Download PDF
+                <Download size={16} /> Download PDF
               </button>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {semesters.map((sem) => (
-              <div key={sem.label} className="bg-card rounded-xl border border-border overflow-hidden">
-                <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                  <h2 className="font-display font-bold text-foreground">{sem.label}</h2>
-                  <span className="text-sm text-muted-foreground">CWA: <span className="font-bold text-foreground">{sem.cwa.toFixed(1)}</span></span>
-                </div>
-                <table className="w-full hidden sm:table">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
-                      <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Course</th>
-                      <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Credits</th>
-                      <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Grade</th>
-                      <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Marks (%)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sem.courses.map((c) => (
-                      <tr key={c.code} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-3 text-sm font-mono font-medium text-foreground">{c.code}</td>
-                        <td className="px-6 py-3 text-sm text-foreground">{c.name}</td>
-                        <td className="px-6 py-3 text-sm text-center text-muted-foreground">{c.credits}</td>
-                        <td className="px-6 py-3 text-sm text-center font-semibold text-foreground">{c.grade}</td>
-                        <td className="px-6 py-3 text-sm text-center text-muted-foreground">{c.marks}</td>
+          {loadingTranscript ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <Loader2 size={18} className="animate-spin mr-2" /> Loading transcript...
+            </div>
+          ) : semesters.length === 0 ? (
+            <div className="bg-card rounded-xl border border-border p-12 text-center">
+              <GraduationCap size={40} className="mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No transcript data yet</h3>
+              <p className="text-sm text-muted-foreground">Your transcript will appear here once results are published.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {semesters.map((sem) => (
+                <div key={sem.label} className="bg-card rounded-xl border border-border overflow-hidden">
+                  <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <h2 className="font-display font-bold text-foreground">{sem.label}</h2>
+                    <span className="text-sm text-muted-foreground">CWA: <span className="font-bold text-foreground">{sem.cwa.toFixed(1)}</span></span>
+                  </div>
+                  <table className="w-full hidden sm:table">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code</th>
+                        <th className="text-left px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Course</th>
+                        <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Credits</th>
+                        <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Grade</th>
+                        <th className="text-center px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Marks (%)</th>
                       </tr>
+                    </thead>
+                    <tbody>
+                      {sem.courses.map((c, i) => (
+                        <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                          <td className="px-6 py-3 text-sm font-mono font-medium text-foreground">{c.code}</td>
+                          <td className="px-6 py-3 text-sm text-foreground">{c.name}</td>
+                          <td className="px-6 py-3 text-sm text-center text-muted-foreground">{c.credits}</td>
+                          <td className="px-6 py-3 text-sm text-center font-semibold text-foreground">{c.grade}</td>
+                          <td className="px-6 py-3 text-sm text-center text-muted-foreground">{c.marks}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="sm:hidden divide-y divide-border">
+                    {sem.courses.map((c, i) => (
+                      <div key={i} className="px-4 py-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{c.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{c.code} · {c.credits} credits</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-foreground">{c.grade}</p>
+                          <p className="text-xs text-muted-foreground">{c.marks}%</p>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-                <div className="sm:hidden divide-y divide-border">
-                  {sem.courses.map((c) => (
-                    <div key={c.code} className="px-4 py-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{c.name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{c.code} · {c.credits} credits</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">{c.grade}</p>
-                        <p className="text-xs text-muted-foreground">{c.marks}%</p>
-                      </div>
-                    </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </>
       )}
     </DashboardLayout>

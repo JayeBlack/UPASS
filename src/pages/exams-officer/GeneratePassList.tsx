@@ -1,39 +1,89 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useDataStore } from "@/contexts/DataStoreContext";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
 import ExportDropdown from "@/components/ExportDropdown";
 import { exportData } from "@/lib/exportUtils";
+import { apiFetch } from "@/lib/api";
+import { Loader2, RefreshCw } from "lucide-react";
+
+interface Graduand {
+  id: string;
+  student_id: string;
+  index_number: string;
+  first_name: string;
+  last_name: string;
+  program_name: string;
+  department_name: string;
+  academic_year: string;
+  cwa: number;
+  status: string;
+}
 
 const GeneratePassList = () => {
-  const { graduands } = useDataStore();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
+  const { toast } = useToast();
+  const [graduands, setGraduands] = useState<Graduand[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [deptFilter, setDeptFilter] = useState("all");
   const [progFilter, setProgFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState("all");
-  const { toast } = useToast();
+  const [minCwa, setMinCwa] = useState("45");
+  const [academicYear, setAcademicYear] = useState(`${new Date().getFullYear()}/${new Date().getFullYear() + 1}`);
 
-  const departments = [...new Set(graduands.map((g) => g.department))];
-  const programs = [...new Set(graduands.map((g) => g.program))];
-  const years = [...new Set(graduands.map((g) => g.year))].sort().reverse();
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const data = await apiFetch<Graduand[]>("/passlist");
+      setGraduands(data || []);
+    } catch {
+      // backend offline
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const res = await apiFetch<{ message: string }>("/passlist/generate", {
+        method: "POST",
+        body: JSON.stringify({ academic_year: academicYear, min_cwa: Number(minCwa) }),
+      });
+      toast({ title: "Pass list generated", description: res.message });
+      load();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
+  const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
+  const years = [...new Set(graduands.map((g) => g.academic_year).filter(Boolean))].sort().reverse();
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
-    const matchesDept = effectiveDept === "all" || g.department === effectiveDept;
+    const matchesDept = effectiveDept === "all" || g.department_name === effectiveDept;
     return matchesDept &&
-      (progFilter === "all" || g.program === progFilter) &&
-      (yearFilter === "all" || g.year === yearFilter);
+      (progFilter === "all" || g.program_name === progFilter) &&
+      (yearFilter === "all" || g.academic_year === yearFilter);
   });
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Status"];
-    const rows = filtered.map((g) => [g.name, g.index, g.program, g.department, g.cwa.toFixed(1), g.status]);
+    const rows = filtered.map((g) => [
+      `${g.first_name} ${g.last_name}`, g.index_number, g.program_name, g.department_name,
+      Number(g.cwa).toFixed(1), g.status,
+    ]);
     exportData({
       title: "Pass List — Exams Office",
       subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-      headers,
-      rows,
+      headers, rows,
       fileName: "UMaT_Pass_List_ExamsOffice",
       format,
     });
@@ -50,6 +100,36 @@ const GeneratePassList = () => {
         <ExportDropdown onExport={handleExport} />
       </div>
 
+      {/* Generate panel */}
+      <div className="bg-card rounded-xl border border-border p-5 mb-6 flex flex-col sm:flex-row sm:items-end gap-4">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
+          <input
+            value={academicYear}
+            onChange={(e) => setAcademicYear(e.target.value)}
+            placeholder="2025/2026"
+            className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-36"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Min CWA</label>
+          <input
+            type="number" min={0} max={100} value={minCwa}
+            onChange={(e) => setMinCwa(e.target.value)}
+            className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-24"
+          />
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          Generate Pass List
+        </button>
+      </div>
+
+      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Years</option>
@@ -71,35 +151,43 @@ const GeneratePassList = () => {
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((g) => (
-                <tr key={g.index} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">{g.name}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{g.program}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{g.department}</td>
-                  <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{g.cwa.toFixed(1)}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
-                  </td>
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
+                  <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
+                  <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((g) => (
+                  <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{g.program_name}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{g.department_name}</td>
+                    <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{Number(g.cwa).toFixed(1)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                        {g.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && !loading && (
+                  <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters. Click "Generate Pass List" to compute from grades.</td></tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </DashboardLayout>

@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { BookOpen, CheckCircle, Lock, Building2, CalendarDays, GraduationCap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PROGRAMME_COURSE_CATALOGS, type ProgrammeCourse } from "@/data/programmeCourses";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Course {
   code: string;
@@ -21,67 +22,119 @@ const toCourse = (c: ProgrammeCourse): Course => ({
 });
 
 const CourseRegistration = () => {
-  // Filters
-  const [cycleFilter, setCycleFilter] = useState<"All" | "January" | "July">("All");
-  const matchesCycle = (c: (typeof PROGRAMME_COURSE_CATALOGS)[number]) =>
-    cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter;
+  const { user } = useAuth();
+  
+  // Get student's enrolled data from auth context
+  const studentDepartment = user?.department;
+  const studentProgram = user?.program;
+  const studentCohort = user?.admissionCycle || "January";
 
-  // Only surface departments that actually have programmes in the active cycle
-  const departments = useMemo(
-    () =>
-      Array.from(
-        new Set(PROGRAMME_COURSE_CATALOGS.filter(matchesCycle).map((c) => c.department))
-      ).sort(),
-    [cycleFilter]
-  );
-
-  const [department, setDepartment] = useState<string>(
-    () =>
-      Array.from(new Set(PROGRAMME_COURSE_CATALOGS.map((c) => c.department))).sort()[0]
-  );
-  const effectiveDepartment = departments.includes(department)
-    ? department
-    : departments[0];
-
-  const programmesInDept = useMemo(
-    () =>
-      PROGRAMME_COURSE_CATALOGS.filter(
-        (c) => c.department === effectiveDepartment && matchesCycle(c)
-      ),
-    [effectiveDepartment, cycleFilter]
-  );
-
-  const [programmeKey, setProgrammeKey] = useState<string>(
-    PROGRAMME_COURSE_CATALOGS[0].key
-  );
-
-  const effectiveProgrammeKey =
-    programmesInDept.find((c) => c.key === programmeKey)?.key ??
-    programmesInDept[0]?.key ??
-    PROGRAMME_COURSE_CATALOGS[0].key;
-
-  const catalog =
-    PROGRAMME_COURSE_CATALOGS.find((c) => c.key === effectiveProgrammeKey) ??
-    PROGRAMME_COURSE_CATALOGS[0];
-
-  const handleCycleChange = (c: "All" | "January" | "July") => {
-    setCycleFilter(c);
-    const nextDepts = Array.from(
-      new Set(
-        PROGRAMME_COURSE_CATALOGS.filter(
-          (p) => c === "All" || (p.admissionCycle ?? "January") === c
-        ).map((p) => p.department)
-      )
-    ).sort();
-    const nextDept = nextDepts.includes(department) ? department : nextDepts[0];
-    setDepartment(nextDept);
-    const firstProg = PROGRAMME_COURSE_CATALOGS.find(
-      (p) =>
-        p.department === nextDept &&
-        (c === "All" || (p.admissionCycle ?? "January") === c)
+  // If student data is not loaded, show loading or error state
+  if (!studentDepartment || !studentProgram) {
+    return (
+      <DashboardLayout>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold font-display text-foreground">Course Registration</h1>
+          <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <p className="text-muted-foreground mb-4">Loading your programme information...</p>
+          {user && (
+            <div className="text-left bg-muted p-4 rounded-lg mb-4">
+              <p className="text-xs font-mono mb-2">Debug Info:</p>
+              <p className="text-xs">Email: {user.email}</p>
+              <p className="text-xs">Role: {user.role}</p>
+              <p className="text-xs">Department: {studentDepartment || "(not set)"}</p>
+              <p className="text-xs">Programme: {studentProgram || "(not set)"}</p>
+              <p className="text-xs">Cohort: {studentCohort}</p>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground mt-2">
+            {!studentDepartment && !studentProgram 
+              ? "Your programme information is missing. Please contact your administrator to set up your profile."
+              : "If this persists, try logging out and logging in again."}
+          </p>
+        </div>
+      </DashboardLayout>
     );
-    if (firstProg) setProgrammeKey(firstProg.key);
+  }
+
+  // Helper function for fuzzy matching programme names
+  const matchesProgramme = (catalogLabel: string, studentProg: string) => {
+    const normalizeName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedCatalog = normalizeName(catalogLabel);
+    const normalizedStudent = normalizeName(studentProg);
+    
+    // Exact match
+    if (normalizedCatalog === normalizedStudent) return true;
+    
+    // Check if catalog contains student program (e.g., "Mining Engineering (MSc / MPhil) — July" contains "MSc. Mining Engineering")
+    if (normalizedCatalog.includes(normalizedStudent)) return true;
+    
+    // Check if student program contains catalog (e.g., "MSc. Mining Engineering" contains "Mining Engineering")
+    if (normalizedStudent.includes(normalizedCatalog)) return true;
+    
+    // Extract key words and check overlap
+    const catalogWords = catalogLabel.toLowerCase().split(/[\s/()—.]+/).filter(w => w.length > 2 && !['msc', 'mphil', 'phd', 'july', 'january', 'and', 'the'].includes(w));
+    const studentWords = studentProg.toLowerCase().split(/[\s/()—.]+/).filter(w => w.length > 2 && !['msc', 'mphil', 'phd', 'july', 'january', 'and', 'the'].includes(w));
+    
+    // If at least 70% of student words appear in catalog words, it's a match
+    const matchingWords = studentWords.filter(sw => catalogWords.some(cw => cw.includes(sw) || sw.includes(cw)));
+    return matchingWords.length >= Math.ceil(studentWords.length * 0.7);
   };
+
+  // Find the catalog entry that matches the student's enrollment
+  const catalog = useMemo(() => {
+    // Try exact match first (department + program + cohort)
+    let match = PROGRAMME_COURSE_CATALOGS.find(
+      (c) => 
+        c.department === studentDepartment && 
+        c.label === studentProgram &&
+        (c.admissionCycle ?? "January") === studentCohort
+    );
+    if (match) return match;
+
+    // Try fuzzy match with department + cohort
+    match = PROGRAMME_COURSE_CATALOGS.find(
+      (c) => 
+        c.department === studentDepartment && 
+        matchesProgramme(c.label, studentProgram) &&
+        (c.admissionCycle ?? "January") === studentCohort
+    );
+    if (match) return match;
+
+    // Try fuzzy match without cohort (for programs without cohort-specific catalogs)
+    match = PROGRAMME_COURSE_CATALOGS.find(
+      (c) => 
+        c.department === studentDepartment && 
+        matchesProgramme(c.label, studentProgram)
+    );
+    if (match) return match;
+
+    // Last resort: match by department only (show first catalog for that department)
+    return PROGRAMME_COURSE_CATALOGS.find(c => c.department === studentDepartment);
+  }, [studentDepartment, studentProgram, studentCohort]);
+
+  // If no catalog found, show error message
+  if (!catalog) {
+    return (
+      <DashboardLayout>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold font-display text-foreground">Course Registration</h1>
+          <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
+        </div>
+        <div className="bg-card rounded-xl border border-destructive p-8 text-center">
+          <p className="text-destructive font-medium mb-2">Course catalog not found</p>
+          <p className="text-sm text-muted-foreground mb-4">
+            Your programme: <strong>{studentProgram}</strong><br />
+            Department: <strong>{studentDepartment}</strong><br />
+            Cohort: <strong>{studentCohort}</strong>
+          </p>
+          <p className="text-xs text-muted-foreground">Please contact your department administrator to set up the course catalog for your programme.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const [coursesByProgramme, setCoursesByProgramme] = useState<Record<string, Course[]>>(() =>
     Object.fromEntries(
@@ -186,82 +239,32 @@ const CourseRegistration = () => {
         <p className="text-muted-foreground mt-1">Semester 1, 2025/2026 Academic Year</p>
       </div>
 
-      {/* Programme picker — Department → Cycle → Programme */}
-      <div className="mb-6 bg-card rounded-xl border border-border p-4 sm:p-5 space-y-4">
-        {/* Admission cycle chips */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <CalendarDays size={14} className="text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admission Cycle</span>
+      {/* Student's Enrolled Programme Info - Read Only */}
+      <div className="mb-6 bg-card rounded-xl border border-border p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <GraduationCap size={16} className="text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Your Enrolled Programme</h3>
+        </div>
+        
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="bg-muted/30 rounded-lg p-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Department</label>
+            <p className="text-sm font-medium text-foreground">{studentDepartment}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(["All", "January", "July"] as const).map((c) => (
-              <button
-                key={c}
-                onClick={() => handleCycleChange(c)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                  cycleFilter === c
-                    ? "gradient-gold text-secondary-foreground border-transparent"
-                    : "bg-background border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
+          
+          <div className="bg-muted/30 rounded-lg p-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Programme</label>
+            <p className="text-sm font-medium text-foreground">{studentProgram}</p>
+          </div>
+          
+          <div className="bg-muted/30 rounded-lg p-3">
+            <label className="text-xs text-muted-foreground mb-1 block">Admission Cohort</label>
+            <p className="text-sm font-medium text-foreground">{studentCohort === "January" ? "January - June" : "July - December"}</p>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {/* Department */}
-          <div>
-            <label htmlFor="department-select" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              <Building2 size={14} /> Department
-            </label>
-            <select
-              id="department-select"
-              value={effectiveDepartment}
-              onChange={(e) => {
-                setDepartment(e.target.value);
-                const firstInDept = PROGRAMME_COURSE_CATALOGS.find(
-                  (c) =>
-                    c.department === e.target.value &&
-                    (cycleFilter === "All" || (c.admissionCycle ?? "January") === cycleFilter)
-                );
-                if (firstInDept) setProgrammeKey(firstInDept.key);
-              }}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              {departments.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Programme */}
-          <div>
-            <label htmlFor="programme-select" className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              <GraduationCap size={14} /> Programme
-            </label>
-            <select
-              id="programme-select"
-              value={effectiveProgrammeKey}
-              onChange={(e) => setProgrammeKey(e.target.value)}
-              disabled={programmesInDept.length === 0}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            >
-              {programmesInDept.length === 0 ? (
-                <option>No programmes for this cycle</option>
-              ) : (
-                programmesInDept.map((c) => (
-                  <option key={c.key} value={c.key}>{c.label}</option>
-                ))
-              )}
-            </select>
-          </div>
-        </div>
-
-        {/* Selected programme summary */}
-        <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
+        {/* Programme details */}
+        <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-primary/10 text-primary">
               <Building2 size={11} /> {catalog.department}
