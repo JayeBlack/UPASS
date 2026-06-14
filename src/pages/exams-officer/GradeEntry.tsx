@@ -1,11 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-<<<<<<< HEAD
-import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, FileText, Loader } from "lucide-react";
-=======
 import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, FileText, Loader2 } from "lucide-react";
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
 import { readSheetFile, SHEET_ACCEPT } from "@/lib/sheet-import";
 import { apiFetch } from "@/lib/api";
 
@@ -64,11 +60,6 @@ const GradeEntry = () => {
   const [rows, setRows] = useState<GradeRow[]>([]);
   const [cwaResults, setCwaResults] = useState<CWAResult[]>([]);
   const [status, setStatus] = useState<BatchStatus>("Draft");
-<<<<<<< HEAD
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [batchId, setBatchId] = useState<string | null>(null);
-=======
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
   const [publishing, setPublishing] = useState(false);
   const [semester, setSemester] = useState("Semester 1");
   const [academicYear, setAcademicYear] = useState(academicYearOptions[1]);
@@ -145,59 +136,7 @@ const GradeEntry = () => {
       toast({ title: "Calculate CWA first", description: "Run CWA calculation before publishing", variant: "destructive" });
       return;
     }
-<<<<<<< HEAD
 
-    setIsPublishing(true);
-    try {
-      // Transform cwaResults to grades format for API
-      const grades = cwaResults.flatMap((student) =>
-        student.courses.map((course) => ({
-          indexNumber: student.index,
-          courseName: course.courseName,
-          marks: course.marks,
-          grade: course.grade,
-          credits: course.credits,
-        }))
-      );
-
-      const response = await apiFetch<{ batchId: string }>("/results/batch-upload", {
-        method: "POST",
-        body: JSON.stringify({
-          grades,
-          semester: 1,
-          academicYear: academicYear,
-        }),
-      });
-
-      setBatchId(response.batchId);
-      setStatus("Published");
-      toast({ title: "Results published", description: "Marks, grades, and CWA are now visible to students and the dean" });
-    } catch (err) {
-      toast({ title: "Publication failed", description: (err as Error).message, variant: "destructive" });
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  const deletePublished = async () => {
-    if (!batchId) {
-      setCwaResults([]);
-      setRows([]);
-      setStatus("Draft");
-      toast({ title: "Results cleared", description: "Draft has been cleared" });
-      return;
-    }
-
-    try {
-      await apiFetch(`/results/batch/${batchId}`, { method: "DELETE" });
-      setCwaResults([]);
-      setRows([]);
-      setStatus("Draft");
-      setBatchId(null);
-      toast({ title: "Results deleted", description: "Published results have been removed" });
-    } catch (err) {
-      toast({ title: "Delete failed", description: (err as Error).message, variant: "destructive" });
-=======
     setPublishing(true);
     try {
       const grades = rows.filter((r) => r.valid).map((r) => ({
@@ -222,7 +161,6 @@ const GradeEntry = () => {
       toast({ title: "Publish failed", description: err.message, variant: "destructive" });
     } finally {
       setPublishing(false);
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
     }
   };
 
@@ -347,17 +285,6 @@ const GradeEntry = () => {
           <button onClick={calculateCWA} disabled={!allValid} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             Calculate CWA
           </button>
-<<<<<<< HEAD
-          <button onClick={publishResults} disabled={!allValid || cwaResults.length === 0 || status === "Published" || isPublishing} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">
-            {isPublishing ? <Loader size={14} className="animate-spin" /> : null}
-            {status === "Published" ? "Published" : "Publish Results"}
-          </button>
-          {cwaResults.length > 0 && (
-            <button onClick={deletePublished} disabled={isPublishing} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50">
-              {status === "Published" ? "Delete Published Results" : "Clear Draft"}
-            </button>
-          )}
-=======
           <button
             onClick={publishResults}
             disabled={!allValid || cwaResults.length === 0 || status === "Published" || publishing}
@@ -369,7 +296,6 @@ const GradeEntry = () => {
           <button onClick={clearAll} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
             {status === "Published" ? "Clear & Start New" : "Clear Draft"}
           </button>
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
         </div>
       )}
 

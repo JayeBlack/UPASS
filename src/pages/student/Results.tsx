@@ -1,37 +1,19 @@
 import DashboardLayout from "@/components/DashboardLayout";
-<<<<<<< HEAD
-import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader } from "lucide-react";
-=======
 import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader2 } from "lucide-react";
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 
-<<<<<<< HEAD
-interface GradeData {
-  id: string;
-=======
 interface GradeRecord {
   id: string;
   course_id: string;
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
   code: string;
   course_name: string;
   credits: number;
   grade: string;
   marks: number;
-<<<<<<< HEAD
-  semester: number;
-  academic_year: string;
-}
-
-interface SemesterResult {
-  label: string;
-  short: string;
-=======
   semester: string;
   academic_year: string;
 }
@@ -41,7 +23,6 @@ interface SemesterGroup {
   short: string;
   semester: string;
   academic_year: string;
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
   courses: { code: string; name: string; credits: number; grade: string; marks: number }[];
   cwa: number;
 }
@@ -56,119 +37,6 @@ const calcCwa = (courses: { marks: number; credits: number }[]) => {
 const Results = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const [semesterData, setSemesterData] = useState<SemesterResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        if (!user?.id) {
-          setError("User not authenticated");
-          setLoading(false);
-          return;
-        }
-
-        // Fetch grades for the student
-        const grades = await apiFetch(`/results/student/${user.id}`);
-        
-        if (!grades || grades.length === 0) {
-          setSemesterData([]);
-          setLoading(false);
-          return;
-        }
-
-        // Group by semester and academic year
-        const grouped: Record<string, GradeData[]> = {};
-        grades.forEach((g: GradeData) => {
-          const key = `${g.academic_year}-S${g.semester}`;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(g);
-        });
-
-        // Transform into semester data
-        const semesters: SemesterResult[] = Object.entries(grouped)
-          .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
-          .map(([key, courses]) => {
-            const [academicYear, semester] = key.split("-");
-            const sem = parseInt(semester.replace("S", ""));
-            return {
-              label: `Semester ${sem}, ${academicYear}`,
-              short: `S${sem} ${academicYear.split("/").map(y => y.slice(-2)).join("/")}`,
-              courses: courses.map((c) => ({
-                code: c.code,
-                name: c.course_name,
-                credits: c.credits,
-                grade: c.grade,
-                marks: c.marks,
-              })),
-              cwa: 0,
-            };
-          });
-
-        // Calculate CWA for each semester
-        semesters.forEach((s) => {
-          s.cwa = calcCwa(s.courses);
-        });
-
-        setSemesterData(semesters);
-        setError(null);
-      } catch (err) {
-        setError((err as Error).message);
-        setSemesterData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchResults();
-  }, [user?.id]);
-
-  const allCourses = semesterData.flatMap((s) => s.courses);
-  const overallCwa = calcCwa(allCourses);
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center py-16">
-          <div className="text-center">
-            <Loader size={40} className="animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading your results...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-destructive">
-          <p><strong>Error loading results:</strong> {error}</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
-  if (semesterData.length === 0) {
-    return (
-      <DashboardLayout>
-        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold font-display text-foreground">Academic Results</h1>
-            <p className="text-muted-foreground mt-1">Performance overview across all semesters</p>
-          </div>
-        </div>
-        <div className="bg-card rounded-xl border border-border p-12 text-center">
-          <BarChart3 size={40} className="mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">No results available</h3>
-          <p className="text-sm text-muted-foreground">Your results will appear here once they are published by the exams officer</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-=======
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -220,7 +88,6 @@ const Results = () => {
 
   const allCourses = grades.map((g) => ({ marks: g.marks, credits: g.credits }));
   const overallCwa = calcCwa(allCourses);
->>>>>>> ad2fa65ae8c2c44e66ca9722ec3f3c9f65bd4d26
 
   return (
     <DashboardLayout>
