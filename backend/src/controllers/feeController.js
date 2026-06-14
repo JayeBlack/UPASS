@@ -1,12 +1,26 @@
 const db = require("../db");
 const XLSX = require("xlsx");
 
-// GET /api/fees/student/:studentId
+// GET /api/fees/student/:studentId — accepts user_id or student_id
 exports.getByStudent = async (req, res) => {
   try {
+    const paramId = req.params.studentId;
+    // First try to find if this is a users.id — look up the student record
+    const studentLookup = await db.query(
+      "SELECT id FROM students WHERE user_id = $1",
+      [paramId]
+    );
+    let studentId;
+    if (studentLookup.rows.length > 0) {
+      // It's a users.id — use the corresponding students.id
+      studentId = studentLookup.rows[0].id;
+    } else {
+      // Try direct student_id match
+      studentId = paramId;
+    }
     const result = await db.query(
       "SELECT * FROM fee_records WHERE student_id = $1 ORDER BY academic_year DESC, semester",
-      [req.params.studentId]
+      [studentId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -19,11 +33,12 @@ exports.getAll = async (req, res) => {
   try {
     const { department, status, search } = req.query;
     let sql = `
-      SELECT f.*, s.index_number, u.first_name, u.last_name, d.name AS department_name
+      SELECT f.*, s.index_number, u.first_name, u.last_name, d.name AS department_name, p.name AS program_name
       FROM fee_records f
       JOIN students s ON f.student_id = s.id
       JOIN users u ON s.user_id = u.id
       LEFT JOIN departments d ON s.department_id = d.id
+      LEFT JOIN programs p ON s.program_id = p.id
       WHERE 1=1
     `;
     const params = [];
@@ -95,9 +110,9 @@ exports.getSummary = async (req, res) => {
     let sql = `
       SELECT
         COUNT(*) AS total_students,
-        SUM(total_amount) AS total_fees,
-        SUM(amount_paid) AS total_paid,
-        SUM(outstanding) AS total_outstanding,
+        COALESCE(SUM(total_amount), 0) AS total_fees,
+        COALESCE(SUM(amount_paid), 0) AS total_paid,
+        COALESCE(SUM(total_amount - amount_paid), 0) AS total_outstanding,
         COUNT(*) FILTER (WHERE is_cleared) AS cleared_count,
         COUNT(*) FILTER (WHERE NOT is_cleared) AS owing_count,
         ROUND(COUNT(*) FILTER (WHERE is_cleared) * 100.0 / NULLIF(COUNT(*), 0), 1) AS compliance_rate
@@ -120,7 +135,7 @@ exports.getSummary = async (req, res) => {
 
 // POST /api/fees/parse-bulk
 // Accepts multipart file (CSV or XLSX)
-// Returns parsed rows: { rows: [{ index_number, total_amount, academic_year, semester }, ...] }
+// Returns parsed rows: { rows: [{ index_number, total_amount, amount_paid, academic_year, semester }, ...] }
 exports.parseBulk = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
@@ -161,28 +176,34 @@ exports.parseBulk = async (req, res) => {
     const colMap = {};
     const knownCols = {
       index_number: ["index", "indexnumber", "indexno", "studentid", "regno", "regnumber"],
-      total_amount: ["amount", "totalamount", "fee", "fees", "totalfee", "totalfees"],
-      academic_year: ["year", "academicyear", "academicyear", "session"],
+      total_amount: ["amount", "totalamount", "fee", "fees", "totalfee", "totalfees", "totalfee"],
+      amount_paid: ["amountpaid", "paid", "payamount", "paymentamount", "paidamount", "amountpaid"],
+      academic_year: ["year", "academicyear", "academicyear", "session", "academicyear"],
       semester: ["semester", "sem", "term"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
       const idx = normalized.findIndex((h) => aliases.includes(h));
       if (idx !== -1) colMap[field] = idx;
     }
-    if (Object.keys(colMap).length < 2) {
-      colMap.index_number = 0;
-      colMap.total_amount = 1;
-      colMap.academic_year = 2;
-      colMap.semester = 3;
-    }
+
+    // Default column positions by common spreadsheet layouts
+    // NOTE: academic_year and semester are NOT extracted from the CSV.
+    // They will be provided by the frontend (from dropdown selectors) at upload time.
+    const colDefaults = {
+      index_number: colMap.index_number ?? 0,
+      total_amount: colMap.total_amount ?? 1,
+      amount_paid: colMap.amount_paid ?? 2,
+    };
 
     // parse rows
-    const parsed = rows.slice(1).map((cols) => ({
-      index_number: (cols[colMap.index_number ?? 0] || "").toString().trim(),
-      total_amount: parseFloat((cols[colMap.total_amount ?? 1] || "0").toString().replace(/[^\d.]/g, "")) || 0,
-      academic_year: (cols[colMap.academic_year ?? 2] || "").toString().trim(),
-      semester: (cols[colMap.semester ?? 3] || "").toString().trim(),
-    })).filter((f) => f.index_number && f.total_amount > 0);
+    const parsed = rows.slice(1).map((cols) => {
+      const item = {
+        index_number: (cols[colDefaults.index_number] || "").toString().trim(),
+        total_amount: parseFloat((cols[colDefaults.total_amount] || "0").toString().replace(/[^\d.]/g, "")) || 0,
+        amount_paid: parseFloat((colDefaults.amount_paid !== undefined ? (cols[colDefaults.amount_paid] || "0") : "0").toString().replace(/[^\d.]/g, "")) || 0,
+      };
+      return item;
+    }).filter((f) => f.index_number && f.total_amount > 0);
 
     if (parsed.length === 0) {
       return res.status(400).json({ error: "No valid fee records found" });
@@ -195,8 +216,8 @@ exports.parseBulk = async (req, res) => {
 };
 
 // POST /api/fees/upload-bulk
-// Accepts: { fees: [{ index_number, total_amount, academic_year, semester }, ...] }
-// Creates fee records for multiple students
+// Accepts: { fees: [{ index_number, total_amount, amount_paid, academic_year, semester }, ...] }
+// Creates fee records for multiple students with their paid amounts
 exports.uploadBulk = async (req, res) => {
   try {
     const { fees } = req.body;
@@ -208,7 +229,7 @@ exports.uploadBulk = async (req, res) => {
     const errors = [];
 
     for (let i = 0; i < fees.length; i++) {
-      const { index_number, total_amount, academic_year, semester } = fees[i];
+      const { index_number, total_amount, amount_paid, academic_year, semester } = fees[i];
       if (!index_number || !total_amount) {
         errors.push(`Row ${i + 1}: Missing required fields`);
         continue;
@@ -229,6 +250,17 @@ exports.uploadBulk = async (req, res) => {
         const studentId = student.rows[0].id;
         const year = academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
         const sem = semester || "First";
+        const paid = Math.min(amount_paid || 0, total_amount);
+
+        // Determine status
+        let status = "Unpaid";
+        let is_cleared = false;
+        if (paid >= total_amount) {
+          status = "Paid";
+          is_cleared = true;
+        } else if (paid > 0) {
+          status = "Partial";
+        }
 
         // Check if record already exists
         const existing = await db.query(
@@ -237,16 +269,27 @@ exports.uploadBulk = async (req, res) => {
         );
 
         if (existing.rows.length > 0) {
-          errors.push(`Row ${i + 1}: Fee record already exists for ${index_number} in ${year} ${sem}`);
+          // Update existing record with the new amounts
+          await db.query(
+            `UPDATE fee_records SET 
+              total_amount = $1, 
+              amount_paid = $2, 
+              status = $3, 
+              is_cleared = $4,
+              updated_at = NOW() 
+             WHERE id = $5`,
+            [total_amount, paid, status, is_cleared, existing.rows[0].id]
+          );
+          created.push({ index_number, id: existing.rows[0].id, total_amount, amount_paid: paid, status });
           continue;
         }
 
         // Create fee record
         const result = await db.query(
           `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, status, is_cleared)
-           VALUES ($1, $2, $3, $4, 0, 'Unpaid', FALSE)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            RETURNING *`,
-          [studentId, year, sem, total_amount]
+          [studentId, year, sem, total_amount, paid, status, is_cleared]
         );
 
         created.push({ index_number, ...result.rows[0] });

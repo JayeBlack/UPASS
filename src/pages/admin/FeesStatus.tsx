@@ -22,6 +22,13 @@ interface FeeRecord {
   is_cleared: boolean;
 }
 
+const currentYear = new Date().getFullYear();
+const academicYearOptions = [
+  `${currentYear - 1}/${currentYear}`,
+  `${currentYear}/${currentYear + 1}`,
+  `${currentYear + 1}/${currentYear + 2}`,
+];
+
 const FeesStatus = () => {
   const { user } = useAuth();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
@@ -34,8 +41,9 @@ const FeesStatus = () => {
   const [progFilter, setProgFilter] = useState<string>("all");
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [importPreview, setImportPreview] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [importSemester, setImportSemester] = useState("Semester 1");
+  const [importAcademicYear, setImportAcademicYear] = useState(academicYearOptions[1]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -71,58 +79,54 @@ const FeesStatus = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      // Step 1: Parse the file
       const parsed = await apiFetch<{ rows: any[] }>("/fees/parse-bulk", {
         method: "POST",
         body: formData,
         headers: {}, // Let browser set Content-Type with boundary
       });
-      console.log("Parsed data from backend:", parsed);
+
       if (parsed.rows.length === 0) {
         toast({ title: "No records", description: "Could not parse any records", variant: "destructive" });
-      } else {
-        setImportPreview(parsed.rows);
-        setShowImport(false);
-        toast({ title: "File parsed", description: `${parsed.rows.length} fee records ready to import` });
+        setUploading(false);
+        e.target.value = "";
+        return;
       }
+
+      // Step 2: Attach academic year and semester from dropdowns
+      const feesWithMeta = parsed.rows.map((r: any) => ({
+        ...r,
+        academic_year: importAcademicYear,
+        semester: importSemester,
+      }));
+
+      // Step 3: Directly import without preview
+      const result = await apiFetch<{ created: any[]; errors?: string[] }>("/fees/upload-bulk", {
+        method: "POST",
+        body: JSON.stringify({ fees: feesWithMeta }),
+      });
+
+      if (result.errors && result.errors.length > 0) {
+        toast({
+          title: "Import completed with errors",
+          description: `${result.created.length} records imported, ${result.errors.length} errors.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Import complete",
+          description: `${result.created.length} fee records imported successfully`,
+        });
+      }
+
+      setShowImport(false);
+      loadFees();
     } catch (err: any) {
-      console.error("Parse error:", err);
-      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+      console.error("Import error:", err);
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
     } finally {
       setUploading(false);
       e.target.value = "";
-    }
-  };
-
-  const confirmImport = async () => {
-    console.log("Sending to backend:", importPreview);
-    console.log("First record:", JSON.stringify(importPreview[0], null, 2));
-    try {
-      const result = await apiFetch<{ created: any[]; errors?: string[] }>("/fees/upload-bulk", {
-        method: "POST",
-        body: JSON.stringify({ fees: importPreview }),
-      });
-      
-      console.log("Backend response:", result);
-      
-      if (result.errors && result.errors.length > 0) {
-        console.error("Import errors:", result.errors);
-        toast({ 
-          title: "Import completed with errors", 
-          description: `${result.created.length} records imported, ${result.errors.length} errors. Check console for details.`,
-          variant: "destructive"
-        });
-      } else {
-        toast({ 
-          title: "Import complete", 
-          description: `${result.created.length} records imported successfully` 
-        });
-      }
-      
-      setImportPreview([]);
-      loadFees();
-    } catch (err: any) {
-      console.error("Import failed:", err);
-      toast({ title: "Import failed", description: err.message, variant: "destructive" });
     }
   };
 
@@ -141,7 +145,7 @@ const FeesStatus = () => {
   const deptRecords = adminDepartment ? records.filter((f) => f.department_name === adminDepartment) : records;
   const totalCleared = deptRecords.filter((f) => f.is_cleared).length;
   const totalOwing = deptRecords.filter((f) => !f.is_cleared).length;
-  const totalOutstanding = deptRecords.reduce((s, f) => s + f.outstanding, 0);
+  const totalOutstanding = deptRecords.reduce((s, f) => s + (Number(f.total_amount) - Number(f.amount_paid)), 0);
 
   return (
     <DashboardLayout>
@@ -167,53 +171,41 @@ const FeesStatus = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowImport(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg font-bold text-foreground mb-2">Import Manual Payments</h3>
-            <p className="text-sm text-muted-foreground mb-4">Upload a CSV or Excel file containing the list of students who made payments manually at their respective departments. The system will read the file and add payments to the history by department.</p>
+            <p className="text-sm text-muted-foreground mb-4">Upload a CSV or Excel file containing the list of students who made bank payments at their departments. The system will read and import the payments directly.</p>
             <p className="text-xs text-muted-foreground mb-3">Expected columns: Student Name, Index Number, Department, Programme, Total Fees, Amount Paid</p>
+
+            {/* Semester & Academic Year selectors */}
+            <div className="flex gap-3 mb-4">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Semester</label>
+                <select value={importSemester} onChange={(e) => setImportSemester(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <option>Semester 1</option>
+                  <option>Semester 2</option>
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
+                <select value={importAcademicYear} onChange={(e) => setImportAcademicYear(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  {academicYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportFile} disabled={uploading} />
             <div
-              onClick={() => fileRef.current?.click()}
+              onClick={() => !uploading && fileRef.current?.click()}
               className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
             >
               <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-foreground font-medium">{uploading ? "Uploading..." : "Click to upload CSV or Excel file"}</p>
+              <p className="text-sm text-foreground font-medium">{uploading ? "Processing..." : "Click to upload CSV or Excel file"}</p>
               <p className="text-xs text-muted-foreground mt-1">Accepted: .csv, .xlsx, .xls</p>
             </div>
+            {uploading && (
+              <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+                <Loader2 size={16} className="animate-spin" /> Parsing and importing records...
+              </div>
+            )}
             <button onClick={() => setShowImport(false)} className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
-          </div>
-        </div>
-      )}
-
-      {/* Import Preview */}
-      {importPreview.length > 0 && (
-        <div className="bg-card rounded-xl border border-border p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-sm font-bold text-foreground">Payment Import Preview ({importPreview.length} records)</h3>
-            <div className="flex gap-2">
-              <button onClick={() => setImportPreview([])} className="px-3 py-1.5 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors">Discard</button>
-              <button onClick={confirmImport} className="px-4 py-1.5 text-xs rounded-lg gradient-gold text-secondary-foreground font-medium hover:opacity-90 transition-opacity">Confirm Import</button>
-            </div>
-          </div>
-          <div className="overflow-x-auto max-h-60 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card">
-                <tr className="border-b border-border">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Index Number</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Amount (GHS)</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Year</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Semester</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importPreview.map((r, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-foreground">{r.index_number}</td>
-                    <td className="px-3 py-2 text-foreground">{r.total_amount}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.academic_year || "N/A"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{r.semester || "N/A"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -322,11 +314,11 @@ const FeesStatus = () => {
                   <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{f.index_number}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{f.program_name}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{f.department_name}</td>
-                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">GHS {f.total_amount.toLocaleString()}</td>
-                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">GHS {f.amount_paid.toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">GHS {Number(f.total_amount).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm text-right text-muted-foreground">GHS {Number(f.amount_paid).toLocaleString()}</td>
                   <td className="px-6 py-4 text-sm text-right font-semibold text-foreground">
-                    {f.outstanding > 0 ? (
-                      <span className="text-destructive">GHS {f.outstanding.toLocaleString()}</span>
+                    {(Number(f.total_amount) - Number(f.amount_paid)) > 0 ? (
+                      <span className="text-destructive">GHS {(Number(f.total_amount) - Number(f.amount_paid)).toLocaleString()}</span>
                     ) : (
                       <span className="text-success">GHS 0</span>
                     )}

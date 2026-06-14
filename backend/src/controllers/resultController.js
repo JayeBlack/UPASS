@@ -33,22 +33,15 @@ exports.getByStudent = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
 // POST /api/results/batch-upload (upload grades from CSV/Excel)
 exports.batchUpload = async (req, res) => {
   try {
     const { grades, semester, academicYear } = req.body;
-=======
-// POST /api/results/grades/by-index (batch grade entry by index number — used by GradeEntry UI)
-exports.enterGradesByIndex = async (req, res) => {
-  try {
-    const { grades, semester, academic_year } = req.body;
->>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
+
     if (!grades || !Array.isArray(grades) || grades.length === 0) {
       return res.status(400).json({ error: "Grades array required" });
     }
 
-<<<<<<< HEAD
     const results = [];
     const failedRows = [];
 
@@ -123,38 +116,15 @@ exports.enterGradesByIndex = async (req, res) => {
   }
 };
 
-// DELETE /api/results/batch/:id (delete a result batch)
-exports.deleteBatch = async (req, res) => {
+// POST /api/results/grades/by-index (batch grade entry by index number — used by GradeEntry UI)
+exports.enterGradesByIndex = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { grades, semester, academic_year } = req.body;
 
-    // Get batch details
-    const batchRes = await db.query(
-      `SELECT * FROM result_batches WHERE id = $1`,
-      [id]
-    );
-
-    if (batchRes.rows.length === 0) {
-      return res.status(404).json({ error: "Batch not found" });
+    if (!grades || !Array.isArray(grades) || grades.length === 0) {
+      return res.status(400).json({ error: "Grades array required" });
     }
 
-    const batch = batchRes.rows[0];
-
-    // Delete all grades associated with this batch
-    await db.query(
-      `DELETE FROM grades 
-       WHERE academic_year = $1 AND semester = $2 AND entered_by = $3`,
-      [batch.academic_year, batch.semester, req.user.id]
-    );
-
-    // Delete the batch
-    await db.query(
-      `DELETE FROM result_batches WHERE id = $1`,
-      [id]
-    );
-
-    res.json({ message: "Batch deleted successfully" });
-=======
     // Convert semester string to number ("Semester 1" -> 1)
     const semesterNum = typeof semester === 'string' ? parseInt(semester.replace(/\D/g, '')) || 1 : semester;
 
@@ -219,13 +189,37 @@ exports.deleteBatch = async (req, res) => {
   }
 };
 
-// DELETE /api/results/batches/:id
+// DELETE /api/results/batch/:id (delete a result batch)
 exports.deleteBatch = async (req, res) => {
   try {
-    const result = await db.query("DELETE FROM result_batches WHERE id = $1 RETURNING id", [req.params.id]);
-    if (result.rows.length === 0) return res.status(404).json({ error: "Batch not found" });
-    res.json({ message: "Batch deleted" });
->>>>>>> 3f27988e7e0e3a4b4ccc5d15ae0d2be7daa17321
+    const { id } = req.params;
+
+    // Get batch details
+    const batchRes = await db.query(
+      `SELECT * FROM result_batches WHERE id = $1`,
+      [id]
+    );
+
+    if (batchRes.rows.length === 0) {
+      return res.status(404).json({ error: "Batch not found" });
+    }
+
+    const batch = batchRes.rows[0];
+
+    // Delete all grades associated with this batch
+    await db.query(
+      `DELETE FROM grades 
+       WHERE academic_year = $1 AND semester = $2 AND entered_by = $3`,
+      [batch.academic_year, batch.semester, req.user.id]
+    );
+
+    // Delete the batch
+    await db.query(
+      `DELETE FROM result_batches WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ message: "Batch deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
