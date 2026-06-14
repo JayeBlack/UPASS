@@ -1,6 +1,5 @@
 const db = require("../db");
 const { getDepartmentFilter } = require("../middleware/departmentFilter");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
 
 // GET /api/analytics/overview
 // Returns high-level statistics
