@@ -56,50 +56,118 @@ interface StatItem {
   onClick?: () => void;
 }
 
+interface FeeSummary {
+  total_fees: number;
+  total_paid: number;
+  total_students: number;
+  cleared_count: number;
+  owing_count: number;
+  compliance_rate: number;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { students, graduands } = useDataStore();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
-  const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—" });
 
+  // Live data states
+  const [feeSummary, setFeeSummary] = useState<FeeSummary | null>(null);
+  const [studentFeeData, setStudentFeeData] = useState<any[]>([]);
+  const [activeCoursesCount, setActiveCoursesCount] = useState("—");
+  const [resultsBatches, setResultsBatches] = useState<any[]>([]);
+  const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—", approvedThisMonth: "—" });
+
+  // Generic periodic fetch helper
+  const fetchWithInterval = (fetcher: () => Promise<void>, ms: number) => {
+    fetcher();
+    const id = setInterval(fetcher, ms);
+    return () => clearInterval(id);
+  };
+
+  // ─── Accountant / Admin Fee Summary ───
+  useEffect(() => {
+    if (user?.role !== "Accountant" && user?.role !== "Admin" && user?.role !== "Dean" && user?.role !== "ExamsOfficer") return;
+    return fetchWithInterval(async () => {
+      try {
+        const data = await apiFetch<FeeSummary>("/fees/summary");
+        setFeeSummary(data);
+      } catch { /* ignore */ }
+    }, 15000);
+  }, [user]);
+
+  // ─── Student fee data ───
+  useEffect(() => {
+    if (user?.role !== "Student") return;
+    return fetchWithInterval(async () => {
+      try {
+        const data = await apiFetch<any[]>(`/fees/student/${user.id}`);
+        setStudentFeeData(data || []);
+      } catch { /* ignore */ }
+    }, 15000);
+  }, [user]);
+
+  // ─── Active courses count ───
+  useEffect(() => {
+    if (user?.role !== "Admin" && user?.role !== "Dean") return;
+    return fetchWithInterval(async () => {
+      try {
+        const courses = await apiFetch<any[]>("/courses");
+        setActiveCoursesCount(String(courses?.filter((c: any) => c.is_active !== false).length || 0));
+      } catch { /* ignore */ }
+    }, 30000);
+  }, [user]);
+
+  // ─── Results batches (ExamsOfficer) ───
+  useEffect(() => {
+    if (user?.role !== "ExamsOfficer") return;
+    return fetchWithInterval(async () => {
+      try {
+        const batches = await apiFetch<any[]>("/results/batches");
+        setResultsBatches(batches || []);
+      } catch { /* ignore */ }
+    }, 15000);
+  }, [user]);
+
+  // ─── Supervisor stats ───
   useEffect(() => {
     if (user?.role !== "Supervisor") return;
-
     const fetchSupervisorStats = async () => {
       try {
         const [backendStats, supervisorStudents] = await Promise.all([
           apiFetch<any>("/supervisors/current/stats"),
           apiFetch<any>("/supervisors/current/submissions"),
         ]);
-
         const students: { index_number: string }[] = supervisorStudents.students || [];
         const assignedIndexSet = new Set(
           students.map((s) => s.index_number?.trim().toLowerCase()).filter(Boolean)
         );
-
         const { data: submissions, error } = await supabase
           .from("thesis_submissions")
-          .select("student_index, status")
-          .eq("status", "Pending");
-
+          .select("student_index, status, created_at");
         const pendingCount = !error && submissions
           ? submissions.filter((sub: any) =>
-              assignedIndexSet.has(sub.student_index?.trim().toLowerCase())
+              assignedIndexSet.has(sub.student_index?.trim().toLowerCase()) && sub.status === "Pending"
             ).length
           : 0;
-
+        // Approved this month
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const approvedThisMonth = !error && submissions
+          ? submissions.filter((sub: any) =>
+              assignedIndexSet.has(sub.student_index?.trim().toLowerCase()) &&
+              sub.status === "Approved" &&
+              sub.created_at >= monthStart
+            ).length
+          : 0;
         setSupervisorData({
           assignedStudents: String(backendStats.assignedStudents || 0),
           pendingReviews: String(pendingCount),
+          approvedThisMonth: String(approvedThisMonth),
         });
-      } catch {
-        // silently fail
-      }
+      } catch { /* silently fail */ }
     };
-
     fetchSupervisorStats();
-
     const channel = supabase
       .channel("dashboard_supervisor_submissions")
       .on("postgres_changes",
@@ -107,8 +175,8 @@ const Dashboard = () => {
         () => fetchSupervisorStats()
       )
       .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetchSupervisorStats, 30000);
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
   }, [user]);
 
   // Filter data by department for departmental admins
@@ -124,23 +192,36 @@ const Dashboard = () => {
   const totalGraduands = deptGraduands.filter((g) => g.status === "Eligible").length;
   const feesClearedPct = totalStudents > 0 ? Math.round((activeStudents / totalStudents) * 100) : 0;
 
+  // Student computed data
+  const totalStudentFees = studentFeeData.reduce((sum: number, f: any) => sum + (f.total_amount || 0), 0);
+  const totalStudentPaid = studentFeeData.reduce((sum: number, f: any) => sum + (f.amount_paid || 0), 0);
+  const totalStudentOwed = studentFeeData.reduce((sum: number, f: any) => sum + (f.outstanding || 0), 0);
+  const hasOutstanding = totalStudentOwed > 0;
+
+  // Exams Officer computed
+  const publishedBatches = resultsBatches.filter((b: any) => b.status === "Published").length;
+  const pendingBatches = resultsBatches.filter((b: any) => b.status === "Draft").length;
+
+  const formatGHS = (amount: number) =>
+    `GHS ${amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
   const studentStats = [
     { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: "—", accent: true },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Thesis Progress", value: "—" },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "CWA", value: "—" },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: "—" },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Total Fees", value: studentFeeData.length > 0 ? formatGHS(totalStudentFees) : "—" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Outstanding Balance", value: studentFeeData.length > 0 ? formatGHS(totalStudentOwed) : "—" },
   ];
 
   const supervisorStats = [
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Assigned Students", value: supervisorData.assignedStudents, accent: true, onClick: () => navigate("/students") },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: supervisorData.pendingReviews, onClick: () => navigate("/submissions") },
-    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Approved This Month", value: "—" },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Approved This Month", value: supervisorData.approvedThisMonth },
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Avg Review Time", value: "—" },
   ];
 
   const adminStats = [
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
-    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: "—" },
+    { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: activeCoursesCount },
     { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: `${feesClearedPct}%`, onClick: () => navigate("/admin/fees") },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
@@ -153,15 +234,15 @@ const Dashboard = () => {
   ];
 
   const accountantStats = [
-    { icon: <Banknote size={18} className="text-secondary-foreground" />, label: "Total Fees Collected", value: "—", accent: true, onClick: () => navigate("/accountant/analytics") },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Compliance Rate", value: "—" },
-    { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: "—", onClick: () => navigate("/admin/fees") },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Pending Receipts", value: "—" },
+    { icon: <Banknote size={18} className="text-secondary-foreground" />, label: "Total Fees Collected", value: feeSummary ? formatGHS(feeSummary.total_paid) : "—", accent: true, onClick: () => navigate("/accountant/analytics") },
+    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Compliance Rate", value: feeSummary ? `${feeSummary.compliance_rate}%` : "—" },
+    { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: feeSummary ? String(feeSummary.owing_count) : "—", onClick: () => navigate("/admin/fees") },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Total Fees", value: feeSummary ? formatGHS(feeSummary.total_fees) : "—" },
   ];
 
   const examsOfficerStats = [
-    { icon: <BarChart3 size={18} className="text-secondary-foreground" />, label: "Results Published", value: "—", accent: true },
-    { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Batches", value: "—" },
+    { icon: <BarChart3 size={18} className="text-secondary-foreground" />, label: "Results Published", value: String(publishedBatches), accent: true },
+    { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Batches", value: String(pendingBatches) },
     { icon: <Users size={18} className="text-muted-foreground" />, label: "Total Students", value: String(totalStudents) },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Pass Rate", value: "—" },
   ];

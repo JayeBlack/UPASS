@@ -417,7 +417,7 @@ const MATH_PHD: ProgrammeCourseCatalog = {
 
 const MATH_MSC_MPHIL_JULY: ProgrammeCourseCatalog = {
   key: "math-msc-mphil-july",
-  label: "Mathematical Sciences (MSc / MPhil) — July",
+  label: "Mathematical Sciences (MSc / MPhil)",
   department: "Mathematical Sciences",
   levels: ["MSc", "MPhil"],
   admissionCycle: "July",

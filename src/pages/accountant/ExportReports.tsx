@@ -1,10 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText, Loader2, RefreshCw, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import ExportDropdown from "@/components/ExportDropdown";
 import { exportData } from "@/lib/exportUtils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { apiFetch } from "@/lib/api";
+import { useAdminDepartment } from "@/hooks/use-admin-department";
 
 interface FeeRecord {
   id: string;
@@ -22,109 +22,249 @@ interface FeeRecord {
   is_cleared: boolean;
 }
 
+const currentYear = new Date().getFullYear();
+const academicYearOptions = [
+  `${currentYear - 1}/${currentYear}`,
+  `${currentYear}/${currentYear + 1}`,
+  `${currentYear + 1}/${currentYear + 2}`,
+];
+
 const ExportReports = () => {
   const { toast } = useToast();
+  const { adminDepartment } = useAdminDepartment();
   const [fees, setFees] = useState<FeeRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterSemester, setFilterSemester] = useState<string>("all");
+  const [filterProgram, setFilterProgram] = useState<string>("all");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
-    apiFetch<FeeRecord[]>("/fees")
-      .then(setFees)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadFees = useCallback(async (showRefreshIndicator = false) => {
+    if (showRefreshIndicator) setRefreshing(true);
+    else setLoading(true);
+    try {
+      const data = await apiFetch<FeeRecord[]>("/fees");
+      setFees(data || []);
+      setLastUpdated(new Date());
+    } catch {
+      // backend offline
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  const handleExport = (report: string, format: "csv" | "pdf") => {
-    if (fees.length === 0) {
-      toast({ title: "No data", description: "No fee records to export", variant: "destructive" });
+  // Auto-refresh every 30 seconds for real-time data
+  useEffect(() => {
+    loadFees();
+    const interval = setInterval(() => loadFees(true), 30000);
+    return () => clearInterval(interval);
+  }, [loadFees]);
+
+  const allYears = [...new Set(fees.map((f) => f.academic_year).filter(Boolean))].sort();
+  const allSemesters = [...new Set(fees.map((f) => f.semester).filter(Boolean))].sort();
+  const allPrograms = [...new Set(fees.map((f) => f.program_name).filter(Boolean))].sort();
+
+  const filteredFees = fees.filter((f) => {
+    if (filterYear !== "all" && f.academic_year !== filterYear) return false;
+    if (filterSemester !== "all" && f.semester !== filterSemester) return false;
+    if (filterProgram !== "all" && f.program_name !== filterProgram) return false;
+    if (adminDepartment && f.department_name !== adminDepartment) return false;
+    return true;
+  });
+
+  const handleExport = async (report: string, format: "csv" | "pdf") => {
+    console.log("handleExport called", { report, format, filteredFeesCount: filteredFees.length });
+    
+    // Fetch fresh data before generating the report for real-time accuracy
+    setRefreshing(true);
+    let freshFees: FeeRecord[] = [];
+    try {
+      freshFees = await apiFetch<FeeRecord[]>("/fees");
+      setFees(freshFees);
+      setLastUpdated(new Date());
+    } catch {
+      // Use cached data if fetch fails
+      freshFees = fees;
+    } finally {
+      setRefreshing(false);
+    }
+
+    const freshFiltered = freshFees.filter((f) => {
+      if (filterYear !== "all" && f.academic_year !== filterYear) return false;
+      if (filterSemester !== "all" && f.semester !== filterSemester) return false;
+      if (filterProgram !== "all" && f.program_name !== filterProgram) return false;
+      if (adminDepartment && f.department_name !== adminDepartment) return false;
+      return true;
+    });
+
+    if (freshFiltered.length === 0) {
+      toast({ title: "No data", description: "No fee records match the current filters", variant: "destructive" });
       return;
     }
 
     let headers: string[] = [];
     let rows: string[][] = [];
     let title = "";
+    const filterSuffix = filterYear !== "all" ? ` (${filterYear})` : "";
 
     if (report === "collection") {
-      title = "Fee Collection Summary";
-      const grouped = fees.reduce((acc, f) => {
-        const key = `${f.program_name}|${f.semester}`;
-        if (!acc[key]) acc[key] = { program: f.program_name, semester: f.semester, count: 0, collected: 0 };
+      title = `Fee Collection Summary${filterSuffix}`;
+      const grouped = freshFiltered.reduce((acc, f) => {
+        const program = f.program_name || "Unassigned";
+        const sem = f.semester || "Unknown";
+        const year = f.academic_year || "N/A";
+        const key = `${program}|${sem}|${year}`;
+        if (!acc[key]) acc[key] = { program, semester: sem, academic_year: year, count: 0, collected: 0, total: 0 };
         acc[key].count++;
-        acc[key].collected += f.amount_paid;
+        acc[key].collected += Number(f.amount_paid) || 0;
+        acc[key].total += Number(f.total_amount) || 0;
         return acc;
-      }, {} as Record<string, { program: string; semester: string; count: number; collected: number }>);
-      headers = ["#", "Program", "Semester", "Students", "Amount Collected (GHS)"];
+      }, {} as Record<string, { program: string; semester: string; academic_year: string; count: number; collected: number; total: number }>);
+      headers = ["#", "Program", "Semester", "Academic Year", "Students", "Collected (GHS)", "Total Fees (GHS)"];
       rows = Object.values(grouped).map((g, i) => [
         String(i + 1),
         g.program,
         g.semester,
+        g.academic_year,
         String(g.count),
         g.collected.toFixed(2),
+        g.total.toFixed(2),
       ]);
     } else if (report === "outstanding") {
-      title = "Outstanding Balances Report";
-      const owing = fees.filter((f) => f.outstanding > 0);
-      headers = ["#", "Student Name", "Index Number", "Program", "Outstanding (GHS)"];
+      title = `Outstanding Balances Report${filterSuffix}`;
+      const owing = freshFiltered.filter((f) => Number(f.outstanding) > 0);
+      headers = ["#", "Student Name", "Index Number", "Program", "Semester", "Academic Year", "Outstanding (GHS)"];
       rows = owing.map((f, i) => [
         String(i + 1),
         `${f.first_name} ${f.last_name}`,
         f.index_number,
         f.program_name,
-        f.outstanding.toFixed(2),
+        f.semester,
+        f.academic_year,
+        Number(f.outstanding).toFixed(2),
       ]);
     } else if (report === "compliance") {
-      title = "Payment Compliance Report";
-      const byProgram = fees.reduce((acc, f) => {
-        if (!acc[f.program_name]) acc[f.program_name] = { total: 0, paid: 0 };
+      title = `Payment Compliance Report${filterSuffix}`;
+      const byProgram = freshFiltered.reduce((acc, f) => {
+        if (!acc[f.program_name]) acc[f.program_name] = { total: 0, cleared: 0, partial: 0, unpaid: 0 };
         acc[f.program_name].total++;
-        if (f.is_cleared) acc[f.program_name].paid++;
+        if (f.is_cleared) acc[f.program_name].cleared++;
+        else if (f.amount_paid > 0) acc[f.program_name].partial++;
+        else acc[f.program_name].unpaid++;
         return acc;
-      }, {} as Record<string, { total: number; paid: number }>);
-      headers = ["#", "Program", "Total Students", "Cleared", "Partial", "Compliance (%)"];
+      }, {} as Record<string, { total: number; cleared: number; partial: number; unpaid: number }>);
+      headers = ["#", "Program", "Total", "Cleared", "Partial", "Unpaid", "Compliance (%)"];
       rows = Object.entries(byProgram).map(([prog, data], i) => [
         String(i + 1),
         prog,
         String(data.total),
-        String(data.paid),
-        String(data.total - data.paid),
-        ((data.paid / data.total) * 100).toFixed(1),
+        String(data.cleared),
+        String(data.partial),
+        String(data.unpaid),
+        ((data.cleared / data.total) * 100).toFixed(1),
       ]);
     } else if (report === "defaulters") {
-      title = "Defaulters List";
-      const defaulters = fees.filter((f) => !f.is_cleared);
-      headers = ["#", "Student Name", "Index Number", "Program", "Amount Owed (GHS)"];
+      title = `Defaulters List${filterSuffix}`;
+      const defaulters = freshFiltered.filter((f) => !f.is_cleared);
+      headers = ["#", "Student Name", "Index Number", "Program", "Total Fee (GHS)", "Paid (GHS)", "Outstanding (GHS)", "Status", "Academic Year", "Semester"];
       rows = defaulters.map((f, i) => [
         String(i + 1),
         `${f.first_name} ${f.last_name}`,
         f.index_number,
         f.program_name,
-        f.outstanding.toFixed(2),
+        Number(f.total_amount).toFixed(2),
+        Number(f.amount_paid).toFixed(2),
+        Number(f.outstanding).toFixed(2),
+        f.status || "Unpaid",
+        f.academic_year,
+        f.semester,
       ]);
     }
 
-    exportData({
-      title,
-      subtitle: `Academic Year: ${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
-      headers,
-      rows,
-      fileName: `UMaT_${title.replace(/\s+/g, "_")}`,
-      format,
-    });
-    toast({ title: "Report Exported", description: `${title} downloaded as ${format.toUpperCase()}` });
+    try {
+      exportData({
+        title,
+        subtitle: `Generated: ${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString("en-GB")}`,
+        headers,
+        rows,
+        fileName: `UMaT_${title.replace(/\s+/g, "_")}`,
+        format,
+      });
+      toast({ title: "Report Exported", description: `${title} downloaded as ${format.toUpperCase()}` });
+    } catch (err) {
+      toast({ title: "Export failed", description: String(err), variant: "destructive" });
+    }
   };
 
   const reports = [
-    { id: "collection", name: "Fee Collection Summary", description: "Total fees collected by program and semester" },
+    { id: "collection", name: "Fee Collection Summary", description: "Total fees collected by program, semester, and academic year" },
     { id: "outstanding", name: "Outstanding Balances Report", description: "Students with unpaid fees and amounts owed" },
-    { id: "compliance", name: "Payment Compliance Report", description: "Compliance rates across all programs" },
+    { id: "compliance", name: "Payment Compliance Report", description: "Compliance rates — cleared, partial, unpaid across all programs" },
     { id: "defaulters", name: "Defaulters List", description: "Complete list of students with outstanding fees" },
   ];
 
   return (
     <DashboardLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold font-display text-foreground">Export Financial Reports</h1>
-        <p className="text-muted-foreground mt-1">Generate and download financial reports from database</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold font-display text-foreground">Export Financial Reports</h1>
+            <p className="text-muted-foreground mt-1">Generate and download financial reports from live database records</p>
+            {lastUpdated && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Last updated: {lastUpdated.toLocaleTimeString()} — auto-refreshes every 30s
+              </p>
+            )}
+          </div>
+          <button
+            onClick={() => loadFees(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            Refresh
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mt-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
+            <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="px-3 py-2 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="all">All Years</option>
+              {allYears.map((y) => <option key={y} value={y}>{y}</option>)}
+              {academicYearOptions.filter((y) => !allYears.includes(y)).map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Semester</label>
+            <select value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} className="px-3 py-2 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="all">All Semesters</option>
+              {allSemesters.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Programme</label>
+            <select value={filterProgram} onChange={(e) => setFilterProgram(e.target.value)} className="px-3 py-2 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+              <option value="all">All Programmes</option>
+              {allPrograms.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => { setFilterYear("all"); setFilterSemester("all"); setFilterProgram("all"); }}
+              className="px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Clear filters
+            </button>
+          </div>
+        </div>
+        {filterYear !== "all" || filterSemester !== "all" || filterProgram !== "all" ? (
+          <p className="text-xs text-muted-foreground mt-2">
+            Showing {filteredFees.length} of {fees.length} records
+          </p>
+        ) : null}
       </div>
 
       {loading ? (
@@ -132,8 +272,10 @@ const ExportReports = () => {
           <Loader2 size={18} className="animate-spin mr-2" /> Loading fee records...
         </div>
       ) : fees.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-8 text-center text-muted-foreground text-sm">
-          No fee records available. Upload fee data to generate reports.
+        <div className="bg-card rounded-xl border border-border p-8 text-center">
+          <FileText size={36} className="mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground mb-1">No fee records available.</p>
+          <p className="text-xs text-muted-foreground">Upload fee data from the Students Fees page to generate reports.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -148,7 +290,24 @@ const ExportReports = () => {
                   <p className="text-sm text-muted-foreground">{r.description}</p>
                 </div>
               </div>
-              <ExportDropdown onExport={(format) => handleExport(r.id, format)} label="Download" compact />
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleExport(r.id, "csv")}
+                  disabled={filteredFees.length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download size={14} /> CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport(r.id, "pdf")}
+                  disabled={filteredFees.length === 0}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg gradient-gold text-secondary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Download size={14} /> PDF
+                </button>
+              </div>
             </div>
           ))}
         </div>
