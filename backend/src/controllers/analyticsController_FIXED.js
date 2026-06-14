@@ -1,6 +1,4 @@
 const db = require("../db");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
 
 // GET /api/analytics/overview
 // Returns high-level statistics
@@ -71,9 +69,15 @@ exports.getOverview = async (req, res) => {
       params
     );
 
-    // Thesis defended - for now return 0 (thesis tracking is in Supabase)
-    // TODO: Integrate with Supabase thesis_submissions table
-    const thesisQuery = { rows: [{ defended: 0 }] };
+    // Thesis defended (from student_supervisors table with progress)
+    const thesisQuery = await db.query(
+      `SELECT COUNT(*) as defended
+       FROM student_supervisors ss
+       JOIN students s ON ss.student_id = s.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE ss.progress = 'defended' ${deptFilter} ${yearFilter}`,
+      params
+    );
 
     const students = studentsQuery.rows[0];
     const graduands = graduandsQuery.rows[0];
@@ -181,20 +185,40 @@ exports.getThesisProgress = async (req, res) => {
       params.push(department);
     }
 
-    // FIXED: Use basic thesis stage tracking or return empty for now
-    // Thesis progress should eventually come from Supabase thesis_submissions
+    // FIXED: Use student_supervisors.progress or return basic stages
     const result = await db.query(
       `SELECT 
-         'Not Started' as stage,
+         COALESCE(ss.progress, 'Not Started') as stage,
          COUNT(*) as value
        FROM students s
+       LEFT JOIN student_supervisors ss ON s.id = ss.student_id
        LEFT JOIN departments d ON s.department_id = d.id
        WHERE s.status = 'Active' ${deptFilter}
-       GROUP BY stage`,
+       GROUP BY ss.progress
+       ORDER BY 
+         CASE ss.progress
+           WHEN 'proposal' THEN 1
+           WHEN 'chapter_1_2' THEN 2
+           WHEN 'chapter_3_4' THEN 3
+           WHEN 'submitted' THEN 4
+           WHEN 'defended' THEN 5
+           ELSE 0
+         END`,
       params
     );
 
-    res.json(result.rows);
+    // Map progress to display names
+    const mapped = result.rows.map(row => ({
+      stage: row.stage === 'proposal' ? 'Proposal' :
+             row.stage === 'chapter_1_2' ? 'Chapter 1-2' :
+             row.stage === 'chapter_3_4' ? 'Chapter 3-4' :
+             row.stage === 'submitted' ? 'Submitted' :
+             row.stage === 'defended' ? 'Defended' :
+             'Not Started',
+      value: parseInt(row.value)
+    }));
+
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

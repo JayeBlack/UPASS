@@ -144,6 +144,8 @@ const Analytics = () => {
     try {
       const deptParam = department && department !== "all" ? `?department=${department}` : "";
       
+      console.log('[Analytics] Fetching data from /analytics/overview' + deptParam);
+      
       const [
         overviewData,
         enrollmentData,
@@ -163,6 +165,9 @@ const Analytics = () => {
         apiFetch<EnrollmentTrend[]>(`/analytics/enrollment-trend${deptParam}`),
         apiFetch<Alert[]>(`/analytics/alerts${deptParam}`),
       ]);
+
+      console.log('[Analytics] Overview data received:', overviewData);
+      console.log('[Analytics] Total students:', overviewData.total_students);
 
       setOverview(overviewData);
       setEnrollmentByDept(enrollmentData);

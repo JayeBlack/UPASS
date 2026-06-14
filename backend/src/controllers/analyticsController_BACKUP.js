@@ -1,6 +1,4 @@
 const db = require("../db");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
 
 // GET /api/analytics/overview
 // Returns high-level statistics
@@ -47,14 +45,14 @@ exports.getOverview = async (req, res) => {
       params
     );
 
-    // Fees - FIXED to use fee_records table
+    // Fees
     const feesQuery = await db.query(
       `SELECT 
-         COALESCE(SUM(f.amount_paid), 0) as collected,
-         COALESCE(SUM(f.outstanding), 0) as owing,
-         COUNT(CASE WHEN f.is_cleared = TRUE THEN 1 END) as cleared_count,
-         COUNT(CASE WHEN f.is_cleared = FALSE THEN 1 END) as owing_count
-       FROM fee_records f
+         SUM(CASE WHEN f.status = 'Paid' THEN f.amount ELSE 0 END) as collected,
+         SUM(CASE WHEN f.status IN ('Pending', 'Overdue') THEN f.amount ELSE 0 END) as owing,
+         COUNT(CASE WHEN f.status = 'Paid' THEN 1 END) as cleared_count,
+         COUNT(CASE WHEN f.status IN ('Pending', 'Overdue') THEN 1 END) as owing_count
+       FROM fees f
        JOIN students s ON f.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
        WHERE 1=1 ${deptFilter} ${yearFilter}`,
@@ -71,9 +69,15 @@ exports.getOverview = async (req, res) => {
       params
     );
 
-    // Thesis defended - for now return 0 (thesis tracking is in Supabase)
-    // TODO: Integrate with Supabase thesis_submissions table
-    const thesisQuery = { rows: [{ defended: 0 }] };
+    // Thesis defended
+    const thesisQuery = await db.query(
+      `SELECT COUNT(*) as defended
+       FROM thesis_submissions t
+       JOIN students s ON t.student_id = s.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE t.status = 'Defended' ${deptFilter} ${yearFilter}`,
+      params
+    );
 
     const students = studentsQuery.rows[0];
     const graduands = graduandsQuery.rows[0];
@@ -119,9 +123,10 @@ exports.getEnrollmentByDept = async (req, res) => {
       `SELECT 
          COALESCE(d.name, 'Unassigned') as department,
          COUNT(s.id) as students,
-         COUNT(CASE WHEN s.gender = 'Male' THEN 1 END) as male,
-         COUNT(CASE WHEN s.gender = 'Female' THEN 1 END) as female
+         COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) as male,
+         COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) as female
        FROM students s
+       JOIN users u ON s.user_id = u.id
        LEFT JOIN departments d ON s.department_id = d.id
        WHERE s.id IS NOT NULL ${yearFilter}
        GROUP BY d.id, d.name
@@ -147,19 +152,18 @@ exports.getFeesTrend = async (req, res) => {
       params.push(department);
     }
 
-    // FIXED: Use fee_records.created_at instead of fees.due_date
     const result = await db.query(
       `SELECT 
-         TO_CHAR(f.created_at, 'Mon') as month,
-         TO_CHAR(f.created_at, 'YYYY-MM') as period,
-         SUM(f.amount_paid) as collected,
-         SUM(f.total_amount) as target
-       FROM fee_records f
+         TO_CHAR(f.due_date, 'Mon') as month,
+         TO_CHAR(f.due_date, 'YYYY-MM') as period,
+         SUM(CASE WHEN f.status = 'Paid' THEN f.amount ELSE 0 END) as collected,
+         SUM(f.amount) as target
+       FROM fees f
        JOIN students s ON f.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE f.created_at >= NOW() - INTERVAL '1 month' * $1 ${deptFilter}
-       GROUP BY TO_CHAR(f.created_at, 'Mon'), TO_CHAR(f.created_at, 'YYYY-MM'), DATE_TRUNC('month', f.created_at)
-       ORDER BY DATE_TRUNC('month', f.created_at)`,
+       WHERE f.due_date >= NOW() - INTERVAL '1 month' * $1 ${deptFilter}
+       GROUP BY TO_CHAR(f.due_date, 'Mon'), TO_CHAR(f.due_date, 'YYYY-MM'), DATE_TRUNC('month', f.due_date)
+       ORDER BY DATE_TRUNC('month', f.due_date)`,
       params
     );
 
@@ -181,16 +185,24 @@ exports.getThesisProgress = async (req, res) => {
       params.push(department);
     }
 
-    // FIXED: Use basic thesis stage tracking or return empty for now
-    // Thesis progress should eventually come from Supabase thesis_submissions
     const result = await db.query(
       `SELECT 
-         'Not Started' as stage,
+         COALESCE(t.status, 'Not Started') as stage,
          COUNT(*) as value
        FROM students s
+       LEFT JOIN thesis_submissions t ON s.id = t.student_id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE s.status = 'Active' ${deptFilter}
-       GROUP BY stage`,
+       WHERE 1=1 ${deptFilter}
+       GROUP BY t.status
+       ORDER BY 
+         CASE t.status
+           WHEN 'Proposal' THEN 1
+           WHEN 'Chapter 1-2' THEN 2
+           WHEN 'Chapter 3-4' THEN 3
+           WHEN 'Submitted' THEN 4
+           WHEN 'Defended' THEN 5
+           ELSE 0
+         END`,
       params
     );
 
@@ -321,13 +333,13 @@ exports.getAlerts = async (req, res) => {
 
     const alerts = [];
 
-    // Outstanding fees - FIXED
+    // Outstanding fees
     const feesResult = await db.query(
       `SELECT COUNT(*) as count
-       FROM fee_records f
+       FROM fees f
        JOIN students s ON f.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE f.is_cleared = FALSE ${deptFilter}`,
+       WHERE f.status IN ('Pending', 'Overdue') ${deptFilter}`,
       params
     );
     const feesCount = parseInt(feesResult.rows[0].count);
