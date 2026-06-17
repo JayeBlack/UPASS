@@ -33,6 +33,7 @@ const FeesStatus = () => {
   const { user } = useAuth();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const isAccountant = user?.role === "Accountant";
+  const canModifyFees = isAccountant || user?.role === "AccountingAssistant" || user?.role === "Admin";
   const [records, setRecords] = useState<FeeRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -329,9 +330,13 @@ const FeesStatus = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button onClick={() => handleToggleClearance(f.id)} className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${f.is_cleared ? "border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : "gradient-gold text-secondary-foreground hover:opacity-90"}`}>
-                      {f.is_cleared ? "Revoke" : "Clear"}
-                    </button>
+                    {canModifyFees ? (
+                      <button onClick={() => handleToggleClearance(f.id)} className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${f.is_cleared ? "border border-border text-muted-foreground hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" : "gradient-gold text-secondary-foreground hover:opacity-90"}`}>
+                        {f.is_cleared ? "Revoke" : "Clear"}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground px-2">Read only</span>
+                    )}
                   </td>
                 </tr>
               ))}

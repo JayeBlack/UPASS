@@ -14,6 +14,7 @@ router.get("/thesis-progress", authorize(...adminRoles), ctrl.getThesisProgress)
 router.get("/cwa-distribution", authorize(...adminRoles), ctrl.getCWADistribution);
 router.get("/program-breakdown", authorize(...adminRoles), ctrl.getProgramBreakdown);
 router.get("/enrollment-trend", authorize(...adminRoles), ctrl.getEnrollmentTrend);
+router.get("/counts", authorize(...adminRoles), ctrl.getCounts);
 router.get("/alerts", authorize(...adminRoles), ctrl.getAlerts);
 
 module.exports = router;

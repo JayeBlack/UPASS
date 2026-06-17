@@ -217,7 +217,7 @@ exports.parseBulk = async (req, res) => {
 
 // POST /api/fees/upload-bulk
 // Accepts: { fees: [{ index_number, total_amount, amount_paid, academic_year, semester }, ...] }
-// Creates fee records for multiple students with their paid amounts
+// Creates fee records and payment records for multiple students with their paid amounts
 exports.uploadBulk = async (req, res) => {
   try {
     const { fees } = req.body;
@@ -225,6 +225,7 @@ exports.uploadBulk = async (req, res) => {
       return res.status(400).json({ error: "No fee records to upload" });
     }
 
+    const accountantId = req.user?.id;
     const created = [];
     const errors = [];
 
@@ -268,7 +269,10 @@ exports.uploadBulk = async (req, res) => {
           [studentId, year, sem]
         );
 
+        let feeRecordId;
+
         if (existing.rows.length > 0) {
+          feeRecordId = existing.rows[0].id;
           // Update existing record with the new amounts
           await db.query(
             `UPDATE fee_records SET 
@@ -278,21 +282,34 @@ exports.uploadBulk = async (req, res) => {
               is_cleared = $4,
               updated_at = NOW() 
              WHERE id = $5`,
-            [total_amount, paid, status, is_cleared, existing.rows[0].id]
+            [total_amount, paid, status, is_cleared, feeRecordId]
           );
-          created.push({ index_number, id: existing.rows[0].id, total_amount, amount_paid: paid, status });
-          continue;
+        } else {
+          // Create fee record
+          const result = await db.query(
+            `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, status, is_cleared)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             RETURNING id`,
+            [studentId, year, sem, total_amount, paid, status, is_cleared]
+          );
+          feeRecordId = result.rows[0].id;
         }
 
-        // Create fee record
-        const result = await db.query(
-          `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, status, is_cleared)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)
-           RETURNING *`,
-          [studentId, year, sem, total_amount, paid, status, is_cleared]
-        );
+        // Create or update payment record if amount_paid > 0
+        if (paid > 0) {
+          await db.query(
+            `INSERT INTO payments (fee_record_id, amount, payment_method, status, verified_by, verified_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (fee_record_id) DO UPDATE SET
+               amount = $2,
+               status = $4,
+               verified_by = $5,
+               verified_at = NOW()`,
+            [feeRecordId, paid, "bank_transfer", "Verified", accountantId]
+          );
+        }
 
-        created.push({ index_number, ...result.rows[0] });
+        created.push({ index_number, id: feeRecordId, total_amount, amount_paid: paid, status });
       } catch (err) {
         errors.push(`Row ${i + 1}: ${err.message}`);
       }
