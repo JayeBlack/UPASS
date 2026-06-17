@@ -1,5 +1,4 @@
 const db = require("../db");
-const { getDepartmentFilter } = require("../middleware/departmentFilter");
 
 // GET /api/analytics/overview
 // Returns high-level statistics
@@ -8,27 +7,22 @@ exports.getOverview = async (req, res) => {
     const { department, academic_year } = req.query;
     console.log('[Analytics] getOverview called with:', { department, academic_year, userId: req.user?.id });
     
-    // Build parameters array once for consistent indexing across all queries
-    const buildParams = () => {
-      const p = [];
-      if (department && department !== "all") p.push(department);
-      if (academic_year) p.push(academic_year);
-      return p;
-    };
+    let deptFilter = "";
+    let yearFilter = "";
+    const params = [];
+    let paramIndex = 1;
 
-    const getDeptFilter = () => {
-      if (!department || department === "all") return "";
-      const idx = 1;
-      return ` AND d.name = $${idx}`;
-    };
+    if (department && department !== "all") {
+      deptFilter = ` AND d.name = $${paramIndex}`;
+      params.push(department);
+      paramIndex++;
+    }
 
-    const getYearFilter = () => {
-      if (!academic_year) return "";
-      const yearIdx = (department && department !== "all") ? 2 : 1;
-      return ` AND s.admission_year = $${yearIdx}`;
-    };
-
-    const params = buildParams();
+    if (academic_year) {
+      yearFilter = ` AND s.admission_year = $${paramIndex}`;
+      params.push(academic_year);
+      paramIndex++;
+    }
 
     // Total students
     const studentsQuery = await db.query(
@@ -36,7 +30,7 @@ exports.getOverview = async (req, res) => {
               COUNT(CASE WHEN s.status = 'Active' THEN 1 END) as active
        FROM students s
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE 1=1 ${getDeptFilter()} ${getYearFilter()}`,
+       WHERE s.id IS NOT NULL ${deptFilter} ${yearFilter}`,
       params
     );
 
@@ -47,87 +41,62 @@ exports.getOverview = async (req, res) => {
        FROM graduands g
        JOIN students s ON g.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE 1=1 ${getDeptFilter()} ${getYearFilter()}`,
+       WHERE 1=1 ${deptFilter} ${yearFilter}`,
       params
     );
 
-<<<<<<< HEAD
-    // Fees - Updated to use fee_records table with proper NULL handling
+    // Fees
     const feesQuery = await db.query(
       `SELECT 
-         COALESCE(SUM(CASE WHEN fr.status = 'Paid' THEN fr.amount_paid ELSE 0 END), 0) as collected,
-         COALESCE(SUM(CASE WHEN fr.status IN ('Pending', 'Partial') THEN fr.outstanding ELSE 0 END), 0) as owing,
-         COUNT(CASE WHEN fr.is_cleared = true THEN 1 END) as cleared_count,
-         COUNT(CASE WHEN fr.status IN ('Pending', 'Partial') THEN 1 END) as owing_count
-       FROM fee_records fr
-       JOIN students s ON fr.student_id = s.id
-=======
-    // Fees - FIXED to use fee_records table
-    const feesQuery = await db.query(
-      `SELECT 
-         COALESCE(SUM(f.amount_paid), 0) as collected,
-         COALESCE(SUM(f.outstanding), 0) as owing,
-         COUNT(CASE WHEN f.is_cleared = TRUE THEN 1 END) as cleared_count,
-         COUNT(CASE WHEN f.is_cleared = FALSE THEN 1 END) as owing_count
-       FROM fee_records f
+         SUM(CASE WHEN f.status = 'Paid' THEN f.amount ELSE 0 END) as collected,
+         SUM(CASE WHEN f.status IN ('Pending', 'Overdue') THEN f.amount ELSE 0 END) as owing,
+         COUNT(CASE WHEN f.status = 'Paid' THEN 1 END) as cleared_count,
+         COUNT(CASE WHEN f.status IN ('Pending', 'Overdue') THEN 1 END) as owing_count
+       FROM fees f
        JOIN students s ON f.student_id = s.id
->>>>>>> f6e2c3bd2440cd45d1133c91074ebc9793361b21
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE 1=1 ${getDeptFilter()} ${getYearFilter()}`,
+       WHERE 1=1 ${deptFilter} ${yearFilter}`,
       params
     );
 
-    // Average CWA - Computed from grades if available
+    // Average CWA
     const cwaQuery = await db.query(
-      `SELECT COALESCE(AVG(cwa_calc), 0) as avg_cwa
-       FROM (
-         SELECT ROUND(SUM(g.marks * c.credits)::numeric / NULLIF(SUM(c.credits), 0), 2) as cwa_calc
-         FROM students s
-         LEFT JOIN grades g ON s.id = g.student_id
-         LEFT JOIN courses c ON g.course_id = c.id
-         LEFT JOIN departments d ON s.department_id = d.id
-         WHERE g.marks IS NOT NULL ${getDeptFilter()} ${getYearFilter()}
-         GROUP BY s.id
-         HAVING SUM(c.credits) > 0
-       ) cwa_subquery`,
+      `SELECT AVG(g.cwa) as avg_cwa
+       FROM graduands g
+       JOIN students s ON g.student_id = s.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE g.cwa IS NOT NULL ${deptFilter} ${yearFilter}`,
       params
     );
 
-<<<<<<< HEAD
     // Thesis defended
     const thesisQuery = await db.query(
-      `SELECT COALESCE(COUNT(*), 0) as defended
+      `SELECT COUNT(*) as defended
        FROM thesis_submissions t
        JOIN students s ON t.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE t.status = 'Defended' ${getDeptFilter()} ${getYearFilter()}`,
+       WHERE t.status = 'Defended' ${deptFilter} ${yearFilter}`,
       params
     );
-=======
-    // Thesis defended - for now return 0 (thesis tracking is in Supabase)
-    // TODO: Integrate with Supabase thesis_submissions table
-    const thesisQuery = { rows: [{ defended: 0 }] };
->>>>>>> f6e2c3bd2440cd45d1133c91074ebc9793361b21
 
     const students = studentsQuery.rows[0];
-    const graduands = graduandsQuery.rows[0] || { eligible: 0, ineligible: 0 };
-    const fees = feesQuery.rows[0] || { collected: 0, owing: 0, cleared_count: 0, owing_count: 0 };
-    
+    const graduands = graduandsQuery.rows[0];
+    const fees = feesQuery.rows[0];
     const totalFees = parseFloat(fees.collected || 0) + parseFloat(fees.owing || 0);
     const collectionRate = totalFees > 0 ? Math.round((parseFloat(fees.collected || 0) / totalFees) * 100) : 0;
 
     const overview = {
-      total_students: parseInt(students?.total || 0),
-      active_students: parseInt(students?.active || 0),
-      graduands_eligible: parseInt(graduands?.eligible || 0),
-      graduands_ineligible: parseInt(graduands?.ineligible || 0),
-      fees_collected: parseFloat(fees?.collected || 0),
-      fees_owing: parseFloat(fees?.owing || 0),
-      fees_cleared: parseInt(fees?.cleared_count || 0),
-      fees_owing_count: parseInt(fees?.owing_count || 0),
+      total_students: parseInt(students.total) || 0,
+      active_students: parseInt(students.active) || 0,
+      graduands_eligible: parseInt(graduands.eligible) || 0,
+      graduands_ineligible: parseInt(graduands.ineligible) || 0,
+      fees_collected: parseFloat(fees.collected) || 0,
+      fees_owing: parseFloat(fees.owing) || 0,
+      fees_cleared: parseInt(fees.cleared_count) || 0,
+      fees_owing_count: parseInt(fees.owing_count) || 0,
       collection_rate: collectionRate,
-      avg_cwa: parseFloat(cwaQuery.rows[0]?.avg_cwa || 0).toFixed(1),
-      thesis_defended: parseInt(thesisQuery.rows[0]?.defended || 0),
+      avg_cwa: parseFloat(cwaQuery.rows[0].avg_cwa || 0).toFixed(1),
+      thesis_defended: parseInt(thesisQuery.rows[0].defended) || 0,
     };
 
     console.log('Analytics Overview:', overview);
@@ -141,19 +110,12 @@ exports.getOverview = async (req, res) => {
 // GET /api/analytics/enrollment-by-dept
 exports.getEnrollmentByDept = async (req, res) => {
   try {
-    const { department, academic_year } = req.query;
-    let deptFilter = "";
+    const { academic_year } = req.query;
     let yearFilter = "";
     const params = [];
 
-    if (department && department !== "all" && department !== "") {
-      deptFilter = " AND d.name = $1";
-      params.push(department);
-    }
-
     if (academic_year) {
-      const yearIdx = (deptFilter) ? 2 : 1;
-      yearFilter = ` AND s.admission_year = $${yearIdx}`;
+      yearFilter = " AND s.admission_year = $1";
       params.push(academic_year);
     }
 
@@ -161,15 +123,12 @@ exports.getEnrollmentByDept = async (req, res) => {
       `SELECT 
          COALESCE(d.name, 'Unassigned') as department,
          COUNT(s.id) as students,
-         COUNT(CASE WHEN s.gender = 'Male' THEN 1 END) as male,
-         COUNT(CASE WHEN s.gender = 'Female' THEN 1 END) as female
+         COUNT(CASE WHEN u.gender = 'Male' THEN 1 END) as male,
+         COUNT(CASE WHEN u.gender = 'Female' THEN 1 END) as female
        FROM students s
-<<<<<<< HEAD
-       LEFT JOIN users u ON s.user_id = u.id
-=======
->>>>>>> f6e2c3bd2440cd45d1133c91074ebc9793361b21
+       JOIN users u ON s.user_id = u.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE s.id IS NOT NULL ${deptFilter} ${yearFilter}
+       WHERE s.id IS NOT NULL ${yearFilter}
        GROUP BY d.id, d.name
        ORDER BY students DESC`,
       params
@@ -193,32 +152,18 @@ exports.getFeesTrend = async (req, res) => {
       params.push(department);
     }
 
-    // FIXED: Use fee_records.created_at instead of fees.due_date
     const result = await db.query(
       `SELECT 
-<<<<<<< HEAD
-         TO_CHAR(fr.created_at, 'Mon') as month,
-         TO_CHAR(fr.created_at, 'YYYY-MM') as period,
-         COALESCE(SUM(CASE WHEN fr.status = 'Paid' THEN fr.amount_paid ELSE 0 END), 0) as collected,
-         COALESCE(SUM(fr.total_amount), 0) as target
-       FROM fee_records fr
-       JOIN students s ON fr.student_id = s.id
-       LEFT JOIN departments d ON s.department_id = d.id
-       WHERE fr.created_at >= NOW() - INTERVAL '1 month' * $1 ${deptFilter}
-       GROUP BY TO_CHAR(fr.created_at, 'Mon'), TO_CHAR(fr.created_at, 'YYYY-MM'), DATE_TRUNC('month', fr.created_at)
-       ORDER BY DATE_TRUNC('month', fr.created_at)`,
-=======
-         TO_CHAR(f.created_at, 'Mon') as month,
-         TO_CHAR(f.created_at, 'YYYY-MM') as period,
-         SUM(f.amount_paid) as collected,
-         SUM(f.total_amount) as target
-       FROM fee_records f
+         TO_CHAR(f.due_date, 'Mon') as month,
+         TO_CHAR(f.due_date, 'YYYY-MM') as period,
+         SUM(CASE WHEN f.status = 'Paid' THEN f.amount ELSE 0 END) as collected,
+         SUM(f.amount) as target
+       FROM fees f
        JOIN students s ON f.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE f.created_at >= NOW() - INTERVAL '1 month' * $1 ${deptFilter}
-       GROUP BY TO_CHAR(f.created_at, 'Mon'), TO_CHAR(f.created_at, 'YYYY-MM'), DATE_TRUNC('month', f.created_at)
-       ORDER BY DATE_TRUNC('month', f.created_at)`,
->>>>>>> f6e2c3bd2440cd45d1133c91074ebc9793361b21
+       WHERE f.due_date >= NOW() - INTERVAL '1 month' * $1 ${deptFilter}
+       GROUP BY TO_CHAR(f.due_date, 'Mon'), TO_CHAR(f.due_date, 'YYYY-MM'), DATE_TRUNC('month', f.due_date)
+       ORDER BY DATE_TRUNC('month', f.due_date)`,
       params
     );
 
@@ -240,16 +185,24 @@ exports.getThesisProgress = async (req, res) => {
       params.push(department);
     }
 
-    // FIXED: Use basic thesis stage tracking or return empty for now
-    // Thesis progress should eventually come from Supabase thesis_submissions
     const result = await db.query(
       `SELECT 
-         'Not Started' as stage,
+         COALESCE(t.status, 'Not Started') as stage,
          COUNT(*) as value
        FROM students s
+       LEFT JOIN thesis_submissions t ON s.id = t.student_id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE s.status = 'Active' ${deptFilter}
-       GROUP BY stage`,
+       WHERE 1=1 ${deptFilter}
+       GROUP BY t.status
+       ORDER BY 
+         CASE t.status
+           WHEN 'Proposal' THEN 1
+           WHEN 'Chapter 1-2' THEN 2
+           WHEN 'Chapter 3-4' THEN 3
+           WHEN 'Submitted' THEN 4
+           WHEN 'Defended' THEN 5
+           ELSE 0
+         END`,
       params
     );
 
@@ -274,24 +227,18 @@ exports.getCWADistribution = async (req, res) => {
     const result = await db.query(
       `SELECT 
          CASE 
-           WHEN cwa_val < 50 THEN '< 50'
-           WHEN cwa_val >= 50 AND cwa_val < 60 THEN '50-59'
-           WHEN cwa_val >= 60 AND cwa_val < 70 THEN '60-69'
-           WHEN cwa_val >= 70 AND cwa_val < 80 THEN '70-79'
-           WHEN cwa_val >= 80 AND cwa_val < 90 THEN '80-89'
-           WHEN cwa_val >= 90 THEN '90+'
+           WHEN g.cwa < 50 THEN '< 50'
+           WHEN g.cwa >= 50 AND g.cwa < 60 THEN '50-59'
+           WHEN g.cwa >= 60 AND g.cwa < 70 THEN '60-69'
+           WHEN g.cwa >= 70 AND g.cwa < 80 THEN '70-79'
+           WHEN g.cwa >= 80 AND g.cwa < 90 THEN '80-89'
+           WHEN g.cwa >= 90 THEN '90+'
          END as range,
          COUNT(*) as count
-       FROM (
-         SELECT ROUND(SUM(g.marks * c.credits)::numeric / NULLIF(SUM(c.credits), 0), 2) as cwa_val
-         FROM students s
-         LEFT JOIN grades g ON s.id = g.student_id
-         LEFT JOIN courses c ON g.course_id = c.id
-         LEFT JOIN departments d ON s.department_id = d.id
-         WHERE g.marks IS NOT NULL ${deptFilter}
-         GROUP BY s.id
-         HAVING SUM(c.credits) > 0
-       ) cwa_calc
+       FROM graduands g
+       JOIN students s ON g.student_id = s.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE g.cwa IS NOT NULL ${deptFilter}
        GROUP BY range
        ORDER BY 
          CASE range
@@ -372,39 +319,6 @@ exports.getEnrollmentTrend = async (req, res) => {
   }
 };
 
-// GET /api/analytics/counts
-exports.getCounts = async (req, res) => {
-  try {
-    const { department } = req.query;
-    let deptFilter = "";
-    const params = [];
-
-    if (department && department !== "all" && department !== "") {
-      deptFilter = " WHERE d.name = $1";
-      params.push(department);
-    }
-
-    const deptsQuery = await db.query(
-      `SELECT COUNT(*) as count FROM departments d ${deptFilter}`,
-      params
-    );
-
-    const progQuery = await db.query(
-      `SELECT COUNT(*) as count FROM programs p
-       LEFT JOIN departments d ON p.department_id = d.id
-       ${deptFilter.replace('WHERE', 'WHERE')}`,
-      params
-    );
-
-    res.json({
-      departments: parseInt(deptsQuery.rows[0]?.count || 0),
-      programs: parseInt(progQuery.rows[0]?.count || 0),
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 // GET /api/analytics/alerts
 exports.getAlerts = async (req, res) => {
   try {
@@ -419,26 +333,16 @@ exports.getAlerts = async (req, res) => {
 
     const alerts = [];
 
-<<<<<<< HEAD
-    // Outstanding fees - Updated to use fee_records
+    // Outstanding fees
     const feesResult = await db.query(
       `SELECT COUNT(*) as count
-       FROM fee_records fr
-       JOIN students s ON fr.student_id = s.id
-       LEFT JOIN departments d ON s.department_id = d.id
-       WHERE fr.status IN ('Pending', 'Partial') ${deptFilter}`,
-=======
-    // Outstanding fees - FIXED
-    const feesResult = await db.query(
-      `SELECT COUNT(*) as count
-       FROM fee_records f
+       FROM fees f
        JOIN students s ON f.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
-       WHERE f.is_cleared = FALSE ${deptFilter}`,
->>>>>>> f6e2c3bd2440cd45d1133c91074ebc9793361b21
+       WHERE f.status IN ('Pending', 'Overdue') ${deptFilter}`,
       params
     );
-    const feesCount = parseInt(feesResult.rows[0]?.count || 0);
+    const feesCount = parseInt(feesResult.rows[0].count);
     if (feesCount > 0) {
       alerts.push({
         text: `${feesCount} student${feesCount > 1 ? "s have" : " has"} outstanding fees`,
@@ -456,7 +360,7 @@ exports.getAlerts = async (req, res) => {
        WHERE g.status = 'Eligible' ${deptFilter}`,
       params
     );
-    const graduandsCount = parseInt(graduandsResult.rows[0]?.count || 0);
+    const graduandsCount = parseInt(graduandsResult.rows[0].count);
     if (graduandsCount > 0) {
       alerts.push({
         text: `${graduandsCount} student${graduandsCount > 1 ? "s are" : " is"} eligible for graduation`,
@@ -474,7 +378,7 @@ exports.getAlerts = async (req, res) => {
        WHERE c.status = 'pending' ${deptFilter}`,
       params
     );
-    const clearanceCount = parseInt(clearanceResult.rows[0]?.count || 0);
+    const clearanceCount = parseInt(clearanceResult.rows[0].count);
     if (clearanceCount > 0) {
       alerts.push({
         text: `${clearanceCount} clearance request${clearanceCount > 1 ? "s" : ""} pending approval`,
@@ -492,7 +396,7 @@ exports.getAlerts = async (req, res) => {
        WHERE dr.status = 'Pending' ${deptFilter}`,
       params
     );
-    const docsCount = parseInt(docsResult.rows[0]?.count || 0);
+    const docsCount = parseInt(docsResult.rows[0].count);
     if (docsCount > 0) {
       alerts.push({
         text: `${docsCount} document request${docsCount > 1 ? "s" : ""} awaiting processing`,

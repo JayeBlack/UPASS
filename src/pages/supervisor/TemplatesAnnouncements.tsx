@@ -10,22 +10,22 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/api";
 import {
   Upload, FileText, FileType, Archive, Download, Trash2, Filter,
   Send, Paperclip, Calendar, Bell, Clock, Users, User, X,
-  Plus, Search, SortAsc, Loader2,
+  Plus, Search, SortAsc, Loader2, Check,
 } from "lucide-react";
 
 interface Resource {
   id: string;
-  name: string;
+  title: string;
   category: string;
   description: string | null;
-  file_path: string;
+  file_url: string;
   file_size: number | null;
-  uploaded_at: string;
+  created_at: string;
 }
 
 interface Announcement {
@@ -34,6 +34,13 @@ interface Announcement {
   visibility: string;
   scheduled_at: string | null;
   created_at: string;
+}
+
+interface AssignedStudent {
+  id: string;
+  name: string;
+  index_number: string;
+  program_name: string;
 }
 
 const categories = ["Report Template", "Guidelines", "Rubric", "Reference Material", "Other"];
@@ -58,6 +65,7 @@ const TemplatesAnnouncements = () => {
   const [resSort, setResSort] = useState<"date" | "name">("date");
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState("");
   const [uploadDesc, setUploadDesc] = useState("");
   const [uploadCat, setUploadCat] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -66,66 +74,99 @@ const TemplatesAnnouncements = () => {
   /* ── Announcements ── */
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [annLoading, setAnnLoading] = useState(true);
+  const [assignedStudents, setAssignedStudents] = useState<AssignedStudent[]>([]);
   const [annText, setAnnText] = useState("");
   const [annVisibility, setAnnVisibility] = useState("All Students");
+  const [annSelectedStudents, setAnnSelectedStudents] = useState<string[]>([]);
   const [annSchedule, setAnnSchedule] = useState("");
   const [annPosting, setAnnPosting] = useState(false);
-  const annFileRef = useRef<HTMLInputElement>(null);
-  const [annAttachment, setAnnAttachment] = useState<File | null>(null);
 
+  /* ── Load data ── */
   const loadResources = async () => {
     setResLoading(true);
-    const { data } = await supabase
-      .from("supervisor_resources")
-      .select("*")
-      .eq("supervisor_id", user?.id)
-      .order("uploaded_at", { ascending: false });
-    setResources((data as Resource[]) || []);
-    setResLoading(false);
+    try {
+      const data = await apiFetch("/supervisors/resources");
+      setResources(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast({ title: "Failed to load resources", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setResLoading(false);
+    }
   };
 
   const loadAnnouncements = async () => {
     setAnnLoading(true);
-    const { data } = await supabase
-      .from("supervisor_announcements")
-      .select("*")
-      .eq("supervisor_id", user?.id)
-      .order("created_at", { ascending: false });
-    setAnnouncements((data as Announcement[]) || []);
-    setAnnLoading(false);
+    try {
+      const data = await apiFetch("/supervisors/announcements");
+      setAnnouncements(Array.isArray(data) ? data : []);
+    } catch (err) {
+      toast({ title: "Failed to load announcements", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setAnnLoading(false);
+    }
+  };
+
+  const loadAssignedStudents = async () => {
+    if (!user?.id) return;
+    try {
+      // Fetch current supervisor info first to get supervisor ID
+      const supervisorRes = await apiFetch("/supervisors");
+      const currentSupervisor = supervisorRes.find((s: any) => s.user_id === user.id);
+      if (!currentSupervisor) return;
+
+      const studentData = await apiFetch(`/supervisors/${currentSupervisor.id}/students`);
+      setAssignedStudents(Array.isArray(studentData) ? studentData : []);
+    } catch (err) {
+      // Silently fail - students might not be loaded
+    }
   };
 
   useEffect(() => {
     if (user?.id) {
       loadResources();
       loadAnnouncements();
+      loadAssignedStudents();
     }
   }, [user?.id]);
 
   /* ── Resource handlers ── */
   const handleUpload = async () => {
-    if (!uploadFile) { toast({ title: "No file selected", variant: "destructive" }); return; }
-    if (!uploadCat) { toast({ title: "Select a category", variant: "destructive" }); return; }
+    if (!uploadFile) {
+      toast({ title: "No file selected", variant: "destructive" });
+      return;
+    }
+    if (!uploadTitle.trim()) {
+      toast({ title: "Enter a title", variant: "destructive" });
+      return;
+    }
+    if (!uploadCat) {
+      toast({ title: "Select a category", variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
-      const path = `${user?.id}/${Date.now()}-${uploadFile.name}`;
-      const { error: upErr } = await supabase.storage
-        .from("supervisor-resources")
-        .upload(path, uploadFile, { contentType: uploadFile.type });
-      if (upErr) throw upErr;
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      formData.append("title", uploadTitle);
+      formData.append("category", uploadCat);
+      formData.append("description", uploadDesc);
 
-      const { error: insErr } = await supabase.from("supervisor_resources").insert({
-        supervisor_id: user?.id,
-        name: uploadFile.name,
-        category: uploadCat,
-        description: uploadDesc || null,
-        file_path: path,
-        file_size: uploadFile.size,
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/supervisors/resources/upload`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
       });
-      if (insErr) throw insErr;
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload failed");
+      }
 
       toast({ title: "File uploaded", description: uploadFile.name });
       setUploadFile(null);
+      setUploadTitle("");
       setUploadDesc("");
       setUploadCat("");
       loadResources();
@@ -136,40 +177,63 @@ const TemplatesAnnouncements = () => {
     }
   };
 
-  const deleteResource = async (r: Resource) => {
-    await supabase.storage.from("supervisor-resources").remove([r.file_path]);
-    await supabase.from("supervisor_resources").delete().eq("id", r.id);
-    setResources((prev) => prev.filter((x) => x.id !== r.id));
-    toast({ title: "File removed" });
+  const deleteResource = async (id: string) => {
+    try {
+      await apiFetch(`/supervisors/resources/${id}`, { method: "DELETE" });
+      setResources((prev) => prev.filter((x) => x.id !== id));
+      toast({ title: "File removed" });
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const downloadResource = async (r: Resource) => {
-    const { data } = supabase.storage.from("supervisor-resources").getPublicUrl(r.file_path);
-    window.open(data.publicUrl, "_blank");
+    try {
+      window.open(r.file_url, "_blank");
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
   };
 
   const filteredResources = resources
     .filter((r) => resFilter === "all" || r.category === resFilter)
-    .filter((r) => r.name.toLowerCase().includes(resSearch.toLowerCase()) || (r.description ?? "").toLowerCase().includes(resSearch.toLowerCase()))
-    .sort((a, b) => resSort === "date" ? b.uploaded_at.localeCompare(a.uploaded_at) : a.name.localeCompare(b.name));
+    .filter((r) => r.title.toLowerCase().includes(resSearch.toLowerCase()) || (r.description ?? "").toLowerCase().includes(resSearch.toLowerCase()))
+    .sort((a, b) => resSort === "date" ? b.created_at.localeCompare(a.created_at) : a.title.localeCompare(b.title));
 
   /* ── Announcement handlers ── */
   const handlePostAnnouncement = async () => {
-    if (!annText.trim()) { toast({ title: "Enter announcement text", variant: "destructive" }); return; }
+    if (!annText.trim()) {
+      toast({ title: "Enter announcement text", variant: "destructive" });
+      return;
+    }
+    if (annVisibility === "Individual" && annSelectedStudents.length === 0) {
+      toast({ title: "Select at least one student", variant: "destructive" });
+      return;
+    }
     setAnnPosting(true);
     try {
-      const { error } = await supabase.from("supervisor_announcements").insert({
-        supervisor_id: user?.id,
+      const payload: any = {
         text: annText.trim(),
         visibility: annVisibility,
         scheduled_at: annSchedule || null,
+      };
+      if (annVisibility === "Individual") {
+        payload.student_ids = JSON.stringify(annSelectedStudents);
+      } else {
+        // For "All Students", send to all assigned students
+        payload.student_ids = JSON.stringify(assignedStudents.map(s => s.id));
+      }
+
+      await apiFetch("/supervisors/announcements", {
+        method: "POST",
+        body: JSON.stringify(payload),
       });
-      if (error) throw error;
+
       toast({ title: annSchedule ? "Announcement scheduled" : "Announcement posted" });
       setAnnText("");
       setAnnVisibility("All Students");
       setAnnSchedule("");
-      setAnnAttachment(null);
+      setAnnSelectedStudents([]);
       loadAnnouncements();
     } catch (err: any) {
       toast({ title: "Failed to post", description: err.message, variant: "destructive" });
@@ -179,9 +243,13 @@ const TemplatesAnnouncements = () => {
   };
 
   const deleteAnnouncement = async (id: string) => {
-    await supabase.from("supervisor_announcements").delete().eq("id", id);
-    setAnnouncements((prev) => prev.filter((a) => a.id !== id));
-    toast({ title: "Announcement deleted" });
+    try {
+      await apiFetch(`/supervisors/announcements/${id}`, { method: "DELETE" });
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      toast({ title: "Announcement deleted" });
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -227,7 +295,11 @@ const TemplatesAnnouncements = () => {
                 <input ref={fileRef} type="file" accept=".pdf,.docx,.pptx,.zip" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setUploadFile(e.target.files[0]); }} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input placeholder="e.g., Research Guidelines" value={uploadTitle} onChange={(e) => setUploadTitle(e.target.value)} />
+                </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select value={uploadCat} onValueChange={setUploadCat}>
@@ -292,20 +364,20 @@ const TemplatesAnnouncements = () => {
                         <TableRow key={r.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              {fileIcon(r.name)}
+                              {fileIcon(r.title)}
                               <div>
-                                <p className="font-medium text-sm text-foreground">{r.name}</p>
-                                <p className="text-xs text-muted-foreground sm:hidden">{r.category} · {r.uploaded_at.slice(0, 10)}</p>
+                                <p className="font-medium text-sm text-foreground">{r.title}</p>
+                                <p className="text-xs text-muted-foreground sm:hidden">{r.category} · {r.created_at?.slice(0, 10) || "—"}</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell"><Badge variant="secondary">{r.category}</Badge></TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{r.description ?? "—"}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{r.uploaded_at.slice(0, 10)}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{r.created_at?.slice(0, 10) || "—"}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button variant="ghost" size="icon" title="Download" onClick={() => downloadResource(r)}><Download size={16} /></Button>
-                              <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteResource(r)} className="text-destructive hover:text-destructive"><Trash2 size={16} /></Button>
+                              <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteResource(r.id)} className="text-destructive hover:text-destructive"><Trash2 size={16} /></Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -330,30 +402,54 @@ const TemplatesAnnouncements = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Users size={14} /> Visibility</Label>
-                  <Select value={annVisibility} onValueChange={setAnnVisibility}>
+                  <Label className="flex items-center gap-1"><Users size={14} /> Recipient</Label>
+                  <Select value={annVisibility} onValueChange={(val) => { setAnnVisibility(val); setAnnSelectedStudents([]); }}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="All Students">All Assigned Students</SelectItem>
-                      <SelectItem value="Individual">Individual Student</SelectItem>
+                      <SelectItem value="All Students">All Assigned Students ({assignedStudents.length})</SelectItem>
+                      <SelectItem value="Individual">Select Individual Students</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1"><Paperclip size={14} /> Attachment (optional)</Label>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="w-full" onClick={() => annFileRef.current?.click()}>
-                      {annAttachment ? annAttachment.name : "Attach file"}
-                    </Button>
-                    {annAttachment && <button onClick={() => setAnnAttachment(null)} className="text-muted-foreground hover:text-destructive"><X size={16} /></button>}
-                  </div>
-                  <input ref={annFileRef} type="file" className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAnnAttachment(e.target.files[0]); }} />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1"><Calendar size={14} /> Schedule (optional)</Label>
                   <Input type="datetime-local" value={annSchedule} onChange={(e) => setAnnSchedule(e.target.value)} />
                 </div>
               </div>
+
+              {annVisibility === "Individual" && (
+                <div className="space-y-3 p-4 rounded-lg bg-muted/40 border border-border">
+                  <Label className="text-sm font-medium">Select Students</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                    {assignedStudents.map((student) => (
+                      <button
+                        key={student.id}
+                        onClick={() =>
+                          setAnnSelectedStudents((prev) =>
+                            prev.includes(student.id)
+                              ? prev.filter((id) => id !== student.id)
+                              : [...prev, student.id]
+                          )
+                        }
+                        className={`p-3 rounded-lg text-left transition-colors border ${
+                          annSelectedStudents.includes(student.id)
+                            ? "border-primary bg-primary/10"
+                            : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {annSelectedStudents.includes(student.id) && <Check size={16} className="text-primary" />}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{student.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{student.index_number}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{annSelectedStudents.length} student(s) selected</p>
+                </div>
+              )}
 
               <Button onClick={handlePostAnnouncement} disabled={annPosting} className="w-full sm:w-auto">
                 {annPosting ? <Loader2 size={16} className="animate-spin mr-1" /> : <Send size={16} />}
