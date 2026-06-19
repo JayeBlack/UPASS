@@ -190,54 +190,102 @@ exports.getCurrentSupervisorSubmissions = async (req, res) => {
   }
 };
 
+// GET /api/supervisors/student/resources
+exports.getStudentResources = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const sq = await db.query("SELECT id FROM students WHERE user_id = $1", [userId]);
+    if (sq.rows.length === 0) return res.json([]);
+    const studentId = sq.rows[0].id;
+    const result = await db.query(
+      `SELECT r.*, u.first_name || ' ' || u.last_name AS uploader_name,
+              (srr.id IS NOT NULL) AS is_read
+       FROM resources r
+       JOIN users u ON r.uploaded_by = u.id
+       LEFT JOIN student_resource_reads srr
+         ON srr.item_type = 'resource' AND srr.item_id = r.id AND srr.student_id = $2
+       WHERE r.recipient_student_ids @> $1::jsonb
+       ORDER BY r.uploaded_at DESC`,
+      [JSON.stringify([studentId]), studentId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/supervisors/student/announcements
+exports.getStudentAnnouncements = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const sq = await db.query("SELECT id FROM students WHERE user_id = $1", [userId]);
+    if (sq.rows.length === 0) return res.json([]);
+    const studentId = sq.rows[0].id;
+    const result = await db.query(
+      `SELECT a.*, u.first_name || ' ' || u.last_name AS author_name,
+              (srr.id IS NOT NULL) AS is_read
+       FROM announcements a
+       JOIN users u ON a.author_id = u.id
+       LEFT JOIN student_resource_reads srr
+         ON srr.item_type = 'announcement' AND srr.item_id = a.id AND srr.student_id = $2
+       WHERE a.recipient_student_ids @> $1::jsonb
+       ORDER BY a.created_at DESC`,
+      [JSON.stringify([studentId]), studentId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST /api/supervisors/student/mark-read
+exports.markItemRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { item_type, item_id } = req.body;
+    const sq = await db.query("SELECT id FROM students WHERE user_id = $1", [userId]);
+    if (sq.rows.length === 0) return res.json({ ok: true });
+    const studentId = sq.rows[0].id;
+    await db.query(
+      `INSERT INTO student_resource_reads (student_id, item_type, item_id)
+       VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+      [studentId, item_type, item_id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /api/supervisors/resources/upload
 exports.uploadResource = async (req, res) => {
-  const client = await db.pool.connect();
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    
     const { title, category, description, student_ids } = req.body;
-    if (!title || !category) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    if (!title || !category) return res.status(400).json({ error: "Missing required fields" });
 
     const studentIdArray = student_ids ? JSON.parse(student_ids) : [];
     const fileUrl = `/uploads/supervisor-resources/${req.file.filename}`;
 
-    await client.query("BEGIN");
-
-    const resourceResult = await client.query(
-      `INSERT INTO supervisor_resources (supervisor_id, title, file_url, category, description, file_size)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [req.user.id, title, fileUrl, category, description || null, req.file.size]
+    const result = await db.query(
+      `INSERT INTO resources (uploaded_by, file_name, file_url, file_type, file_size, category, description, recipient_student_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [req.user.id, title, fileUrl, req.file.originalname.split('.').pop()?.toUpperCase() || 'FILE',
+       `${Math.round(req.file.size / 1024)} KB`, category, description || null, JSON.stringify(studentIdArray)]
     );
-    const resourceId = resourceResult.rows[0].id;
+    const resourceId = result.rows[0].id;
 
+    // Notify each recipient student
     for (const studentId of studentIdArray) {
-      await client.query(
-        `INSERT INTO supervisor_resource_recipients (resource_id, student_id) VALUES ($1, $2)`,
-        [resourceId, studentId]
-      );
-
-      const studentQuery = await client.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
-      if (studentQuery.rows.length > 0) {
-        await createNotification(
-          studentQuery.rows[0].user_id,
-          'resource',
-          'New Resource from Supervisor',
-          `${title} has been shared with you.`,
-          'info'
-        );
+      const sq = await db.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
+      if (sq.rows.length > 0) {
+        await createNotification(sq.rows[0].user_id, 'resource', 'New Resource from Supervisor', `${title} has been shared with you.`, 'info');
       }
     }
 
-    await client.query("COMMIT");
     res.status(201).json({ resource_id: resourceId });
   } catch (err) {
-    try { await client.query("ROLLBACK"); } catch {}
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 };
 
@@ -245,7 +293,7 @@ exports.uploadResource = async (req, res) => {
 exports.getResources = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT * FROM supervisor_resources WHERE supervisor_id = $1 ORDER BY created_at DESC`,
+      `SELECT * FROM resources WHERE uploaded_by = $1 ORDER BY uploaded_at DESC`,
       [req.user.id]
     );
     res.json(result.rows);
@@ -258,7 +306,7 @@ exports.getResources = async (req, res) => {
 exports.deleteResource = async (req, res) => {
   try {
     const result = await db.query(
-      "DELETE FROM supervisor_resources WHERE id = $1 AND supervisor_id = $2 RETURNING id",
+      "DELETE FROM resources WHERE id = $1 AND uploaded_by = $2 RETURNING id",
       [req.params.id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Resource not found" });
@@ -270,47 +318,28 @@ exports.deleteResource = async (req, res) => {
 
 // POST /api/supervisors/announcements
 exports.createAnnouncement = async (req, res) => {
-  const client = await db.pool.connect();
   try {
     const { text, visibility, scheduled_at, student_ids } = req.body;
     if (!text) return res.status(400).json({ error: "Announcement text required" });
-
     const studentIdArray = student_ids ? JSON.parse(student_ids) : [];
 
-    await client.query("BEGIN");
-
-    const announcementResult = await client.query(
-      `INSERT INTO supervisor_announcements (supervisor_id, text, visibility, scheduled_at)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [req.user.id, text, visibility || "All Students", scheduled_at || null]
+    const result = await db.query(
+      `INSERT INTO announcements (author_id, text, visibility, scheduled_at, recipient_student_ids)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [req.user.id, text, visibility || 'All Students', scheduled_at || null, JSON.stringify(studentIdArray)]
     );
-    const announcementId = announcementResult.rows[0].id;
+    const announcementId = result.rows[0].id;
 
     for (const studentId of studentIdArray) {
-      await client.query(
-        `INSERT INTO supervisor_announcement_recipients (announcement_id, student_id) VALUES ($1, $2)`,
-        [announcementId, studentId]
-      );
-
-      const studentQuery = await client.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
-      if (studentQuery.rows.length > 0) {
-        await createNotification(
-          studentQuery.rows[0].user_id,
-          'announcement',
-          'Announcement from Supervisor',
-          text.substring(0, 100) + (text.length > 100 ? "..." : ""),
-          'info'
-        );
+      const sq = await db.query('SELECT user_id FROM students WHERE id = $1', [studentId]);
+      if (sq.rows.length > 0) {
+        await createNotification(sq.rows[0].user_id, 'announcement', 'Announcement from Supervisor', text.substring(0, 100) + (text.length > 100 ? '...' : ''), 'info');
       }
     }
 
-    await client.query("COMMIT");
     res.status(201).json({ announcement_id: announcementId });
   } catch (err) {
-    try { await client.query("ROLLBACK"); } catch {}
     res.status(500).json({ error: err.message });
-  } finally {
-    client.release();
   }
 };
 
@@ -318,7 +347,7 @@ exports.createAnnouncement = async (req, res) => {
 exports.getAnnouncements = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT * FROM supervisor_announcements WHERE supervisor_id = $1 ORDER BY created_at DESC`,
+      `SELECT * FROM announcements WHERE author_id = $1 ORDER BY created_at DESC`,
       [req.user.id]
     );
     res.json(result.rows);
@@ -331,7 +360,7 @@ exports.getAnnouncements = async (req, res) => {
 exports.deleteAnnouncement = async (req, res) => {
   try {
     const result = await db.query(
-      "DELETE FROM supervisor_announcements WHERE id = $1 AND supervisor_id = $2 RETURNING id",
+      "DELETE FROM announcements WHERE id = $1 AND author_id = $2 RETURNING id",
       [req.params.id, req.user.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "Announcement not found" });
