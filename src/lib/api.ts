@@ -22,6 +22,20 @@ export class ApiError extends Error {
   }
 }
 
+export async function logActivity(
+  action: string,
+  entity?: string,
+  entity_id?: string | number,
+  details?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await apiFetch("/audit-logs", {
+      method: "POST",
+      body: JSON.stringify({ action, entity, entity_id: entity_id ? String(entity_id) : undefined, details }),
+    });
+  } catch { /* never block UI for logging */ }
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   options: RequestInit = {},

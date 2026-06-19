@@ -18,6 +18,7 @@ interface FeeRecord {
   total_amount: number;
   amount_paid: number;
   outstanding: number;
+  credit_balance: number;
   status: string;
   is_cleared: boolean;
 }
@@ -128,6 +129,7 @@ const FeesStatus = () => {
           variant: "destructive",
         });
       } else {
+        logActivity("Imported fee payments", "fee_records", undefined, { count: result.created.length, semester: importSemester, academic_year: importAcademicYear });
         toast({
           title: "Import complete",
           description: `${result.created.length} fee records imported successfully`,
@@ -330,6 +332,7 @@ const FeesStatus = () => {
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Fees</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Outstanding</th>
+                <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Credit Balance</th>
                 <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Action</th>
               </tr>
@@ -350,6 +353,13 @@ const FeesStatus = () => {
                       <span className="text-success">GHS 0</span>
                     )}
                   </td>
+                  <td className="px-6 py-4 text-sm text-right font-semibold">
+                    {Number(f.credit_balance) > 0 ? (
+                      <span className="text-blue-500">GHS {Number(f.credit_balance).toLocaleString()}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-center">
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${f.is_cleared ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {f.is_cleared ? "Cleared" : "Owing"}
@@ -368,7 +378,7 @@ const FeesStatus = () => {
               ))}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-muted-foreground">
+                  <td colSpan={10} className="px-6 py-12 text-center text-sm text-muted-foreground">
                     {records.length === 0 ? "No fee records available" : "No students match the selected filters"}
                   </td>
                 </tr>

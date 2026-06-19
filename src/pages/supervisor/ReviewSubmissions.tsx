@@ -8,7 +8,7 @@ import AIFeedbackPanel from "@/components/supervisor/AIFeedbackPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, logActivity } from "@/lib/api";
 
 interface Submission {
   id: string;
@@ -144,6 +144,7 @@ const ReviewSubmissions = () => {
         .update({ status: "Reviewed", reviewed_by: user?.name, reviewed_at: new Date().toISOString() })
         .eq("id", sub.id);
       setSelectedSubmission({ ...sub, status: "Reviewed" });
+      logActivity("Reviewed submission", "thesis_submission", sub.id, { student: sub.student_name, stage: sub.stage });
     }
 
     try {
@@ -225,6 +226,7 @@ const ReviewSubmissions = () => {
       return;
     }
     toast({ title: `Submission ${status.toLowerCase()}` });
+    logActivity(`${status} submission`, "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
     await loadSubmissions();
     setSelectedSubmission(null);
     setNewRemark("");
@@ -247,6 +249,7 @@ const ReviewSubmissions = () => {
       return;
     }
     toast({ title: "Feedback sent" });
+    logActivity("Sent feedback", "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
     await loadSubmissions();
     setSelectedSubmission(null);
     setNewRemark("");

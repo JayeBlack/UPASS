@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { logActivity } from "@/lib/api";
 
 const stages = ["Proposal", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Defense"];
 
@@ -83,6 +84,7 @@ const ThesisUpload = () => {
       if (insErr) throw insErr;
 
       toast({ title: "Submitted", description: `${stage} sent for review.` });
+      logActivity("Submitted thesis chapter", "thesis_submission", undefined, { stage, file: selectedFile.name });
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       loadSubmissions();

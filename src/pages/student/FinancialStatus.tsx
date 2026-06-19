@@ -13,6 +13,7 @@ interface FeeRecord {
   total_amount: number;
   amount_paid: number;
   outstanding: number;
+  credit_balance: number;
   status: string;
   is_cleared: boolean;
 }
@@ -54,6 +55,7 @@ const FinancialStatus = () => {
   const totalAmount = fees.reduce((sum, f) => sum + Number(f.total_amount), 0);
   const totalPaid = fees.reduce((sum, f) => sum + Number(f.amount_paid), 0);
   const totalOwed = fees.reduce((sum, f) => sum + (Number(f.total_amount) - Number(f.amount_paid)), 0);
+  const totalCredit = fees.reduce((sum, f) => sum + Number(f.credit_balance || 0), 0);
 
   const handleDownloadReceipt = async (fee: FeeRecord) => {
     try {
@@ -154,6 +156,7 @@ const FinancialStatus = () => {
         ["Total Fee", formatCurrency(Number(fee.total_amount))],
         ["Amount Paid", formatCurrency(Number(fee.amount_paid))],
         ["Outstanding Balance", formatCurrency(Number(fee.total_amount) - Number(fee.amount_paid))],
+        ...(Number(fee.credit_balance) > 0 ? [["Credit Balance", formatCurrency(Number(fee.credit_balance))]] : []),
       ];
 
       doc.setFont("helvetica", "normal");
@@ -223,6 +226,15 @@ const FinancialStatus = () => {
           <p className="text-2xl font-bold font-display text-foreground">{loading ? "—" : formatCurrencyDisplay(totalOwed)}</p>
           <p className="text-sm text-muted-foreground mt-1">Outstanding Balance</p>
         </div>
+        {totalCredit > 0 && (
+          <div className="bg-card rounded-xl border border-border p-6">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center mb-3">
+              <Banknote size={18} className="text-blue-500" />
+            </div>
+            <p className="text-2xl font-bold font-display text-blue-500">{loading ? "—" : formatCurrencyDisplay(totalCredit)}</p>
+            <p className="text-sm text-muted-foreground mt-1">Credit Balance</p>
+          </div>
+        )}
       </div>
 
       {totalOwed > 0 && (
@@ -249,6 +261,7 @@ const FinancialStatus = () => {
                   <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amount</th>
                   <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Paid</th>
                   <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Balance</th>
+                  <th className="text-right px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Credit Balance</th>
                   <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Receipt</th>
                 </tr>
@@ -263,6 +276,11 @@ const FinancialStatus = () => {
                       <td className="px-6 py-4 text-sm text-right text-muted-foreground">{formatCurrencyDisplay(Number(f.total_amount))}</td>
                       <td className="px-6 py-4 text-sm text-right text-muted-foreground">{formatCurrencyDisplay(Number(f.amount_paid))}</td>
                       <td className="px-6 py-4 text-sm text-right font-medium text-foreground">{formatCurrencyDisplay(Number(f.total_amount) - Number(f.amount_paid))}</td>
+                      <td className="px-6 py-4 text-sm text-right font-medium">
+                        {Number(f.credit_balance) > 0
+                          ? <span className="text-blue-500">{formatCurrencyDisplay(Number(f.credit_balance))}</span>
+                          : <span className="text-muted-foreground">—</span>}
+                      </td>
                       <td className="px-6 py-4 text-center">
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
                           {cfg.icon}
@@ -302,11 +320,14 @@ const FinancialStatus = () => {
                     {f.status}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div><p className="text-muted-foreground">Amount</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.total_amount))}</p></div>
-                  <div><p className="text-muted-foreground">Paid</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.amount_paid))}</p></div>
-                  <div><p className="text-muted-foreground">Balance</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.total_amount) - Number(f.amount_paid))}</p></div>
-                </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div><p className="text-muted-foreground">Amount</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.total_amount))}</p></div>
+                    <div><p className="text-muted-foreground">Paid</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.amount_paid))}</p></div>
+                    <div><p className="text-muted-foreground">Balance</p><p className="font-medium text-foreground">{formatCurrencyDisplay(Number(f.total_amount) - Number(f.amount_paid))}</p></div>
+                    {Number(f.credit_balance) > 0 && (
+                      <div><p className="text-muted-foreground">Credit Balance</p><p className="font-medium text-blue-500">{formatCurrencyDisplay(Number(f.credit_balance))}</p></div>
+                    )}
+                  </div>
                 <button onClick={() => handleDownloadReceipt(f)} className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors">
                   <Download size={14} /> Download Receipt
                 </button>

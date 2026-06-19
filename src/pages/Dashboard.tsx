@@ -77,7 +77,42 @@ const Dashboard = () => {
   const [studentFeeData, setStudentFeeData] = useState<any[]>([]);
   const [activeCoursesCount, setActiveCoursesCount] = useState("—");
   const [resultsBatches, setResultsBatches] = useState<any[]>([]);
-  const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—", approvedThisMonth: "—" });
+  const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—", awaitingApproval: "—" });
+  const [recentActivity, setRecentActivity] = useState<{ text: string; time: string }[]>([]);
+
+  const formatActivityTime = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (m < 1) return "Just now";
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    return `${d}d ago`;
+  };
+
+  const formatActivityText = (log: any) => {
+    const detail = log.details ? (typeof log.details === "string" ? JSON.parse(log.details) : log.details) : {};
+    const entity = detail.student ? `for ${detail.student}` : log.entity_id ? `#${log.entity_id}` : "";
+    const stage = detail.stage ? ` (${detail.stage})` : "";
+    return `${log.action}${stage ? stage : ""} ${entity}`.trim();
+  };
+
+  // Fetch recent activity for current user
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchActivity = async () => {
+      try {
+        const logs = await apiFetch<any[]>("/audit-logs/mine");
+        setRecentActivity(
+          (logs || []).map((l) => ({ text: formatActivityText(l), time: formatActivityTime(l.created_at) }))
+        );
+      } catch { /* silently fail */ }
+    };
+    fetchActivity();
+    const interval = setInterval(fetchActivity, 15000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   // Generic periodic fetch helper
   const fetchWithInterval = (fetcher: () => Promise<void>, ms: number) => {
@@ -164,32 +199,32 @@ const Dashboard = () => {
           apiFetch<any>("/supervisors/current/stats"),
           apiFetch<any>("/supervisors/current/submissions"),
         ]);
-        const students: { index_number: string }[] = supervisorStudents.students || [];
+        const assignedStudentsList: { index_number: string }[] = supervisorStudents.students || [];
         const assignedIndexSet = new Set(
-          students.map((s) => s.index_number?.trim().toLowerCase()).filter(Boolean)
+          assignedStudentsList
+            .map((s) => s.index_number?.trim().toLowerCase())
+            .filter(Boolean)
         );
+
         const { data: submissions, error } = await supabase
           .from("thesis_submissions")
-          .select("student_index, status, created_at");
-        const pendingCount = !error && submissions
+          .select("student_index, status");
+
+        const filtered = (!error && submissions)
           ? submissions.filter((sub: any) =>
-              assignedIndexSet.has(sub.student_index?.trim().toLowerCase()) && sub.status === "Pending"
-            ).length
-          : 0;
-        // Approved this month
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        const approvedThisMonth = !error && submissions
-          ? submissions.filter((sub: any) =>
-              assignedIndexSet.has(sub.student_index?.trim().toLowerCase()) &&
-              sub.status === "Approved" &&
-              sub.created_at >= monthStart
-            ).length
-          : 0;
+              assignedIndexSet.has(sub.student_index?.trim().toLowerCase())
+            )
+          : [];
+
+        const pendingCount = filtered.filter((sub: any) => sub.status === "Pending").length;
+        const awaitingApproval = filtered.filter((sub: any) =>
+          sub.status !== "Approved" && sub.status !== "Rejected"
+        ).length;
+
         setSupervisorData({
           assignedStudents: String(backendStats.assignedStudents || 0),
           pendingReviews: String(pendingCount),
-          approvedThisMonth: String(approvedThisMonth),
+          awaitingApproval: String(awaitingApproval),
         });
       } catch { /* silently fail */ }
     };
@@ -244,7 +279,7 @@ const Dashboard = () => {
   const supervisorStats = [
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Assigned Students", value: supervisorData.assignedStudents, accent: true, onClick: () => navigate("/students") },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: supervisorData.pendingReviews, onClick: () => navigate("/submissions") },
-    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Approved This Month", value: supervisorData.approvedThisMonth },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Awaiting Approval", value: supervisorData.awaitingApproval },
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Avg Review Time", value: "—" },
   ];
 
@@ -382,17 +417,6 @@ const Dashboard = () => {
     "Publish Results": <BarChart3 size={15} />,
     "View Fees": <Banknote size={15} />,
   };
-
-  const roleActivities: Record<string, { text: string; time: string }[]> = {
-    Student: [],
-    Supervisor: [],
-    Admin: [],
-    Dean: [],
-    Accountant: [],
-    ExamsOfficer: [],
-  };
-
-  const recentActivity = roleActivities[user?.role || "Student"] ?? roleActivities.Admin;
 
   const quickActions = user?.role === "Student"
     ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]

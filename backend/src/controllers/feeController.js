@@ -71,13 +71,17 @@ exports.makePayment = async (req, res) => {
       [fee_record_id, amount, payment_method, reference, receipt_url]
     );
 
-    // Update fee record
+    // Update fee record — cap amount_paid at total_amount, store overflow as credit_balance
     await db.query(
-      `UPDATE fee_records SET amount_paid = amount_paid + $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE fee_records SET
+        amount_paid = LEAST(amount_paid + $1, total_amount),
+        credit_balance = GREATEST((amount_paid + $1) - total_amount, 0),
+        updated_at = NOW()
+       WHERE id = $2`,
       [amount, fee_record_id]
     );
 
-    // Auto-update status
+    // Auto-update status and cleared
     await db.query(
       `UPDATE fee_records SET
         status = CASE WHEN amount_paid >= total_amount THEN 'Paid' ELSE 'Partial' END,
@@ -272,7 +276,9 @@ exports.uploadBulk = async (req, res) => {
         const studentId = student.rows[0].id;
         const year = academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
         const sem = semester || "First";
-        const paid = Math.min(amount_paid || 0, total_amount);
+        const rawPaid = amount_paid || 0;
+        const paid = Math.min(rawPaid, total_amount);
+        const credit_balance = rawPaid > total_amount ? rawPaid - total_amount : 0;
 
         // Determine status
         let status = "Unpaid";
@@ -294,30 +300,46 @@ exports.uploadBulk = async (req, res) => {
 
         if (existing.rows.length > 0) {
           feeRecordId = existing.rows[0].id;
-          // Update existing record with the new amounts
-          await db.query(
-            `UPDATE fee_records SET 
-              total_amount = $1, 
-              amount_paid = $2, 
-              status = $3, 
-              is_cleared = $4,
-              updated_at = NOW() 
-             WHERE id = $5`,
-            [total_amount, paid, status, is_cleared, feeRecordId]
+          // Add new payment on top of existing amount_paid
+          const updatedRecord = await db.query(
+            `UPDATE fee_records SET
+              total_amount = $1,
+              amount_paid = LEAST(amount_paid + $2, $1),
+              credit_balance = GREATEST(credit_balance + $3, 0),
+              updated_at = NOW()
+             WHERE id = $4
+             RETURNING amount_paid, total_amount, credit_balance`,
+            [total_amount, paid, credit_balance, feeRecordId]
           );
+          const newPaid = parseFloat(updatedRecord.rows[0].amount_paid);
+          const newTotal = parseFloat(updatedRecord.rows[0].total_amount);
+          const newStatus = newPaid >= newTotal ? "Paid" : newPaid > 0 ? "Partial" : "Unpaid";
+          const newCleared = newPaid >= newTotal;
+          await db.query(
+            `UPDATE fee_records SET status = $1, is_cleared = $2 WHERE id = $3`,
+            [newStatus, newCleared, feeRecordId]
+          );
+          // Insert a new payment record for this top-up
+          if (paid > 0) {
+            await db.query(
+              `INSERT INTO payments (fee_record_id, amount, payment_method, status, verified_by, verified_at)
+               VALUES ($1, $2, $3, $4, $5, NOW())`,
+              [feeRecordId, paid, "bank_transfer", "Verified", accountantId]
+            );
+          }
         } else {
           // Create fee record
           const result = await db.query(
-            `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, status, is_cleared)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, credit_balance, status, is_cleared)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING id`,
-            [studentId, year, sem, total_amount, paid, status, is_cleared]
+            [studentId, year, sem, total_amount, paid, credit_balance, status, is_cleared]
           );
           feeRecordId = result.rows[0].id;
         }
 
-        // Create or update payment record if amount_paid > 0
-        if (paid > 0) {
+        // Create or update payment record if amount_paid > 0 (new record only)
+        if (paid > 0 && existing.rows.length === 0) {
           await db.query(
             `INSERT INTO payments (fee_record_id, amount, payment_method, status, verified_by, verified_at)
              VALUES ($1, $2, $3, $4, $5, NOW())
@@ -330,7 +352,7 @@ exports.uploadBulk = async (req, res) => {
           );
         }
 
-        created.push({ index_number, id: feeRecordId, total_amount, amount_paid: paid, status });
+        created.push({ index_number, id: feeRecordId, total_amount, amount_paid: paid, credit_balance, status });
       } catch (err) {
         errors.push(`Row ${i + 1}: ${err.message}`);
       }

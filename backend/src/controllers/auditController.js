@@ -1,5 +1,20 @@
 const db = require("../db");
 
+// GET /api/audit-logs/mine — current user's own recent activity
+exports.getMine = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT action, entity, entity_id, details, created_at
+       FROM audit_logs WHERE user_id = $1
+       ORDER BY created_at DESC LIMIT 20`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /api/audit-logs?action=&from=&to=&search=
 exports.getAll = async (req, res) => {
   try {
