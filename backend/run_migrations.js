@@ -25,10 +25,11 @@ async function runMigrations() {
       console.log('✅ Migration completed successfully!\n');
       
       // Show final department list
-      const result = await client.query('SELECT id, name FROM departments ORDER BY name');
+      const result = await client.query('SELECT id, name, is_active FROM departments ORDER BY name');
       console.log(`📋 ${result.rows.length} departments in database:\n`);
       result.rows.forEach(d => {
-        console.log(`   [${d.id}] ${d.name}`);
+        const status = d.is_active ? '✓' : '✗';
+        console.log(`   ${status} [${d.id}] ${d.name}`);
       });
       console.log('\n' + '='.repeat(60));
       console.log('✅ All migrations complete!');

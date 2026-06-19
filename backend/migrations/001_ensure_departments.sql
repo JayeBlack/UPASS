@@ -50,6 +50,6 @@ WHERE NOT EXISTS (SELECT 1 FROM departments WHERE LOWER(name) = LOWER('School of
 COMMIT;
 
 -- Verification: List all departments
-SELECT id, name, is_active, created_at
+SELECT id, name, is_active
 FROM departments
 ORDER BY name;

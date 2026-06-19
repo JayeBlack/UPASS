@@ -1,73 +1,264 @@
-# Welcome to your Lovable project
+# UPASS - University Postgraduate Administration & Support System
 
-## Project info
+A comprehensive system for managing postgraduate students, fees, clearances, thesis submissions, and academic records at UMaT.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 New Team Member? Start Here!
 
-## How can I edit this code?
+**📖 [Complete Setup Guide](NEW_MEMBER_SETUP.md)** - Follow this for detailed setup instructions
 
-There are several ways of editing your application.
+### Quick Start
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+#### For Existing Team Database
+```bash
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+cd UPASS/backend
+npm install
+cp .env.example .env
+# Edit .env with team's DATABASE_URL
+node run_migrations.js
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+#### For Fresh Local Database
+```bash
+# 1. Create database
+createdb upass_dev
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+# 2. Import schema
+cd backend
+psql -d upass_dev -f schema_export.sql
 
-**Use GitHub Codespaces**
+# 3. Setup
+npm install
+cp .env.example .env
+# Edit .env with your local DATABASE_URL
+node run_migrations.js
+node create_superadmin.js admin@test.com pass123 Admin User
+npm run dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+**See [NEW_MEMBER_SETUP.md](NEW_MEMBER_SETUP.md) for complete step-by-step instructions!**
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 📋 Project Structure
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```
+UPASS/
+├── backend/              # Node.js + Express API
+│   ├── src/
+│   │   ├── controllers/  # Business logic
+│   │   ├── routes/       # API endpoints
+│   │   ├── middleware/   # Auth & validation
+│   │   └── db/           # Database connection
+│   ├── migrations/       # Database migrations
+│   ├── schema_export.sql # Full database schema
+│   └── .env             # Environment config
+├── src/                 # React frontend
+│   ├── pages/           # Page components
+│   ├── components/      # Reusable UI components
+│   ├── contexts/        # React contexts (Auth, etc)
+│   └── lib/             # Utilities & API client
+├── supabase/            # Supabase functions (thesis storage)
+└── public/              # Static assets
+```
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 🛠 Technologies
 
-## Can I connect a custom domain to my Lovable project?
+### Frontend
+- **React** + **TypeScript**
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **shadcn-ui** - UI components
+- **React Router** - Navigation
 
-Yes, you can!
+### Backend
+- **Node.js** + **Express**
+- **PostgreSQL** - Main database
+- **Supabase** - File storage (thesis documents)
+- **JWT** - Authentication
+- **bcrypt** - Password hashing
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## 👥 User Roles
+
+- **Student** - View fees, submit thesis, check clearance
+- **Supervisor** - Manage students, review thesis, post resources
+- **Admin** - Manage users and system settings
+- **Dean / ViceDean** - Departmental oversight
+- **Registrar** - Student records management
+- **AdminAssistant** - Administrative support
+- **Accountant / AccountingAssistant** - Fee management
+- **ExamsOfficer** - Exam and results management
+
+---
+
+## 🔑 Key Features
+
+- ✅ Student enrollment & management
+- ✅ Fee tracking & clearance
+- ✅ Thesis submission & review
+- ✅ Supervisor-student assignment
+- ✅ Department-based access control
+- ✅ Analytics dashboard
+- ✅ Document uploads
+- ✅ Announcement system
+- ✅ Exam timetable management
+- ✅ Grade/result management
+
+---
+
+## 📚 Documentation
+
+- **[NEW_MEMBER_SETUP.md](NEW_MEMBER_SETUP.md)** - Complete setup guide for new team members
+- **[backend/SETUP_INSTRUCTIONS.md](backend/SETUP_INSTRUCTIONS.md)** - Backend-specific setup
+- **[DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md)** - Deployment checklist
+- **[CLEANUP_GUIDE.md](CLEANUP_GUIDE.md)** - File cleanup reference
+
+---
+
+## 🗄 Database
+
+### Setup Commands
+
+```bash
+# Export current schema (if needed)
+cd backend
+node export_schema.js
+
+# Import schema to new database
+psql -d database_name -f schema_export.sql
+
+# Run migrations (creates departments)
+node run_migrations.js
+
+# Verify database
+node check_db.js
+```
+
+### 10 Departments
+1. Computer Science
+2. Electrical Engineering
+3. Environmental and Safety Engineering
+4. Finance Office
+5. Geomatic Engineering
+6. Mathematical Sciences
+7. Mechanical Engineering
+8. Mining Engineering
+9. Petroleum Engineering
+10. School of Postgraduate Studies
+
+---
+
+## 🔐 Default Passwords
+
+- **Students**: Index number (e.g., PG1234567)
+- **Staff**: Email prefix before @ (e.g., "john" for john@umat.edu.gh)
+- All users must change password on first login
+
+---
+
+## 🚀 Development
+
+### Backend
+```bash
+cd backend
+npm run dev  # Runs on port 5000
+```
+
+### Frontend
+```bash
+npm run dev  # Runs on port 5173
+```
+
+### Environment Variables
+
+**Backend** (`backend/.env`):
+```
+DATABASE_URL=postgresql://user:pass@host:port/dbname
+JWT_SECRET=your-secret-key
+PORT=5000
+SUPABASE_URL=your-supabase-url
+SUPABASE_ANON_KEY=your-anon-key
+```
+
+**Frontend** (`.env`):
+```
+VITE_API_URL=http://localhost:5000/api
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+---
+
+## 🧪 Useful Scripts
+
+### Backend Scripts
+```bash
+cd backend
+
+# Database management
+node run_migrations.js           # Run migrations
+node export_schema.js            # Export database schema
+node create_superadmin.js        # Create super admin user
+
+# Verification
+node check_db.js                 # Check database health
+node verify_departments.js       # Verify staff departments
+node check_students.js           # Verify student data
+node check_table_structure.js    # Check table schemas
+
+# Utility
+node scripts/generate_jwt.js     # Generate JWT secret
+```
+
+---
+
+## 📝 Contributing
+
+1. Pull latest changes: `git pull origin main`
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Make changes and test locally
+4. Commit: `git commit -m "Description"`
+5. Push: `git push origin feature/your-feature`
+6. Create Pull Request
+
+---
+
+## 🆘 Troubleshooting
+
+### "Departments not showing in dropdown"
+```bash
+cd backend
+node run_migrations.js
+```
+
+### "Cannot connect to database"
+Check `backend/.env` has correct `DATABASE_URL`
+
+### "No super admin exists"
+```bash
+cd backend
+node create_superadmin.js admin@test.com pass123 Admin User
+```
+
+### "Tables don't exist"
+```bash
+cd backend
+psql -d your_database -f schema_export.sql
+```
+
+---
+
+## 📞 Support
+
+For setup issues, see [NEW_MEMBER_SETUP.md](NEW_MEMBER_SETUP.md) or ask your team lead.
+
+---
+
+## 📄 License
+
+University of Mines and Technology (UMaT) - Internal Project
