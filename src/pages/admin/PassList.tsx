@@ -12,6 +12,7 @@ const PassList = () => {
   const [progFilter, setProgFilter] = useState<string>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
@@ -27,6 +28,18 @@ const PassList = () => {
     const matchesStatus = statusFilter === "all" || g.status === statusFilter;
     return matchesDept && matchesProg && matchesYear && matchesStatus;
   });
+
+  // Pagination
+  const itemsPerPage = 50;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedGraduands = filtered.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useState(() => {
+    setCurrentPage(1);
+  }, [deptFilter, progFilter, yearFilter, statusFilter]);
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Eligibility"];
@@ -77,7 +90,7 @@ const PassList = () => {
         </select>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">Showing {filtered.length} of {graduands.length} graduands</p>
+      <p className="text-sm text-muted-foreground mb-4">Showing {paginatedGraduands.length} of {filtered.length} graduands {filtered.length !== graduands.length ? `(filtered from ${graduands.length} total)` : ""}</p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
@@ -93,7 +106,7 @@ const PassList = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((g) => (
+              {paginatedGraduands.map((g) => (
                 <tr key={g.index} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-foreground">{g.name}</td>
                   <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index}</td>
@@ -105,13 +118,98 @@ const PassList = () => {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {paginatedGraduands.length === 0 && (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No graduands match the selected filters</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <div className="text-sm text-muted-foreground">
+            Showing page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} graduands)
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {(() => {
+                const pages: (number | string)[] = [];
+                const showPages = 5;
+                
+                if (totalPages <= showPages + 2) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  if (currentPage <= 3) {
+                    for (let i = 1; i <= showPages; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 2) {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = totalPages - showPages + 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+                
+                return pages.map((page, idx) => 
+                  typeof page === 'number' ? (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] h-[40px] rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'gradient-gold text-secondary-foreground'
+                          : 'border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ) : (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                  )
+                );
+              })()}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

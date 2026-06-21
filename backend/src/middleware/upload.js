@@ -38,4 +38,20 @@ const upload = multer({
   },
 });
 
+// Memory storage for temporary file processing (bulk uploads, parsing)
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: maxSize },
+  fileFilter: (req, file, cb) => {
+    const allowed = [".pdf", ".doc", ".docx", ".pptx", ".ppt", ".xls", ".xlsx", ".txt", ".zip", ".jpg", ".jpeg", ".png", ".csv"];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`File type ${ext} not allowed`));
+    }
+  },
+});
+
 module.exports = upload;
+module.exports.memory = memoryUpload;

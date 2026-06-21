@@ -39,8 +39,19 @@ const FeesStatus = () => {
   const isAdminAssistant = user?.role === "AdminAssistant";
   const isViewOnlyUser = isRegistrar || isAdminAssistant || user?.role === "Dean" || user?.role === "ViceDean" || user?.role === "ExamsOfficer" || user?.role === "Admin";
   const canModifyFees = isAccountant || isAccountingAssistant;
+  
+  // Determine if user sees all departments (university-wide access)
+  const isUniversityWide = isSuperAdmin || 
+    adminDepartment === "School of Postgraduate Studies" || 
+    adminDepartment === "Finance Office" ||
+    user?.role === "Admin" ||
+    user?.role === "Accountant" ||
+    user?.role === "AccountingAssistant" ||
+    user?.role === "Registrar";
+  
   const [records, setRecords] = useState<FeeRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState({ cleared: 0, owing: 0, totalOutstanding: 0 });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "cleared" | "owing">("all");
   const [deptFilter, setDeptFilter] = useState<string>("all");
@@ -50,24 +61,76 @@ const FeesStatus = () => {
   const [uploading, setUploading] = useState(false);
   const [importSemester, setImportSemester] = useState("Semester 1");
   const [importAcademicYear, setImportAcademicYear] = useState(academicYearOptions[1]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const itemsPerPage = 50;
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setCurrentPage(1); // Reset to page 1 when filters change
+  }, [statusFilter, search]);
+
+  useEffect(() => {
     loadFees();
-    // Auto-refresh every 15 seconds for real-time updates
-    const interval = setInterval(loadFees, 15000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [currentPage, statusFilter, search]);
 
   const loadFees = async () => {
     setLoading(true);
     try {
-      console.log(`[FeesStatus] ${user?.role} fetching fees from /api/fees...`);
-      const data = await apiFetch<FeeRecord[]>("/fees");
-      console.log(`[FeesStatus] ${user?.role} received ${data?.length || 0} records`);
-      setRecords(data || []);
+      console.log(`[FeesStatus] ${user?.role} (${user?.email}) fetching fees from /api/fees...`);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString()
+      });
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (search) params.append('search', search);
+      
+      console.log(`[FeesStatus] Request params:`, params.toString());
+      
+      const response = await apiFetch<{ data: FeeRecord[], pagination: { page: number, limit: number, total: number, totalPages: number } }>(`/fees?${params}`);
+      
+      console.log(`[FeesStatus] Full response:`, response);
+      console.log(`[FeesStatus] Response.data:`, response.data);
+      console.log(`[FeesStatus] Response.pagination:`, response.pagination);
+      console.log(`[FeesStatus] ${user?.role} received ${response.data?.length || 0} records`);
+      
+      setRecords(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
+      setTotalRecords(response.pagination?.total || 0);
+      
+      console.log(`[FeesStatus] State updated - records count: ${response.data?.length || 0}, totalRecords: ${response.pagination?.total || 0}`);
+      
+      // Fetch summary data for stats cards
+      const summaryParams = new URLSearchParams();
+      
+      // Determine who sees all departments vs department-specific
+      const isUniversityWide = isSuperAdmin || 
+        adminDepartment === "School of Postgraduate Studies" || 
+        adminDepartment === "Finance Office" ||
+        user?.role === "Admin" ||
+        user?.role === "Accountant" ||
+        user?.role === "AccountingAssistant" ||
+        user?.role === "Registrar";
+      
+      const dept = isUniversityWide ? deptFilter : (adminDepartment || "all");
+      if (dept !== "all") summaryParams.append('department', dept);
+      
+      const summaryData = await apiFetch<{ cleared_count: number, owing_count: number, total_outstanding: number }>(`/fees/summary?${summaryParams}`);
+      console.log(`[FeesStatus] Summary data:`, summaryData);
+      
+      setSummary({
+        cleared: summaryData.cleared_count || 0,
+        owing: summaryData.owing_count || 0,
+        totalOutstanding: summaryData.total_outstanding || 0
+      });
     } catch (err: any) {
       console.error(`[FeesStatus] ${user?.role} error:`, err);
+      console.error(`[FeesStatus] Error details:`, {
+        message: err.message,
+        status: err.status,
+        stack: err.stack
+      });
       toast({ 
         title: "Failed to load fees", 
         description: err.message || "Check console for details", 
@@ -75,10 +138,15 @@ const FeesStatus = () => {
       });
     } finally {
       setLoading(false);
+      console.log(`[FeesStatus] Loading complete`);
     }
   };
 
   const handleToggleClearance = async (feeId: string) => {
+    if (!canModifyFees) {
+      toast({ title: "Access Denied", description: "You don't have permission to modify fees", variant: "destructive" });
+      return;
+    }
     try {
       await apiFetch(`/fees/${feeId}/clearance`, { method: "PUT" });
       toast({ title: "Clearance toggled" });
@@ -129,7 +197,6 @@ const FeesStatus = () => {
           variant: "destructive",
         });
       } else {
-        logActivity("Imported fee payments", "fee_records", undefined, { count: result.created.length, semester: importSemester, academic_year: importAcademicYear });
         toast({
           title: "Import complete",
           description: `${result.created.length} fee records imported successfully`,
@@ -147,22 +214,31 @@ const FeesStatus = () => {
     }
   };
 
+  // Frontend filters only apply to department/program on already loaded records
   const filtered = records.filter((f) => {
-    const fullName = `${f.first_name} ${f.last_name}`;
-    const matchesSearch = fullName.toLowerCase().includes(search.toLowerCase()) || f.index_number.includes(search);
-    const matchesStatus = statusFilter === "all" || (statusFilter === "cleared" ? f.is_cleared : !f.is_cleared);
-    const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
+    // Determine effective department filter
+    // 1. SuperAdmin can filter by any department using deptFilter
+    // 2. School of Postgraduate Studies, Finance Office, Admin roles see all departments
+    // 3. Other departmental staff see only their department
+    const isUniversityWide = isSuperAdmin || 
+      adminDepartment === "School of Postgraduate Studies" || 
+      adminDepartment === "Finance Office" ||
+      user?.role === "Admin" ||
+      user?.role === "Accountant" ||
+      user?.role === "AccountingAssistant" ||
+      user?.role === "Registrar";
+    
+    const effectiveDept = isUniversityWide ? deptFilter : (adminDepartment || "all");
     const matchesDept = effectiveDept === "all" || f.department_name === effectiveDept;
     const matchesProg = progFilter === "all" || f.program_name === progFilter;
-    return matchesSearch && matchesStatus && matchesDept && matchesProg;
+    
+    return matchesDept && matchesProg;
   });
+  
+  console.log(`[FeesStatus] Records: ${records.length}, Filtered: ${filtered.length}, Role: ${user?.role}, Dept: ${adminDepartment}`);
 
   const allDepts = [...new Set(records.map((f) => f.department_name).filter(Boolean))];
   const allProgs = [...new Set(records.map((f) => f.program_name).filter(Boolean))];
-  const deptRecords = adminDepartment ? records.filter((f) => f.department_name === adminDepartment) : records;
-  const totalCleared = deptRecords.filter((f) => f.is_cleared).length;
-  const totalOwing = deptRecords.filter((f) => !f.is_cleared).length;
-  const totalOutstanding = deptRecords.reduce((s, f) => s + (Number(f.total_amount) - Number(f.amount_paid)), 0);
 
   return (
     <DashboardLayout>
@@ -172,7 +248,7 @@ const FeesStatus = () => {
           <p className="text-muted-foreground mt-1">
             {isViewOnlyUser 
               ? "View-only access to financial records" 
-              : isSuperAdmin 
+              : isUniversityWide
               ? "Financial clearance for postgraduate students" 
               : `${adminDepartment} — Financial clearance`}
           </p>
@@ -235,21 +311,21 @@ const FeesStatus = () => {
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-success" />
           <div>
-            <p className="text-xl font-bold font-display text-foreground">{totalCleared}</p>
+            <p className="text-xl font-bold font-display text-foreground">{summary.cleared}</p>
             <p className="text-xs text-muted-foreground">Cleared</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <XCircle size={20} className="text-destructive" />
           <div>
-            <p className="text-xl font-bold font-display text-foreground">{totalOwing}</p>
+            <p className="text-xl font-bold font-display text-foreground">{summary.owing}</p>
             <p className="text-xs text-muted-foreground">Outstanding</p>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <Filter size={20} className="text-warning" />
           <div>
-            <p className="text-xl font-bold font-display text-foreground">GHS {totalOutstanding.toLocaleString()}</p>
+            <p className="text-xl font-bold font-display text-foreground">GHS {summary.totalOutstanding.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Total Owed</p>
           </div>
         </div>
@@ -272,9 +348,9 @@ const FeesStatus = () => {
 
       {showFilterPanel && (
         <div className="bg-card rounded-xl border border-border p-5 mb-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by {isSuperAdmin ? "Department & " : ""}Programme</h3>
-          <div className={`grid grid-cols-1 ${isSuperAdmin ? "sm:grid-cols-2" : ""} gap-4`}>
-            {isSuperAdmin && (
+          <h3 className="text-sm font-semibold text-foreground mb-3">Filter by {isUniversityWide ? "Department & " : ""}Programme</h3>
+          <div className={`grid grid-cols-1 ${isUniversityWide ? "sm:grid-cols-2" : ""} gap-4`}>
+            {isUniversityWide && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-2 block">Departments</label>
                 <div className="space-y-2">
@@ -311,8 +387,9 @@ const FeesStatus = () => {
       )}
 
       <p className="text-sm text-muted-foreground mb-4">
-        Showing {filtered.length} of {records.length} students
+        Showing {filtered.length} of {totalRecords.toLocaleString()} total students
         {isViewOnlyUser && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-muted">View Only</span>}
+        {!isSuperAdmin && adminDepartment && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-info/10 text-info">Dept: {adminDepartment}</span>}
       </p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -388,6 +465,92 @@ const FeesStatus = () => {
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <div className="text-sm text-muted-foreground">
+            Showing page {currentPage} of {totalPages} ({totalRecords.toLocaleString()} total records)
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {(() => {
+                const pages: (number | string)[] = [];
+                const showPages = 5;
+                
+                if (totalPages <= showPages + 2) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  if (currentPage <= 3) {
+                    for (let i = 1; i <= showPages; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 2) {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = totalPages - showPages + 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+                
+                return pages.map((page, idx) => 
+                  typeof page === 'number' ? (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] h-[40px] rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'gradient-gold text-secondary-foreground'
+                          : 'border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ) : (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                  )
+                );
+              })()}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

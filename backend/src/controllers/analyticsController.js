@@ -49,13 +49,14 @@ exports.getOverview = async (req, res) => {
       params
     );
 
-    // Fees - Updated to use fee_records table with proper NULL handling
+    // Fees - Use exact same query as /fees/summary for consistency
     const feesQuery = await db.query(
       `SELECT 
+         COALESCE(SUM(fr.total_amount), 0) as total_fees,
          COALESCE(SUM(fr.amount_paid), 0) as collected,
-         COALESCE(SUM(fr.outstanding), 0) as owing,
+         COALESCE(SUM(fr.total_amount - fr.amount_paid), 0) as owing,
          COUNT(CASE WHEN fr.is_cleared = true THEN 1 END) as cleared_count,
-         COUNT(CASE WHEN fr.status IN ('Pending', 'Partial') THEN 1 END) as owing_count
+         COUNT(CASE WHEN fr.is_cleared = false THEN 1 END) as owing_count
        FROM fee_records fr
        JOIN students s ON fr.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
@@ -91,9 +92,9 @@ exports.getOverview = async (req, res) => {
 
     const students = studentsQuery.rows[0];
     const graduands = graduandsQuery.rows[0] || { eligible: 0, ineligible: 0 };
-    const fees = feesQuery.rows[0] || { collected: 0, owing: 0, cleared_count: 0, owing_count: 0 };
+    const fees = feesQuery.rows[0] || { total_fees: 0, collected: 0, owing: 0, cleared_count: 0, owing_count: 0 };
     
-    const totalFees = parseFloat(fees.collected || 0) + parseFloat(fees.owing || 0);
+    const totalFees = parseFloat(fees.total_fees || 0);
     const collectionRate = totalFees > 0 ? Math.round((parseFloat(fees.collected || 0) / totalFees) * 100) : 0;
 
     const overview = {
