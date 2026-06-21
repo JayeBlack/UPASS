@@ -55,32 +55,26 @@ export async function apiFetch<T = unknown>(
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  console.log(`[API] Fetching: ${path}`);
-  console.log(`[API] Token present: ${!!token}`);
-  console.log(`[API] Body type:`, options.body instanceof FormData ? 'FormData' : typeof options.body);
+  const method = (options.method ?? "GET").toUpperCase();
+  if (method === "GET") headers.set("Cache-Control", "no-cache");
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   } catch (e) {
-    console.error(`[API] Network error:`, e);
     throw new ApiError(
       `Cannot reach API at ${API_BASE_URL}. Is the backend running?`,
       0,
     );
-  }
-
-  console.log(`[API] Response status: ${res.status}`);
+  };
 
   const contentType = res.headers.get("content-type") || "";
   const data = contentType.includes("application/json") ? await res.json().catch(() => ({})) : await res.text();
 
   if (!res.ok) {
     const msg = (typeof data === "object" && data && "error" in data && (data as { error?: string }).error) || res.statusText;
-    console.error(`[API] Error response:`, msg);
     throw new ApiError(String(msg), res.status);
   }
   
-  console.log(`[API] Success: ${path}`, Array.isArray(data) ? `${data.length} items` : typeof data);
   return data as T;
 }

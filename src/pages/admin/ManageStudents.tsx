@@ -54,8 +54,8 @@ const ManageStudents = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<Student[]>("/students");
-      setStudents(data || []);
+      const data = await apiFetch<any>("/students");
+      setStudents(Array.isArray(data) ? data : data?.data ?? []);
     } catch {
       // backend offline
     } finally {

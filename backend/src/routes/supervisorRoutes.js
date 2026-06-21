@@ -25,9 +25,9 @@ router.delete("/announcements/:id", authorize("Supervisor"), ctrl.deleteAnnounce
 
 router.get("/", authorize("Admin", "Dean", "ViceDean", "Registrar"), ctrl.getAll);
 router.get("/assignments", authorize("Admin", "Dean", "ViceDean", "Registrar"), ctrl.getAllAssignments);
+router.delete("/assignments/:assignmentId", authorize("Admin"), ctrl.unassignStudent);
 router.get("/:id", authorize("Admin", "Dean", "ViceDean", "Registrar"), ctrl.getById);
 router.get("/:id/students", authorize("Admin", "Dean", "ViceDean", "Registrar", "Supervisor"), ctrl.getAssignedStudents);
 router.post("/:id/assign", authorize("Admin"), ctrl.assignStudent);
-router.delete("/assignments/:assignmentId", authorize("Admin"), ctrl.unassignStudent);
 
 module.exports = router;

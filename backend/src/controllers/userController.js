@@ -196,6 +196,16 @@ exports.createBulk = async (req, res) => {
           [emailLower, hash, userRole, first_name, last_name, phone || null, deptId]
         );
 
+        // Auto-create supervisors record for Supervisor role
+        if (userRole === "Supervisor") {
+          const staffId = emailLower.split("@")[0].toUpperCase();
+          await client.query(
+            `INSERT INTO supervisors (user_id, staff_id, department_id, is_active)
+             VALUES ($1, $2, $3, TRUE) ON CONFLICT DO NOTHING`,
+            [userInsert.rows[0].id, staffId, deptId]
+          );
+        }
+
         await client.query("COMMIT");
         created.push(userInsert.rows[0]);
       } catch (err) {
