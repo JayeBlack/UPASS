@@ -359,7 +359,7 @@ const ClearanceApprovals = () => {
 
                   {/* Avatar */}
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${fullyDone ? "gradient-gold text-secondary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {student.first_name[0]}{student.last_name[0]}
+                    {(student.first_name?.[0] ?? "?")}{(student.last_name?.[0] ?? "")}
                   </div>
 
                   {/* Info */}

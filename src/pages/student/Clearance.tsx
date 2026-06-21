@@ -30,14 +30,11 @@ const Clearance = () => {
     if (!user) return;
     (async () => {
       try {
-        // get the student record for this user
-        const students = await apiFetch<any[]>("/students");
-        const me = students.find((s: any) => String(s.user_id) === String(user.id));
-        if (!me) { setLoading(false); return; }
+        const me = await apiFetch<any>("/students/me");
+        if (!me?.id) { setLoading(false); return; }
 
         let data = await apiFetch<ClearanceStep[]>(`/clearance/student/${me.id}`);
 
-        // auto-init steps if none exist yet
         if (!data || data.length === 0) {
           await apiFetch(`/clearance/init/${me.id}`, { method: "POST" });
           data = await apiFetch<ClearanceStep[]>(`/clearance/student/${me.id}`);
