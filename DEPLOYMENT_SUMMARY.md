@@ -1,19 +1,12 @@
 # UPASS Deployment & Sync Guide
 
 
-## 🎯 New Team Member Setup
-
-See **[NEW_MEMBER_SETUP.md](NEW_MEMBER_SETUP.md)** for complete instructions.
-
 **Quick start for existing database:**
 ```bash
-git clone <YOUR_GIT_URL>
-cd UPASS/backend
-npm install
-cp .env.example .env
-# Edit .env with team DATABASE_URL
+
 node run_migrations.js
-npm run dev
+node src/db/migrate.js
+node run_supervisor_resources_migration.js
 ```
 
 **Quick start for fresh database:**
