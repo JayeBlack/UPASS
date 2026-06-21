@@ -11,9 +11,11 @@ exports.getAll = async (req, res) => {
               u.first_name, u.last_name, u.phone,
               u.is_active, u.is_super_admin,
               u.created_at,
-              d.name AS department
+              COALESCE(sd.name, d.name) AS department
        FROM users u
        LEFT JOIN departments d ON u.department_id = d.id
+       LEFT JOIN supervisors sv ON sv.user_id = u.id
+       LEFT JOIN departments sd ON sd.id = sv.department_id
        WHERE u.role != 'Student'
        ORDER BY u.created_at DESC`
     );

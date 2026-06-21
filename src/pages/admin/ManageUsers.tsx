@@ -403,6 +403,9 @@ const ManageUsers = () => {
                 <div>
                   <h3 className="font-display text-lg font-bold text-foreground">Reset Password</h3>
                   <p className="text-xs text-muted-foreground">{resetPasswordUser.name}</p>
+                  {resetPasswordUser.department && (
+                    <p className="text-xs text-muted-foreground/70">{resetPasswordUser.department}</p>
+                  )}
                 </div>
               </div>
               <button onClick={() => { setResetPasswordUser(null); setNewPassword(""); setConfirmPassword(""); setShowNewPassword(false); setShowConfirmPassword(false); }} className="p-1 rounded hover:bg-muted transition-colors"><X size={18} className="text-muted-foreground" /></button>
