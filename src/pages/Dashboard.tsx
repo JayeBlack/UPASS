@@ -10,7 +10,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { supabase } from "@/integrations/supabase/client";
 
 const StatCard = ({
   icon, label, value, sub, trend, accent, onClick, valueColor,
@@ -84,7 +83,17 @@ const Dashboard = () => {
   const [activeCoursesCount, setActiveCoursesCount] = useState("—");
   const [resultsBatches, setResultsBatches] = useState<any[]>([]);
   const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—", awaitingApproval: "—" });
-  const [recentActivity, setRecentActivity] = useState<{ text: string; time: string }[]>([]);
+  const [recentActivity, setRecentActivity] = useState<{ text: string; time: string; type?: string }[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  const activityTypeIcon: Record<string, React.ReactNode> = {
+    course: <BookOpen size={14} className="text-primary" />,
+    fee: <Banknote size={14} className="text-green-600" />,
+    thesis: <FileText size={14} className="text-blue-600" />,
+    result: <BarChart3 size={14} className="text-purple-600" />,
+    clearance: <CheckCircle size={14} className="text-success" />,
+    general: <Activity size={14} className="text-muted-foreground" />,
+  };
 
   const formatActivityTime = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -113,7 +122,7 @@ const Dashboard = () => {
         setRecentActivity(
           (logs || []).map((l) => ({ text: formatActivityText(l), time: formatActivityTime(l.created_at) }))
         );
-      } catch { /* silently fail */ }
+      } catch { /* silently fail */ } finally { setActivityLoading(false); }
     };
     fetchActivity();
     const interval = setInterval(fetchActivity, 15000);
@@ -175,17 +184,11 @@ const Dashboard = () => {
           const courses = await apiFetch<any[]>(`/courses/student/${studentRes.id}`);
           setRegisteredCoursesCount(String(courses?.length || 0));
         }
-        // Thesis progress — from Supabase (same source as ThesisUpload page)
-        const { data: submissions } = await supabase
-          .from("thesis_submissions")
-          .select("stage, status, submitted_at")
-          .eq("student_id", user.id)
-          .order("submitted_at", { ascending: false });
+        // Thesis progress — from backend DB
+        const submissions = await apiFetch<any[]>("/thesis/my-submissions");
         if (!submissions || submissions.length === 0) {
           setThesisProgress("Not Started");
         } else {
-          // Show the most recent submission's stage + status
-          const latest = submissions[0];
           const stages = ["Proposal", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Defense"];
           const approvedStages = submissions
             .filter((s: any) => s.status === "Approved")
@@ -194,12 +197,10 @@ const Dashboard = () => {
           if (approvedStages.length === stages.length) {
             setThesisProgress("Completed ✓");
           } else if (approvedStages.length > 0) {
-            const nextIdx = Math.max(...approvedStages) + 1;
-            const nextStage = stages[nextIdx] || "Defense";
+            const nextStage = stages[Math.max(...approvedStages) + 1] || "Defense";
             setThesisProgress(`${nextStage} — In Progress`);
           } else {
-            // Has submissions but none approved yet
-            setThesisProgress(`${latest.stage} — ${latest.status}`);
+            setThesisProgress(`${submissions[0].stage} — ${submissions[0].status}`);
           }
         }
       } catch { /* ignore */ }
@@ -283,27 +284,8 @@ const Dashboard = () => {
           apiFetch<any>("/supervisors/current/stats"),
           apiFetch<any>("/supervisors/current/submissions"),
         ]);
-        const assignedStudentsList: { index_number: string }[] = supervisorStudents.students || [];
-        const assignedIndexSet = new Set(
-          assignedStudentsList
-            .map((s) => s.index_number?.trim().toLowerCase())
-            .filter(Boolean)
-        );
-
-        const { data: submissions, error } = await supabase
-          .from("thesis_submissions")
-          .select("student_index, status");
-
-        const filtered = (!error && submissions)
-          ? submissions.filter((sub: any) =>
-              assignedIndexSet.has(sub.student_index?.trim().toLowerCase())
-            )
-          : [];
-
-        const pendingCount = filtered.filter((sub: any) => sub.status === "Pending").length;
-        const awaitingApproval = filtered.filter((sub: any) =>
-          sub.status !== "Approved" && sub.status !== "Rejected"
-        ).length;
+        const pendingCount = backendStats.pendingReviews ?? 0;
+        const awaitingApproval = backendStats.awaitingApproval ?? 0;
 
         setSupervisorData({
           assignedStudents: String(backendStats.assignedStudents || 0),
@@ -313,15 +295,8 @@ const Dashboard = () => {
       } catch { /* silently fail */ }
     };
     fetchSupervisorStats();
-    const channel = supabase
-      .channel("dashboard_supervisor_submissions")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "thesis_submissions" },
-        () => fetchSupervisorStats()
-      )
-      .subscribe();
     const interval = setInterval(fetchSupervisorStats, 30000);
-    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+    return () => clearInterval(interval);
   }, [user?.role]);
 
   // Filter data by department for departmental admins
