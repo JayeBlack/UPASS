@@ -1,37 +1,19 @@
 import DashboardLayout from "@/components/DashboardLayout";
-<<<<<<< Updated upstream
-import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader } from "lucide-react";
-=======
 import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader2 } from "lucide-react";
->>>>>>> Stashed changes
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 
-<<<<<<< Updated upstream
-interface GradeData {
-  id: string;
-=======
 interface GradeRecord {
   id: string;
   course_id: string;
->>>>>>> Stashed changes
   code: string;
   course_name: string;
   credits: number;
   grade: string;
   marks: number;
-<<<<<<< Updated upstream
-  semester: number;
-  academic_year: string;
-}
-
-interface SemesterResult {
-  label: string;
-  short: string;
-=======
   semester: string;
   academic_year: string;
 }
@@ -41,7 +23,6 @@ interface SemesterGroup {
   short: string;
   semester: string;
   academic_year: string;
->>>>>>> Stashed changes
   courses: { code: string; name: string; credits: number; grade: string; marks: number }[];
   cwa: number;
 }
@@ -56,73 +37,6 @@ const calcCwa = (courses: { marks: number; credits: number }[]) => {
 const Results = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-<<<<<<< Updated upstream
-  const [semesterData, setSemesterData] = useState<SemesterResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchResults = async () => {
-      try {
-        if (!user?.id) {
-          setError("User not authenticated");
-          setLoading(false);
-          return;
-        }
-
-        const grades = await apiFetch(`/results/student/${user.id}`);
-        
-        if (!grades || grades.length === 0) {
-          setSemesterData([]);
-          setLoading(false);
-          return;
-        }
-
-        const grouped: Record<string, GradeData[]> = {};
-        grades.forEach((g: GradeData) => {
-          const key = `${g.academic_year}-S${g.semester}`;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(g);
-        });
-
-        const semesters: SemesterResult[] = Object.entries(grouped)
-          .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
-          .map(([key, courses]) => {
-            const [academicYear, semester] = key.split("-");
-            const sem = parseInt(semester.replace("S", ""));
-            return {
-              label: `Semester ${sem}, ${academicYear}`,
-              short: `S${sem} ${academicYear.split("/").map(y => y.slice(-2)).join("/")}`,
-              courses: courses.map((c) => ({
-                code: c.code,
-                name: c.course_name,
-                credits: c.credits,
-                grade: c.grade,
-                marks: c.marks,
-              })),
-              cwa: 0,
-            };
-          });
-
-        semesters.forEach((s) => {
-          s.cwa = calcCwa(s.courses);
-        });
-
-        setSemesterData(semesters);
-        setError(null);
-      } catch (err) {
-        setError((err as Error).message);
-        setSemesterData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchResults();
-  }, [user?.id]);
-
-  const allCourses = semesterData.flatMap((s) => s.courses);
-=======
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -171,7 +85,6 @@ const Results = () => {
   }));
 
   const allCourses = grades.map((g) => ({ marks: g.marks, credits: g.credits }));
->>>>>>> Stashed changes
   const overallCwa = calcCwa(allCourses);
 
   if (loading) {

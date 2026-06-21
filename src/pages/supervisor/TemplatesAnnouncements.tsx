@@ -11,21 +11,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getToken } from "@/lib/api";
 import {
   Upload, FileText, FileType, Archive, Download, Trash2, Filter,
-  Send, Paperclip, Calendar, Bell, Clock, Users, User, X,
+  Send, Calendar, Bell, Clock, Users, User, X,
   Plus, Search, SortAsc, Loader2, Check,
 } from "lucide-react";
 
 interface Resource {
   id: string;
-  title: string;
+  file_name: string;
   category: string;
   description: string | null;
   file_url: string;
-  file_size: number | null;
-  created_at: string;
+  file_size: string | null;
+  uploaded_at: string;
 }
 
 interface Announcement {
@@ -40,7 +40,7 @@ interface AssignedStudent {
   id: string;
   name: string;
   index_number: string;
-  program_name: string;
+  program_name?: string;
 }
 
 const categories = ["Report Template", "Guidelines", "Rubric", "Reference Material", "Other"];
@@ -69,7 +69,8 @@ const TemplatesAnnouncements = () => {
   const [uploadDesc, setUploadDesc] = useState("");
   const [uploadCat, setUploadCat] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [uploadRecipientsMode, setUploadRecipientsMode] = useState<"all" | "individual">("all");
+  const [uploadSelectedStudents, setUploadSelectedStudents] = useState<string[]>([]);
 
   /* ── Announcements ── */
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -109,16 +110,9 @@ const TemplatesAnnouncements = () => {
   const loadAssignedStudents = async () => {
     if (!user?.id) return;
     try {
-      // Fetch current supervisor info first to get supervisor ID
-      const supervisorRes = await apiFetch("/supervisors");
-      const currentSupervisor = supervisorRes.find((s: any) => s.user_id === user.id);
-      if (!currentSupervisor) return;
-
-      const studentData = await apiFetch(`/supervisors/${currentSupervisor.id}/students`);
-      setAssignedStudents(Array.isArray(studentData) ? studentData : []);
-    } catch (err) {
-      // Silently fail - students might not be loaded
-    }
+      const res = await apiFetch<{ students: AssignedStudent[] }>("/supervisors/current/submissions");
+      setAssignedStudents(res.students || []);
+    } catch { /* silently fail */ }
   };
 
   useEffect(() => {
@@ -127,22 +121,24 @@ const TemplatesAnnouncements = () => {
       loadAnnouncements();
       loadAssignedStudents();
     }
+    // Re-fetch assigned students every 30s in case assignments change
+    const interval = setInterval(() => { if (user?.id) loadAssignedStudents(); }, 30000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   /* ── Resource handlers ── */
   const handleUpload = async () => {
-    if (!uploadFile) {
-      toast({ title: "No file selected", variant: "destructive" });
-      return;
+    if (!uploadFile) { toast({ title: "No file selected", variant: "destructive" }); return; }
+    if (!uploadTitle.trim()) { toast({ title: "Enter a title", variant: "destructive" }); return; }
+    if (!uploadCat) { toast({ title: "Select a category", variant: "destructive" }); return; }
+    if (uploadRecipientsMode === "individual" && uploadSelectedStudents.length === 0) {
+      toast({ title: "Select at least one student", variant: "destructive" }); return;
     }
-    if (!uploadTitle.trim()) {
-      toast({ title: "Enter a title", variant: "destructive" });
-      return;
-    }
-    if (!uploadCat) {
-      toast({ title: "Select a category", variant: "destructive" });
-      return;
-    }
+
+    const recipientIds = uploadRecipientsMode === "all"
+      ? assignedStudents.map((s) => s.id)
+      : uploadSelectedStudents;
+
     setUploading(true);
     try {
       const formData = new FormData();
@@ -150,25 +146,22 @@ const TemplatesAnnouncements = () => {
       formData.append("title", uploadTitle);
       formData.append("category", uploadCat);
       formData.append("description", uploadDesc);
+      formData.append("student_ids", JSON.stringify(recipientIds));
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/supervisors/resources/upload`, {
+      const res = await fetch("/api/supervisors/resources/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
+        headers: { "Authorization": `Bearer ${getToken()}` },
         body: formData,
       });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Upload failed"); }
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Upload failed");
-      }
-
-      toast({ title: "File uploaded", description: uploadFile.name });
+      toast({ title: "File uploaded", description: `Shared with ${recipientIds.length} student(s)` });
       setUploadFile(null);
       setUploadTitle("");
       setUploadDesc("");
       setUploadCat("");
+      setUploadSelectedStudents([]);
+      setUploadRecipientsMode("all");
       loadResources();
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -188,17 +181,13 @@ const TemplatesAnnouncements = () => {
   };
 
   const downloadResource = async (r: Resource) => {
-    try {
-      window.open(r.file_url, "_blank");
-    } catch (err: any) {
-      toast({ title: "Download failed", description: err.message, variant: "destructive" });
-    }
+    window.open(r.file_url.startsWith("/") ? `http://localhost:5000${r.file_url}` : r.file_url, "_blank");
   };
 
   const filteredResources = resources
     .filter((r) => resFilter === "all" || r.category === resFilter)
-    .filter((r) => r.title.toLowerCase().includes(resSearch.toLowerCase()) || (r.description ?? "").toLowerCase().includes(resSearch.toLowerCase()))
-    .sort((a, b) => resSort === "date" ? b.created_at.localeCompare(a.created_at) : a.title.localeCompare(b.title));
+    .filter((r) => r.file_name.toLowerCase().includes(resSearch.toLowerCase()) || (r.description ?? "").toLowerCase().includes(resSearch.toLowerCase()))
+    .sort((a, b) => resSort === "date" ? b.uploaded_at.localeCompare(a.uploaded_at) : a.file_name.localeCompare(b.file_name));
 
   /* ── Announcement handlers ── */
   const handlePostAnnouncement = async () => {
@@ -274,10 +263,7 @@ const TemplatesAnnouncements = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div
-                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) setUploadFile(f); }}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors border-border hover:border-primary/50`}
                 onClick={() => fileRef.current?.click()}
               >
                 <Upload className="mx-auto mb-3 text-muted-foreground" size={32} />
@@ -311,6 +297,61 @@ const TemplatesAnnouncements = () => {
                   <Label>Description (optional)</Label>
                   <Input placeholder="Brief description" value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Recipients */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-1"><Users size={14} /> Send To</Label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setUploadRecipientsMode("all"); setUploadSelectedStudents([]); }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      uploadRecipientsMode === "all" ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    All Students ({assignedStudents.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadRecipientsMode("individual")}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      uploadRecipientsMode === "individual" ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    Select Students
+                  </button>
+                </div>
+
+                {uploadRecipientsMode === "individual" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3 rounded-lg bg-muted/40 border border-border max-h-48 overflow-y-auto">
+                    {assignedStudents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground col-span-2 text-center py-4">No students assigned yet.</p>
+                    ) : assignedStudents.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setUploadSelectedStudents((prev) =>
+                          prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id]
+                        )}
+                        className={`p-3 rounded-lg text-left border transition-colors ${
+                          uploadSelectedStudents.includes(s.id) ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {uploadSelectedStudents.includes(s.id) && <Check size={14} className="text-primary shrink-0" />}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{s.name}</p>
+                            <p className="text-xs text-muted-foreground">{s.index_number}</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {uploadRecipientsMode === "individual" && uploadSelectedStudents.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{uploadSelectedStudents.length} student(s) selected</p>
+                )}
               </div>
 
               <Button onClick={handleUpload} disabled={uploading} className="w-full sm:w-auto">
@@ -364,16 +405,16 @@ const TemplatesAnnouncements = () => {
                         <TableRow key={r.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              {fileIcon(r.title)}
+                              {fileIcon(r.file_name)}
                               <div>
-                                <p className="font-medium text-sm text-foreground">{r.title}</p>
-                                <p className="text-xs text-muted-foreground sm:hidden">{r.category} · {r.created_at?.slice(0, 10) || "—"}</p>
+                                <p className="font-medium text-sm text-foreground">{r.file_name}</p>
+                                <p className="text-xs text-muted-foreground sm:hidden">{r.category} · {r.uploaded_at?.slice(0, 10) || "—"}</p>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell"><Badge variant="secondary">{r.category}</Badge></TableCell>
                           <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[200px] truncate">{r.description ?? "—"}</TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{r.created_at?.slice(0, 10) || "—"}</TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{r.uploaded_at?.slice(0, 10) || "—"}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button variant="ghost" size="icon" title="Download" onClick={() => downloadResource(r)}><Download size={16} /></Button>

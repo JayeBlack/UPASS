@@ -19,6 +19,7 @@ import DocumentRequests from "./pages/student/DocumentRequests";
 import Clearance from "./pages/student/Clearance";
 import Notifications from "./pages/student/Notifications";
 import ChatAssistant from "./pages/student/ChatAssistant";
+import SupervisorResources from "./pages/student/SupervisorResources";
 import AssignedStudents from "./pages/supervisor/AssignedStudents";
 import ReviewSubmissions from "./pages/supervisor/ReviewSubmissions";
 import TemplatesAnnouncements from "./pages/supervisor/TemplatesAnnouncements";
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/clearance" element={<RequireAuth><RoleGuard allowedRoles={["Student"]}><Clearance /></RoleGuard></RequireAuth>} />
             <Route path="/student/chat" element={<RequireAuth><RoleGuard allowedRoles={["Student"]}><ChatAssistant /></RoleGuard></RequireAuth>} />
             <Route path="/notifications" element={<RequireAuth><RoleGuard allowedRoles={["Student"]}><Notifications /></RoleGuard></RequireAuth>} />
+            <Route path="/supervisor-resources" element={<RequireAuth><RoleGuard allowedRoles={["Student"]}><SupervisorResources /></RoleGuard></RequireAuth>} />
             {/* Supervisor */}
             <Route path="/students" element={<RequireAuth><RoleGuard allowedRoles={["Supervisor"]}><AssignedStudents /></RoleGuard></RequireAuth>} />
             <Route path="/submissions" element={<RequireAuth><RoleGuard allowedRoles={["Supervisor"]}><ReviewSubmissions /></RoleGuard></RequireAuth>} />

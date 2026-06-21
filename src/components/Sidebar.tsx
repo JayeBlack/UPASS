@@ -46,6 +46,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Request Documents", path: "/documents", icon: <FileText size={18} /> },
     { label: "Clearance", path: "/clearance", icon: <Shield size={18} /> },
     { label: "SPS Assistant", path: "/student/chat", icon: <Bot size={18} /> },
+    { label: "Resources & Notices", path: "/supervisor-resources", icon: <BookOpen size={18} /> },
   ],
   Supervisor: [
     { label: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={18} /> },
