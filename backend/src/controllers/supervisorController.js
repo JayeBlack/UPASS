@@ -148,6 +148,47 @@ exports.getDashboardStats = async (req, res) => {
   }
 };
 
+// GET /api/supervisors/current/review-stats
+exports.getReviewStats = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Not authenticated" });
+
+    const supervisorResult = await db.query(
+      "SELECT id FROM supervisors WHERE user_id = $1",
+      [userId]
+    );
+    if (supervisorResult.rows.length === 0) {
+      return res.json({ avg_review_time_days: 0 });
+    }
+    const supervisorId = supervisorResult.rows[0].id;
+
+    // Get assigned student IDs
+    const studentsResult = await db.query(
+      "SELECT student_id FROM student_supervisors WHERE supervisor_id = $1",
+      [supervisorId]
+    );
+    const studentIds = studentsResult.rows.map(row => row.student_id);
+
+    if (studentIds.length === 0) {
+      return res.json({ avg_review_time_days: 0 });
+    }
+
+    // Calculate average review time for reviewed submissions
+    const reviewTimeResult = await db.query(
+      `SELECT AVG(EXTRACT(EPOCH FROM (reviewed_at - submitted_at)) / 86400) as avg_days
+       FROM thesis_submissions
+       WHERE student_id = ANY($1) AND reviewed_at IS NOT NULL AND reviewed_by = $2`,
+      [studentIds, userId]
+    );
+
+    const avgDays = reviewTimeResult.rows[0]?.avg_days || 0;
+    res.json({ avg_review_time_days: parseFloat(avgDays) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /api/supervisors/current/submissions
 exports.getCurrentSupervisorSubmissions = async (req, res) => {
   try {

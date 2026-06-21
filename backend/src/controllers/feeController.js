@@ -1,5 +1,6 @@
 const db = require("../db");
 const XLSX = require("xlsx");
+const { createNotification } = require("./notificationController");
 
 // GET /api/fees/student/:studentId — accepts user_id or student_id
 exports.getByStudent = async (req, res) => {
@@ -104,15 +105,30 @@ exports.makePayment = async (req, res) => {
       [amount, fee_record_id]
     );
 
-    // Auto-update status and cleared
-    await db.query(
+    // Auto-update status
+    const updated = await db.query(
       `UPDATE fee_records SET
         status = CASE WHEN amount_paid >= total_amount THEN 'Paid' ELSE 'Partial' END,
-        is_cleared = (amount_paid >= total_amount)
-       WHERE id = $1`,
+        is_cleared = (amount_paid >= total_amount),
+        outstanding = total_amount - amount_paid
+       WHERE id = $1 RETURNING student_id, status, academic_year, semester, amount_paid, total_amount`,
       [fee_record_id]
     );
-
+    if (updated.rows.length > 0) {
+      const fee = updated.rows[0];
+      const studentUser = await db.query('SELECT user_id FROM students WHERE id = $1', [fee.student_id]);
+      if (studentUser.rows.length > 0) {
+        const isPaid = fee.status === 'Paid';
+        await createNotification(
+          studentUser.rows[0].user_id, 'fee',
+          isPaid ? 'Fees Fully Paid' : 'Payment Received',
+          isPaid
+            ? `Your fees for ${fee.academic_year} ${fee.semester} are fully paid.`
+            : `Payment of GHS ${parseFloat(fee.amount_paid).toLocaleString()} received for ${fee.academic_year} ${fee.semester}. Outstanding: GHS ${(fee.total_amount - fee.amount_paid).toLocaleString()}.`,
+          isPaid ? 'success' : 'info'
+        );
+      }
+    }
     res.status(201).json(payment.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

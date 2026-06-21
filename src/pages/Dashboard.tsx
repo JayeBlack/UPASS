@@ -13,10 +13,11 @@ import { apiFetch } from "@/lib/api";
 import { supabase } from "@/integrations/supabase/client";
 
 const StatCard = ({
-  icon, label, value, sub, trend, accent, onClick,
+  icon, label, value, sub, trend, accent, onClick, valueColor,
 }: {
   icon: React.ReactNode; label: string; value: string;
   sub?: string; trend?: "up" | "down" | "neutral"; accent?: boolean; onClick?: () => void;
+  valueColor?: "green" | "red" | "default";
 }) => (
   <button
     onClick={onClick}
@@ -26,7 +27,9 @@ const StatCard = ({
       <div className="absolute inset-0 rounded-2xl gradient-gold opacity-[0.04]" />
     )}
     <div className="flex items-start justify-between mb-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${accent ? "gradient-gold shadow-md shadow-secondary/20" : "bg-muted"}`}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+        valueColor === "green" ? "bg-green-100" : valueColor === "red" ? "bg-red-100" : accent ? "gradient-gold shadow-md shadow-secondary/20" : "bg-muted"
+      }`}>
         {icon}
       </div>
       {trend && (
@@ -38,7 +41,9 @@ const StatCard = ({
         </span>
       )}
     </div>
-    <p className="text-2xl font-bold font-display text-foreground tracking-tight">{value}</p>
+    <p className={`text-2xl font-bold font-display tracking-tight ${
+      valueColor === "green" ? "text-green-600" : valueColor === "red" ? "text-red-500" : "text-foreground"
+    }`}>{value}</p>
     <p className="text-xs text-muted-foreground mt-1 font-medium">{label}</p>
     {onClick && (
       <ArrowUpRight size={14} className="absolute top-5 right-5 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all duration-300" />
@@ -54,6 +59,7 @@ interface StatItem {
   trend?: "up" | "down" | "neutral";
   sub?: string;
   onClick?: () => void;
+  valueColor?: "green" | "red" | "default";
 }
 
 interface FeeSummary {
@@ -155,6 +161,51 @@ const Dashboard = () => {
     }, 15000);
   }, [user?.role]);
 
+  // ─── Student course registration and thesis progress ───
+  const [registeredCoursesCount, setRegisteredCoursesCount] = useState("—");
+  const [thesisProgress, setThesisProgress] = useState("—");
+  
+  useEffect(() => {
+    if (user?.role !== "Student" || !user?.id) return;
+    return fetchWithInterval(async () => {
+      try {
+        // Get student ID for course count
+        const studentRes = await apiFetch<{ id: number }>(`/students/by-user/${user.id}`);
+        if (studentRes?.id) {
+          const courses = await apiFetch<any[]>(`/courses/student/${studentRes.id}`);
+          setRegisteredCoursesCount(String(courses?.length || 0));
+        }
+        // Thesis progress — from Supabase (same source as ThesisUpload page)
+        const { data: submissions } = await supabase
+          .from("thesis_submissions")
+          .select("stage, status, submitted_at")
+          .eq("student_id", user.id)
+          .order("submitted_at", { ascending: false });
+        if (!submissions || submissions.length === 0) {
+          setThesisProgress("Not Started");
+        } else {
+          // Show the most recent submission's stage + status
+          const latest = submissions[0];
+          const stages = ["Proposal", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Defense"];
+          const approvedStages = submissions
+            .filter((s: any) => s.status === "Approved")
+            .map((s: any) => stages.indexOf(s.stage))
+            .filter((i: number) => i !== -1);
+          if (approvedStages.length === stages.length) {
+            setThesisProgress("Completed ✓");
+          } else if (approvedStages.length > 0) {
+            const nextIdx = Math.max(...approvedStages) + 1;
+            const nextStage = stages[nextIdx] || "Defense";
+            setThesisProgress(`${nextStage} — In Progress`);
+          } else {
+            // Has submissions but none approved yet
+            setThesisProgress(`${latest.stage} — ${latest.status}`);
+          }
+        }
+      } catch { /* ignore */ }
+    }, 15000);
+  }, [user?.role, user?.id]);
+
   // ─── Student fee data ───
   useEffect(() => {
     if (user?.role !== "Student" || !user?.id) return;
@@ -167,6 +218,21 @@ const Dashboard = () => {
       }
     }, 10000);
   }, [user?.role, user?.id]);
+
+  // ─── Supervisor average review time ───
+  const [avgReviewTime, setAvgReviewTime] = useState("—");
+  
+  useEffect(() => {
+    if (user?.role !== "Supervisor") return;
+    return fetchWithInterval(async () => {
+      try {
+        const stats = await apiFetch<{ avg_review_time_days: number }>("/supervisors/current/review-stats");
+        if (stats?.avg_review_time_days != null) {
+          setAvgReviewTime(`${Math.round(stats.avg_review_time_days)} days`);
+        }
+      } catch { /* ignore */ }
+    }, 30000);
+  }, [user?.role]);
 
   // ─── Active courses count ───
   useEffect(() => {
@@ -187,6 +253,24 @@ const Dashboard = () => {
         const batches = await apiFetch<any[]>("/results/batches");
         setResultsBatches(batches || []);
       } catch { /* ignore */ }
+    }, 15000);
+  }, [user?.role]);
+
+  // ─── Pass rate calculation (ExamsOfficer) ───
+  const [passRate, setPassRate] = useState<string>("—");
+  useEffect(() => {
+    if (user?.role !== "ExamsOfficer") return;
+    return fetchWithInterval(async () => {
+      try {
+        const overview = await apiFetch<{ graduands_eligible: number; graduands_ineligible: number }>("/analytics/overview");
+        const total = overview.graduands_eligible + overview.graduands_ineligible;
+        if (total > 0) {
+          const rate = Math.round((overview.graduands_eligible / total) * 100);
+          setPassRate(`${rate}%`);
+        } else {
+          setPassRate("0%");
+        }
+      } catch { setPassRate("—"); }
     }, 15000);
   }, [user?.role]);
 
@@ -270,17 +354,23 @@ const Dashboard = () => {
   };
 
   const studentStats = [
-    { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: "—", accent: true },
-    { icon: <FileText size={18} className="text-muted-foreground" />, label: "Thesis Progress", value: "—" },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Total Fees", value: formatGHS(totalStudentFees) },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Outstanding Balance", value: formatGHS(totalStudentOwed) },
+    { icon: <BookOpen size={18} className="text-secondary-foreground" />, label: "Registered Courses", value: registeredCoursesCount, accent: true, onClick: () => navigate("/courses/register") },
+    { 
+      icon: <FileText size={18} className={thesisProgress.includes("Completed") ? "text-green-600" : thesisProgress.includes("Pending") ? "text-yellow-600" : thesisProgress.includes("Approved") || thesisProgress.includes("Progress") ? "text-blue-600" : thesisProgress.includes("Rejected") ? "text-red-500" : "text-muted-foreground"} />, 
+      label: "Thesis Progress", 
+      value: thesisProgress,
+      valueColor: thesisProgress.includes("Completed") ? "green" as const : thesisProgress.includes("Rejected") ? "red" as const : "default" as const,
+      onClick: () => navigate("/thesis/upload") 
+    },
+    { icon: <BarChart3 size={18} className="text-green-600" />, label: "Total Fees Paid", value: formatGHS(totalStudentPaid), valueColor: "green" as const, onClick: () => navigate("/finances") },
+    { icon: <Clock size={18} className="text-red-500" />, label: "Outstanding Balance", value: formatGHS(totalStudentOwed), valueColor: totalStudentOwed > 0 ? "red" as const : "green" as const, onClick: () => navigate("/finances") },
   ];
 
   const supervisorStats = [
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Assigned Students", value: supervisorData.assignedStudents, accent: true, onClick: () => navigate("/students") },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: supervisorData.pendingReviews, onClick: () => navigate("/submissions") },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Awaiting Approval", value: supervisorData.awaitingApproval },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Avg Review Time", value: "—" },
+    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Avg Review Time", value: avgReviewTime },
   ];
 
   const adminStats = [
@@ -326,7 +416,7 @@ const Dashboard = () => {
     { icon: <BarChart3 size={18} className="text-secondary-foreground" />, label: "Results Published", value: String(publishedBatches), accent: true },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Batches", value: String(pendingBatches) },
     { icon: <Users size={18} className="text-muted-foreground" />, label: "Total Students", value: String(totalStudents) },
-    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Pass Rate", value: "—" },
+    { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Pass Rate", value: passRate, onClick: () => navigate("/exams/passlist") },
   ];
 
   const registrarStats = [
@@ -427,6 +517,7 @@ const Dashboard = () => {
     "View Fees": <Banknote size={15} />,
   };
 
+
   const quickActions = user?.role === "Student"
     ? ["Register Courses", "Upload Chapter", "View Results", "Request Documents"]
     : user?.role === "Supervisor"
@@ -480,36 +571,40 @@ const Dashboard = () => {
       {/* Two-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6">
+        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6 flex flex-col">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-display text-lg font-bold text-foreground">Recent Activity</h2>
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
               {recentActivity.length} updates
             </span>
           </div>
-          <div className="space-y-1">
-            {recentActivity.length === 0 ? (
+          <div className="overflow-y-auto max-h-72 space-y-1 pr-1 scrollbar-thin">
+            {activityLoading ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
+                <Activity size={14} className="animate-pulse" /> Loading activity...
+              </div>
+            ) : recentActivity.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">No recent activity</div>
             ) : (
               recentActivity.map((a, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center mt-0.5 shrink-0">
-                  <Activity size={14} className="text-muted-foreground" />
+                <div key={i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center mt-0.5 shrink-0">
+                    {activityTypeIcon[a.type || 'general'] ?? <Activity size={14} className="text-muted-foreground" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground leading-relaxed">{a.text}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{formatActivityTime(a.time)}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground leading-relaxed">{a.text}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{a.time}</p>
-                </div>
-              </div>
-            ))
+              ))
             )}
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-card rounded-2xl border border-border p-6">
+        <div className="bg-card rounded-2xl border border-border p-6 flex flex-col">
           <h2 className="font-display text-lg font-bold text-foreground mb-5">Quick Actions</h2>
-          <div className="space-y-2">
+          <div className="overflow-y-auto max-h-72 space-y-2 pr-1 scrollbar-thin">
             {quickActions.map((action) => (
               <button
                 key={action}

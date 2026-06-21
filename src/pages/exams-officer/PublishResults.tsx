@@ -59,16 +59,29 @@ const PublishResults = () => {
     }
   };
 
-  const handleDownload = (batch: ResultBatch, format: "csv" | "pdf") => {
-    exportData({
-      title: `${batch.program_name} Results`,
-      subtitle: `${batch.semester} — ${batch.academic_year} | ${batch.department_name}`,
-      headers: ["Programme", "Semester", "Year", "Department", "Status", "Published Date"],
-      rows: [[batch.program_name, batch.semester, batch.academic_year, batch.department_name, batch.status, batch.published_at?.slice(0, 10) || "N/A"]],
-      fileName: `Results_${batch.program_name?.replace(/\s+/g, "_")}_${batch.semester?.replace(/\s+/g, "_")}`,
-      format,
-    });
-    toast({ title: "Downloaded", description: `${batch.program_name} results downloaded as ${format.toUpperCase()}` });
+  const handleDownload = async (batch: ResultBatch, format: "csv" | "pdf") => {
+    try {
+      const grades = await apiFetch<any[]>(`/results/batches/${batch.id}/grades`);
+      
+      exportData({
+        title: `${batch.program_name || 'Results'} - ${batch.semester}`,
+        subtitle: `${batch.academic_year} | ${batch.department_name || 'N/A'}`,
+        headers: ["Index Number", "Student Name", "Course Name", "Credit Hours", "Marks", "Grade"],
+        rows: grades.map(g => [
+          g.index_number,
+          g.full_name,
+          g.course_name,
+          g.credits?.toString() || "-",
+          g.marks?.toString() || "-",
+          g.grade
+        ]),
+        fileName: `Results_${batch.semester?.replace(/\s+/g, "_")}_${batch.academic_year?.replace(/\s+/g, "_")}`,
+        format,
+      });
+      toast({ title: "Downloaded", description: `Results downloaded as ${format.toUpperCase()}` });
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message || "Download failed", variant: "destructive" });
+    }
   };
 
   const drafts = batches.filter((b) => b.status === "Draft");
@@ -160,8 +173,8 @@ const PublishResults = () => {
                   <tbody>
                     {published.map((b) => (
                       <tr key={b.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 text-sm font-medium text-foreground">{b.program_name}</td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">{b.department_name}</td>
+                        <td className="px-6 py-4 text-sm font-medium text-foreground">{b.program_name || "—"}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{b.department_name || "—"}</td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">{b.semester} — {b.academic_year}</td>
                         <td className="px-6 py-4 text-sm text-center text-muted-foreground">{b.published_at?.slice(0, 10) ?? "—"}</td>
                         <td className="px-6 py-4 text-right">

@@ -1,5 +1,7 @@
 const db = require("../db");
 const { createNotification } = require("./notificationController");
+const xlsx = require("xlsx");
+const fs = require("fs");
 
 // GET /api/results/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -123,12 +125,15 @@ exports.deleteBatch = async (req, res) => {
 
     const batch = batchRes.rows[0];
 
-    // Delete all grades associated with this batch
-    await db.query(
+    // Delete all grades associated with this batch (by semester and academic year)
+    const deleteGradesRes = await db.query(
       `DELETE FROM grades 
-       WHERE academic_year = $1 AND semester = $2 AND entered_by = $3`,
-      [batch.academic_year, batch.semester, req.user.id]
+       WHERE academic_year = $1 AND semester = $2
+       RETURNING id`,
+      [batch.academic_year, batch.semester]
     );
+
+    console.log(`Deleted ${deleteGradesRes.rows.length} grade records`);
 
     // Delete the batch
     await db.query(
@@ -136,14 +141,180 @@ exports.deleteBatch = async (req, res) => {
       [id]
     );
 
-    res.json({ message: "Batch deleted successfully" });
+    res.json({ 
+      message: "Batch and all associated grades deleted successfully",
+      gradesDeleted: deleteGradesRes.rows.length
+    });
   } catch (err) {
+    console.error('Delete batch error:', err);
     res.status(500).json({ error: err.message });
   }
 };
 
-// POST /api/results/batch-upload (alias for enterGradesByIndex for CSV/Excel uploads)
-exports.batchUpload = exports.enterGradesByIndex;
+// POST /api/results/parse-grades-file (parse uploaded Excel/CSV file)
+exports.parseGradesFile = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const filePath = req.file.path;
+    
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(400).json({ error: "File not found" });
+    }
+
+    // Parse the file
+    const workbook = xlsx.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+    // Clean up uploaded file
+    try {
+      fs.unlinkSync(filePath);
+    } catch (cleanupErr) {
+      console.warn('Failed to delete temp file:', cleanupErr);
+    }
+
+    // Return parsed data as array of arrays
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error('Parse error:', err);
+    // Clean up file if it exists
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (cleanupErr) {
+        console.warn('Failed to delete temp file:', cleanupErr);
+      }
+    }
+    return res.status(500).json({ error: `Failed to parse file: ${err.message}` });
+  }
+};
+
+// POST /api/results/batch-upload (publish grades to students)
+exports.batchUpload = async (req, res) => {
+  try {
+    const { grades, semester, academicYear } = req.body;
+
+    console.log('Batch upload request:', { gradesCount: grades?.length, semester, academicYear });
+
+    if (!grades || !Array.isArray(grades) || grades.length === 0) {
+      return res.status(400).json({ error: "Grades array required" });
+    }
+
+    const semesterNum = typeof semester === 'string' ? parseInt(semester.replace(/\D/g, '')) || 1 : semester;
+    console.log('Semester parsed as:', semesterNum);
+
+    const results = [];
+    const errors = [];
+
+    for (const g of grades) {
+      try {
+        console.log('Processing grade for:', g.indexNumber);
+        
+        const studentRes = await db.query(
+          "SELECT id, user_id FROM students WHERE index_number = $1",
+          [g.indexNumber]
+        );
+        
+        if (studentRes.rows.length === 0) {
+          console.warn('Student not found:', g.indexNumber);
+          errors.push(`Student not found: ${g.indexNumber}`);
+          continue;
+        }
+        
+        const student_id = studentRes.rows[0].id;
+        console.log('Found student:', student_id);
+
+        let courseRes = await db.query(
+          "SELECT id FROM courses WHERE LOWER(name) = LOWER($1)",
+          [g.courseName]
+        );
+        let course_id;
+        if (courseRes.rows.length > 0) {
+          course_id = courseRes.rows[0].id;
+          console.log('Found existing course:', course_id);
+        } else {
+          const newCourse = await db.query(
+            "INSERT INTO courses (name, code, credits, semester, academic_year) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+            [g.courseName, g.courseName.substring(0, 10).toUpperCase().replace(/\s+/g, ""), g.credits || 3, semesterNum, academicYear]
+          );
+          course_id = newCourse.rows[0].id;
+          console.log('Created new course:', course_id);
+        }
+
+        const r = await db.query(
+          `INSERT INTO grades (student_id, course_id, grade, marks, semester, academic_year, entered_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (student_id, course_id, academic_year) DO UPDATE
+           SET grade = $3, marks = $4, semester = $5, entered_by = $7
+           RETURNING *`,
+          [student_id, course_id, g.grade, g.marks, semesterNum, academicYear, req.user.id]
+        );
+        results.push(r.rows[0]);
+        console.log('Grade saved:', r.rows[0].id);
+      } catch (err) {
+        console.error('Error processing grade:', err.message);
+        errors.push(`${g.indexNumber}: ${err.message}`);
+      }
+    }
+
+    console.log('Results:', results.length, 'Errors:', errors.length);
+
+    if (results.length > 0) {
+      // Get department and program from first student
+      const firstStudentRes = await db.query(
+        `SELECT department_id, program_id FROM students WHERE id = $1`,
+        [results[0].student_id]
+      );
+      const { department_id, program_id } = firstStudentRes.rows[0] || {};
+      
+      const batchRes = await db.query(
+        `INSERT INTO result_batches (semester, academic_year, status, published_by, published_at, department_id, program_id, student_count)
+         VALUES ($1, $2, 'Published', $3, NOW(), $4, $5, $6)
+         RETURNING id`,
+        [semesterNum, academicYear, req.user.id, department_id, program_id, [...new Set(results.map(r => r.student_id))].length]
+      );
+
+      console.log('Batch created:', batchRes.rows[0].id);
+
+      // Notify students
+      const studentIds = [...new Set(results.map(r => r.student_id))];
+      console.log('Notifying students:', studentIds);
+      
+      for (const studentId of studentIds) {
+        const studentRes = await db.query(
+          "SELECT user_id FROM students WHERE id = $1",
+          [studentId]
+        );
+        if (studentRes.rows.length > 0) {
+          await createNotification(
+            studentRes.rows[0].user_id,
+            'exam',
+            'Results Published',
+            `Your Semester ${semesterNum} results for ${academicYear} are now available!`,
+            'success'
+          );
+        }
+      }
+
+      return res.status(201).json({
+        message: `${results.length} grades published successfully`,
+        batchId: batchRes.rows[0].id,
+        errors: errors.length ? errors : undefined
+      });
+    } else {
+      console.error('No valid grades processed');
+      return res.status(400).json({ error: "No valid grades to publish", errors });
+    }
+  } catch (err) {
+    console.error('Batch upload error:', err);
+    return res.status(500).json({ error: err.message });
+  }
+};
 
 // POST /api/results/grades (batch grade entry)
 exports.enterGrades = async (req, res) => {
@@ -199,6 +370,41 @@ exports.getBatches = async (req, res) => {
        ORDER BY rb.created_at DESC`
     );
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/results/batches/:id/grades
+exports.getBatchGrades = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const batchRes = await db.query(
+      `SELECT semester, academic_year FROM result_batches WHERE id = $1`,
+      [id]
+    );
+    if (batchRes.rows.length === 0) {
+      return res.status(404).json({ error: "Batch not found" });
+    }
+    const { semester, academic_year } = batchRes.rows[0];
+    
+    const gradesRes = await db.query(
+      `SELECT s.index_number, 
+              CONCAT(u.first_name, ' ', u.last_name) as full_name, 
+              c.name as course_name, 
+              c.credits, 
+              g.marks, 
+              g.grade
+       FROM grades g
+       JOIN students s ON g.student_id = s.id
+       JOIN users u ON s.user_id = u.id
+       JOIN courses c ON g.course_id = c.id
+       WHERE g.semester = $1 AND g.academic_year = $2
+       ORDER BY s.index_number, c.name`,
+      [semester, academic_year]
+    );
+    
+    res.json(gradesRes.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

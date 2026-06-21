@@ -10,7 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, Bell, Search } from "lucide-react";
+import { LogOut, Bell } from "lucide-react";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,6 +22,20 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { isAuthenticated, user, logout } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchCount = async () => {
+      try {
+        const data = await apiFetch<{ count: number }>("/notifications/unread-count");
+        setUnreadCount(data.count || 0);
+      } catch { /* ignore */ }
+    };
+    fetchCount();
+    const id = setInterval(fetchCount, 15000);
+    return () => clearInterval(id);
+  }, [user]);
 
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
@@ -56,7 +72,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               aria-label="Notifications"
             >
               <Bell size={18} className="text-muted-foreground" />
-              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-destructive ring-2 ring-background" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center px-1 ring-2 ring-background">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
             </button>
 
             <DropdownMenu>

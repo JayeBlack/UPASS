@@ -5,6 +5,8 @@ import { Upload, Plus, Trash2, CheckCircle, AlertTriangle, FileText, Loader2 } f
 import { readSheetFile, SHEET_ACCEPT } from "@/lib/sheet-import";
 import { apiFetch } from "@/lib/api";
 
+const SHEET_ACCEPT = ".csv,.xlsx,.xls";
+
 interface GradeRow {
   id: string;
   indexNumber: string;
@@ -16,7 +18,7 @@ interface GradeRow {
   errors: string[];
 }
 
-const VALID_INDEX_PATTERN = /^UMaT\/PG\/\d{4}\/\d{2}$/;
+const VALID_INDEX_PATTERN = /^.+$/; // Accept any non-empty index number
 
 const marksToGrade = (m: number): string => {
   if (m >= 80) return "A";
@@ -28,7 +30,7 @@ const marksToGrade = (m: number): string => {
 
 const validateRow = (row: Partial<GradeRow>): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
-  if (!row.indexNumber || !VALID_INDEX_PATTERN.test(row.indexNumber)) errors.push("Invalid index number format (UMaT/PG/XXXX/YY)");
+  if (!row.indexNumber || !VALID_INDEX_PATTERN.test(row.indexNumber)) errors.push("Invalid index number (required)");
   if (!row.studentName?.trim()) errors.push("Student name required");
   if (!row.courseName?.trim()) errors.push("Course name required");
   const credits = Number(row.credits);
@@ -90,14 +92,63 @@ const GradeEntry = () => {
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
-      const data = await readSheetFile(file);
-      const dataRows = data.slice(1).filter((r) => r.some((c) => c !== ""));
-      const newRows: GradeRow[] = dataRows.map((cols, i) => {
-        const [indexNumber = "", studentName = "", courseName = "", credits = "", marks = ""] = cols;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+      const token = localStorage.getItem("umat_sps_token");
+
+      if (!token) {
+        throw new Error("Not authenticated. Please log in again.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/results/parse-grades-file`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Non-JSON response:", text);
+        throw new Error("Server returned invalid response. Check if backend is running correctly.");
+      }
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to parse file");
+      }
+
+      if (!result.data || !Array.isArray(result.data)) {
+        throw new Error("Invalid data format received from server");
+      }
+
+      const data = result.data;
+      const dataRows = data.slice(1).filter((r: string[]) => r.some((c) => c !== ""));
+      
+      if (dataRows.length === 0) {
+        toast({ title: "No data found", description: "The file appears to be empty or contains only headers", variant: "destructive" });
+        e.target.value = "";
+        return;
+      }
+
+      const newRows: GradeRow[] = dataRows.map((cols: any[], i: number) => {
+        const indexNumber = String(cols[0] || "").trim();
+        const studentName = String(cols[1] || "").trim();
+        const courseName = String(cols[2] || "").trim();
+        const credits = String(cols[3] || "").trim();
+        const marks = String(cols[4] || "").trim();
+        
         const { valid, errors } = validateRow({ indexNumber, studentName, courseName, credits, marks });
         return { id: `imp${i}${Date.now()}`, indexNumber, studentName, courseName, credits, marks, valid, errors };
       });
+      
       setRows((prev) => [...prev, ...newRows]);
       const invalidCount = newRows.filter((r) => !r.valid).length;
       toast({
@@ -105,6 +156,7 @@ const GradeEntry = () => {
         description: invalidCount > 0 ? `${invalidCount} rows have validation errors` : "All rows validated successfully",
       });
     } catch (err) {
+      console.error("Upload error:", err);
       toast({ title: "Import failed", description: (err as Error).message, variant: "destructive" });
     }
     e.target.value = "";
@@ -112,10 +164,16 @@ const GradeEntry = () => {
 
   const calculateCWA = () => {
     const validRows = rows.filter((r) => r.valid);
+    console.log('=== CALCULATE CWA DEBUG ===');
+    console.log('Total rows:', rows.length);
+    console.log('Valid rows:', validRows.length);
+    console.log('Valid rows data:', validRows);
+    
     if (validRows.length === 0) {
       toast({ title: "No valid grades", description: "Fix validation errors first", variant: "destructive" });
       return;
     }
+    
     const byStudent = validRows.reduce<Record<string, CWAResult>>((acc, r) => {
       if (!acc[r.indexNumber]) acc[r.indexNumber] = { index: r.indexNumber, name: r.studentName, cwa: 0, courses: [] };
       const marks = Number(r.marks);
@@ -123,11 +181,18 @@ const GradeEntry = () => {
       acc[r.indexNumber].courses.push({ courseName: r.courseName, credits, marks, grade: marksToGrade(marks) });
       return acc;
     }, {});
+    
+    console.log('Grouped by student:', byStudent);
+    
     const results: CWAResult[] = Object.values(byStudent).map((s) => {
       const totalCredits = s.courses.reduce((sum, c) => sum + c.credits, 0);
       const weighted = s.courses.reduce((sum, c) => sum + c.marks * c.credits, 0);
       return { ...s, cwa: totalCredits > 0 ? weighted / totalCredits : 0 };
     });
+    
+    console.log('Final CWA results:', results);
+    console.log('========================');
+    
     setCwaResults(results);
     toast({ title: "CWA calculated", description: `Computed for ${results.length} student(s)` });
   };
@@ -150,20 +215,56 @@ const GradeEntry = () => {
         }))
       );
 
-      const response = await apiFetch<{ batchId: string }>("/results/batch-upload", {
+      console.log('=== PUBLISH DEBUG ===');
+      console.log('CWA Results count:', cwaResults.length);
+      console.log('Grades to publish count:', grades.length);
+      console.log('Grades data:', JSON.stringify(grades, null, 2));
+      console.log('Semester:', semester);
+      console.log('Academic Year:', academicYear);
+      console.log('==================');
+
+      if (grades.length === 0) {
+        toast({ title: "No grades to publish", description: "No grade data available", variant: "destructive" });
+        return;
+      }
+
+      const response = await apiFetch<{ batchId: string; message: string; errors?: string[] }>("/results/batch-upload", {
         method: "POST",
         body: JSON.stringify({
           grades,
-          semester: 1,
-          academicYear: academicYear,
+          semester,
+          academicYear,
         }),
       });
 
+      console.log('Publish response:', response);
+
+      if (response.errors && response.errors.length > 0) {
+        console.warn('Publish errors:', response.errors);
+        const errorMsg = response.errors.slice(0, 3).join('; ');
+        toast({ 
+          title: "Partially published", 
+          description: `${response.message}. Errors: ${errorMsg}`,
+          variant: "destructive"
+        });
+      } else {
+        toast({ 
+          title: "✅ Results published successfully!", 
+          description: `${response.message}. Students can now view their grades.`
+        });
+      }
+
       setBatchId(response.batchId);
       setStatus("Published");
-      toast({ title: "Results published", description: "Marks, grades, and CWA are now visible to students and the dean" });
     } catch (err) {
-      toast({ title: "Publication failed", description: (err as Error).message, variant: "destructive" });
+      console.error('=== PUBLISH ERROR ===');
+      console.error('Error:', err);
+      console.error('==================');
+      toast({ 
+        title: "Publication failed", 
+        description: (err as Error).message,
+        variant: "destructive" 
+      });
     } finally {
       setIsPublishing(false);
     }
@@ -262,7 +363,7 @@ const GradeEntry = () => {
                   return (
                     <tr key={r.id} className={`border-b border-border last:border-0 ${!r.valid ? "bg-destructive/5" : ""}`}>
                       <td className="px-4 py-2">
-                        <input value={r.indexNumber} onChange={(e) => updateRow(r.id, "indexNumber", e.target.value)} placeholder="UMaT/PG/0234/22" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
+                        <input value={r.indexNumber} onChange={(e) => updateRow(r.id, "indexNumber", e.target.value)} placeholder="12345" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />
                       </td>
                       <td className="px-4 py-2">
                         <input value={r.studentName} onChange={(e) => updateRow(r.id, "studentName", e.target.value)} placeholder="Student name" className="w-full px-2 py-1.5 rounded border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring" />

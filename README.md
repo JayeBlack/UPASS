@@ -210,9 +210,38 @@ node check_db.js                 # Check database health
 node verify_departments.js       # Verify staff departments
 node check_students.js           # Verify student data
 node check_table_structure.js    # Check table schemas
+node verify_grade_system.js      # Verify grade entry system
 
 # Utility
 node scripts/generate_jwt.js     # Generate JWT secret
+```
+
+---
+
+## 📝 Grade Entry System
+
+The exams officer can upload grades via Excel/CSV files:
+
+### Quick Start
+```bash
+# 1. Login as Exams Officer
+# 2. Navigate to Grade Entry page
+# 3. Upload sample_grades.csv (or your own file)
+# 4. Calculate CWA
+# 5. Publish Results
+```
+
+### Documentation
+- **[GRADE_ENTRY_TESTING.md](GRADE_ENTRY_TESTING.md)** - Complete testing guide
+- **[GRADE_UPLOAD_TEMPLATE.md](GRADE_UPLOAD_TEMPLATE.md)** - File format specification
+- **[GRADE_ENTRY_QUICKREF.md](GRADE_ENTRY_QUICKREF.md)** - Quick reference card
+- **[GRADE_SYSTEM_SUMMARY.md](GRADE_SYSTEM_SUMMARY.md)** - Implementation details
+
+### File Format
+```csv
+Index Number,Student Name,Course Name,Credit Hours,Marks
+UMaT/PG/0234/22,John Doe,Advanced Mathematics,3,85
+UMaT/PG/0235/22,Jane Smith,Data Structures,4,92
 ```
 
 ---

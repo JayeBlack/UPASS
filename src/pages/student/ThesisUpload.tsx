@@ -1,10 +1,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Upload, FileText, CheckCircle, Clock, XCircle, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { logActivity } from "@/lib/api";
+import { API_BASE_URL, getToken } from "@/lib/api";
 
 const stages = ["Proposal", "Chapter 1", "Chapter 2", "Chapter 3", "Chapter 4", "Chapter 5", "Defense"];
 
@@ -28,19 +27,22 @@ const ThesisUpload = () => {
   const [loading, setLoading] = useState(true);
 
   const loadSubmissions = async () => {
-    if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("thesis_submissions")
-      .select("id, stage, file_name, status, feedback, submitted_at")
-      .eq("student_id", user.id)
-      .order("submitted_at", { ascending: false });
-    if (error) toast({ title: "Failed to load submissions", description: error.message, variant: "destructive" });
-    else setSubmissions(data || []);
-    setLoading(false);
+    try {
+      const res = await fetch(`${API_BASE_URL}/thesis/my-submissions`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load submissions");
+      setSubmissions(data);
+    } catch (err: any) {
+      toast({ title: "Failed to load submissions", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { loadSubmissions(); }, [user?.id]);
+  useEffect(() => { loadSubmissions(); }, []);
 
   const currentStage = (() => {
     const approved = submissions.filter((s) => s.status === "Approved").map((s) => stages.indexOf(s.stage));
@@ -58,33 +60,22 @@ const ThesisUpload = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedFile || !user) return;
+    if (!selectedFile) return;
     setUploading(true);
     try {
-      const ext = selectedFile.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}-${stage.replace(/\s+/g, "_")}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("thesis-files")
-        .upload(path, selectedFile, { 
-          contentType: selectedFile.type,
-          contentDisposition: 'inline'
-        });
-      if (upErr) throw upErr;
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("stage", stage);
 
-      const { error: insErr } = await supabase.from("thesis_submissions").insert({
-        student_id: user.id,
-        student_name: user.name,
-        student_index: user.indexNumber,
-        department: user.department,
-        stage,
-        file_path: path,
-        file_name: selectedFile.name,
-        file_size: selectedFile.size,
+      const res = await fetch(`${API_BASE_URL}/thesis/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
       });
-      if (insErr) throw insErr;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
 
       toast({ title: "Submitted", description: `${stage} sent for review.` });
-      logActivity("Submitted thesis chapter", "thesis_submission", undefined, { stage, file: selectedFile.name });
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       loadSubmissions();

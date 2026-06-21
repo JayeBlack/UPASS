@@ -1,8 +1,10 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BookOpen, CheckCircle, Lock, Building2, CalendarDays, GraduationCap } from "lucide-react";
-import { useMemo, useState } from "react";
+import { BookOpen, CheckCircle, Lock, Building2, CalendarDays, GraduationCap, Save, Loader2 } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
 import { PROGRAMME_COURSE_CATALOGS, type ProgrammeCourse } from "@/data/programmeCourses";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface Course {
   code: string;
@@ -23,6 +25,10 @@ const toCourse = (c: ProgrammeCourse): Course => ({
 
 const CourseRegistration = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [studentId, setStudentId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Get student's enrolled data from auth context
   const studentDepartment = user?.department;
@@ -142,6 +148,96 @@ const CourseRegistration = () => {
     )
   );
   const courses = coursesByProgramme[catalog.key];
+
+  // Load student ID and existing registrations
+  useEffect(() => {
+    const loadStudentData = async () => {
+      if (!user?.id) return;
+      try {
+        setLoading(true);
+        const studentRes = await apiFetch<{ id: number }>(`/students/by-user/${user.id}`);
+        if (studentRes?.id) {
+          setStudentId(studentRes.id);
+          const registrations = await apiFetch<any[]>(`/courses/student/${studentRes.id}`);
+          const registeredCodes = new Set((registrations || []).map((r: any) => r.code));
+          // Mark a course registered if: it's in the DB OR it's core/mandatory
+          setCoursesByProgramme((prev) => {
+            const updated = { ...prev };
+            for (const key in updated) {
+              updated[key] = updated[key].map((c) => ({
+                ...c,
+                registered: c.type === "core" || registeredCodes.has(c.code),
+              }));
+            }
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load student data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStudentData();
+  }, [user?.id, catalog.key]);
+
+  const saveCourses = async () => {
+    if (!studentId) {
+      toast({ title: "Error", description: "Student ID not found", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      // Only save elective courses the student toggled on — core/mandatory are already in DB
+      const electivesToSave = courses.filter(c => c.type === "elective" && c.registered);
+
+      await Promise.all(electivesToSave.map(course =>
+        apiFetch('/courses/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            student_id: studentId,
+            course_code: course.code,
+            course_name: course.name,
+            credits: course.credits,
+            course_type: course.type,
+            semester: 1,
+            academic_year: '2025/2026',
+          }),
+        }).catch(err => {
+          if (!err.message?.includes('Already registered')) throw err;
+        })
+      ));
+
+      // Drop electives the student de-selected
+      const electivesToDrop = courses.filter(c => c.type === "elective" && !c.registered);
+      if (electivesToDrop.length > 0) {
+        const allRegs = await apiFetch<any[]>(`/courses/student/${studentId}`);
+        const dropCodes = new Set(electivesToDrop.map(c => c.code));
+        const toDrop = (allRegs || []).filter((r: any) => dropCodes.has(r.code));
+        await Promise.all(toDrop.map((r: any) =>
+          apiFetch(`/courses/register/${r.id}`, { method: 'DELETE' }).catch(() => {})
+        ));
+      }
+
+      toast({ title: "Success", description: `Course registration saved successfully` });
+
+      // Reload from DB to sync state
+      const updated = await apiFetch<any[]>(`/courses/student/${studentId}`);
+      const registeredCodes = new Set((updated || []).map((r: any) => r.code));
+      setCoursesByProgramme((prev) => ({
+        ...prev,
+        [catalog.key]: prev[catalog.key].map((c) => ({
+          ...c,
+          registered: c.type === "core" || registeredCodes.has(c.code),
+        })),
+      }));
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to save courses", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const toggle = (code: string) => {
     setCoursesByProgramme((prev) => ({
@@ -308,20 +404,59 @@ const CourseRegistration = () => {
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Required</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">These courses are mandatory for your program and cannot be removed.</p>
-        {renderDesktopTable(coreCourses, true)}
-        {renderMobileCards(coreCourses, true)}
+        {loading ? (
+          <div className="bg-card rounded-xl border border-border p-8 text-center">
+            <Loader2 size={24} className="animate-spin mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">Loading courses...</p>
+          </div>
+        ) : (
+          <>
+            {renderDesktopTable(coreCourses, true)}
+            {renderMobileCards(coreCourses, true)}
+          </>
+        )}
       </div>
 
       {/* Elective Courses */}
-      <div>
+      <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
           <BookOpen size={16} className="text-muted-foreground" />
           <h2 className="font-display text-lg font-bold text-foreground">Elective Courses</h2>
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Choose freely</span>
         </div>
         <p className="text-sm text-muted-foreground mb-4">Select any additional courses you'd like to take this semester.</p>
-        {renderDesktopTable(electiveCourses, false)}
-        {renderMobileCards(electiveCourses, false)}
+        {loading ? (
+          <div className="bg-card rounded-xl border border-border p-8 text-center">
+            <Loader2 size={24} className="animate-spin mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-muted-foreground">Loading courses...</p>
+          </div>
+        ) : (
+          <>
+            {renderDesktopTable(electiveCourses, false)}
+            {renderMobileCards(electiveCourses, false)}
+          </>
+        )}
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={saveCourses}
+          disabled={saving || loading}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-lg gradient-gold text-secondary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {saving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save size={16} />
+              Save Registration
+            </>
+          )}
+        </button>
       </div>
     </DashboardLayout>
   );

@@ -213,17 +213,17 @@ const FinancialStatus = () => {
           <p className="text-sm text-muted-foreground mt-1">Total Fees</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-6">
-          <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center mb-3">
-            <CheckCircle size={18} className="text-success" />
+          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center mb-3">
+            <CheckCircle size={18} className="text-green-600" />
           </div>
-          <p className="text-2xl font-bold font-display text-foreground">{loading ? "—" : formatCurrencyDisplay(totalPaid)}</p>
+          <p className="text-2xl font-bold font-display text-green-600">{loading ? "—" : formatCurrencyDisplay(totalPaid)}</p>
           <p className="text-sm text-muted-foreground mt-1">Total Paid</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-6">
-          <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center mb-3">
-            <AlertCircle size={18} className="text-destructive" />
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${totalOwed > 0 ? "bg-red-100" : "bg-green-100"}`}>
+            <AlertCircle size={18} className={totalOwed > 0 ? "text-red-500" : "text-green-600"} />
           </div>
-          <p className="text-2xl font-bold font-display text-foreground">{loading ? "—" : formatCurrencyDisplay(totalOwed)}</p>
+          <p className={`text-2xl font-bold font-display ${totalOwed > 0 ? "text-red-500" : "text-green-600"}`}>{loading ? "—" : formatCurrencyDisplay(totalOwed)}</p>
           <p className="text-sm text-muted-foreground mt-1">Outstanding Balance</p>
         </div>
         {totalCredit > 0 && (

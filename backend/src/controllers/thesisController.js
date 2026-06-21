@@ -4,8 +4,32 @@ const db = require("../db");
 exports.getByStudent = async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT * FROM thesis_submissions WHERE student_id = $1 ORDER BY submitted_at DESC",
+      "SELECT * FROM thesis_submissions WHERE student_id = $1 ORDER BY submitted_at DESC LIMIT 1",
       [req.params.studentId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ status: "Not Started" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/thesis/my-submissions (authenticated student)
+exports.getMySubmissions = async (req, res) => {
+  try {
+    const studentResult = await db.query(
+      "SELECT id FROM students WHERE user_id = $1",
+      [req.user.id]
+    );
+    if (studentResult.rows.length === 0) {
+      return res.json([]);
+    }
+    const studentId = studentResult.rows[0].id;
+    const result = await db.query(
+      "SELECT id, stage, file_name, status, feedback, submitted_at FROM thesis_submissions WHERE student_id = $1 ORDER BY submitted_at DESC",
+      [studentId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -33,14 +57,26 @@ exports.getPending = async (req, res) => {
 // POST /api/thesis/upload
 exports.upload = async (req, res) => {
   try {
-    const { student_id, stage } = req.body;
+    const { stage } = req.body;
     const file_url = req.file ? `/uploads/thesis/${req.file.filename}` : null;
     const file_name = req.file ? req.file.originalname : null;
+
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!stage) return res.status(400).json({ error: "Stage is required" });
+
+    const studentResult = await db.query(
+      "SELECT id FROM students WHERE user_id = $1",
+      [req.user.id]
+    );
+    if (studentResult.rows.length === 0) {
+      return res.status(404).json({ error: "Student record not found" });
+    }
+    const student_id = studentResult.rows[0].id;
 
     const result = await db.query(
       `INSERT INTO thesis_submissions (student_id, stage, file_url, file_name)
        VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+       RETURNING id, stage, file_name, status, feedback, submitted_at`,
       [student_id, stage, file_url, file_name]
     );
     res.status(201).json(result.rows[0]);

@@ -13,6 +13,7 @@ router.get("/student/resources", ctrl.getStudentResources);
 router.get("/student/announcements", ctrl.getStudentAnnouncements);
 router.post("/student/mark-read", ctrl.markItemRead);
 router.get("/current/stats", ctrl.getDashboardStats);
+router.get("/current/review-stats", ctrl.getReviewStats);
 router.get("/current/submissions", ctrl.getCurrentSupervisorSubmissions);
 
 // Resource and announcement endpoints (must be before /:id to avoid route conflict)
