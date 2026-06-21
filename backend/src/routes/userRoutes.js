@@ -1,8 +1,11 @@
 const router = require("express").Router();
 const ctrl = require("../controllers/userController");
 const { authenticate, authorize } = require("../middleware/auth");
+const upload = require("../middleware/upload");
 router.use(authenticate);
 router.get("/", authorize("Admin"), ctrl.getAll);
+router.post("/parse-bulk", authorize("Admin"), upload.memory.single("file"), ctrl.parseBulk);
+router.post("/create-bulk", authorize("Admin"), ctrl.createBulk);
 router.put("/:id/toggle", authorize("Admin"), ctrl.toggle);
 router.delete("/:id", authorize("Admin"), ctrl.remove);
 module.exports = router;

@@ -41,14 +41,23 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers || {});
+  
+  // Only set Content-Type for JSON body, NOT for FormData
   if (!headers.has("Content-Type") && options.body && !(options.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
+  
+  // Remove Content-Type if it's FormData to let browser set it with boundary
+  if (options.body instanceof FormData && headers.has("Content-Type")) {
+    headers.delete("Content-Type");
+  }
+  
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
   console.log(`[API] Fetching: ${path}`);
   console.log(`[API] Token present: ${!!token}`);
+  console.log(`[API] Body type:`, options.body instanceof FormData ? 'FormData' : typeof options.body);
 
   let res: Response;
   try {

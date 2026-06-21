@@ -60,7 +60,12 @@ const GradeEntry = () => {
   const [rows, setRows] = useState<GradeRow[]>([]);
   const [cwaResults, setCwaResults] = useState<CWAResult[]>([]);
   const [status, setStatus] = useState<BatchStatus>("Draft");
+<<<<<<< HEAD
   const [publishing, setPublishing] = useState(false);
+=======
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [batchId, setBatchId] = useState<string | null>(null);
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
   const [semester, setSemester] = useState("Semester 1");
   const [academicYear, setAcademicYear] = useState(academicYearOptions[1]);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -137,6 +142,7 @@ const GradeEntry = () => {
       return;
     }
 
+<<<<<<< HEAD
     setPublishing(true);
     try {
       const grades = rows.filter((r) => r.valid).map((r) => ({
@@ -169,6 +175,58 @@ const GradeEntry = () => {
     setRows([]);
     setStatus("Draft");
     toast({ title: "Cleared", description: "Grade entry has been reset" });
+=======
+    setIsPublishing(true);
+    try {
+      const grades = cwaResults.flatMap((student) =>
+        student.courses.map((course) => ({
+          indexNumber: student.index,
+          courseName: course.courseName,
+          marks: course.marks,
+          grade: course.grade,
+          credits: course.credits,
+        }))
+      );
+
+      const response = await apiFetch<{ batchId: string }>("/results/batch-upload", {
+        method: "POST",
+        body: JSON.stringify({
+          grades,
+          semester: 1,
+          academicYear: academicYear,
+        }),
+      });
+
+      setBatchId(response.batchId);
+      setStatus("Published");
+      toast({ title: "Results published", description: "Marks, grades, and CWA are now visible to students and the dean" });
+    } catch (err) {
+      toast({ title: "Publication failed", description: (err as Error).message, variant: "destructive" });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const deletePublished = async () => {
+    if (!batchId) {
+      setCwaResults([]);
+      setRows([]);
+      setStatus("Draft");
+      toast({ title: "Results cleared", description: "Draft has been cleared" });
+      return;
+    }
+
+    try {
+      await apiFetch(`/results/batch/${batchId}`, { method: "DELETE" });
+      setCwaResults([]);
+      setRows([]);
+      setStatus("Draft");
+      setBatchId(null);
+      toast({ title: "Results deleted", description: "Published results have been removed" });
+    } catch (err) {
+      toast({ title: "Delete failed", description: (err as Error).message, variant: "destructive" });
+    }
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
   };
 
   const allValid = rows.length > 0 && rows.every((r) => r.valid);
@@ -284,6 +342,7 @@ const GradeEntry = () => {
           <button onClick={calculateCWA} disabled={!allValid} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             Calculate CWA
           </button>
+<<<<<<< HEAD
           <button
             onClick={publishResults}
             disabled={!allValid || cwaResults.length === 0 || status === "Published" || publishing}
@@ -295,6 +354,17 @@ const GradeEntry = () => {
           <button onClick={clearAll} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
             {status === "Published" ? "Clear & Start New" : "Clear Draft"}
           </button>
+=======
+          <button onClick={publishResults} disabled={!allValid || cwaResults.length === 0 || status === "Published" || isPublishing} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+            {isPublishing && <Loader2 size={14} className="animate-spin" />}
+            {status === "Published" ? "Published" : "Publish Results"}
+          </button>
+          {cwaResults.length > 0 && (
+            <button onClick={deletePublished} disabled={isPublishing} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50">
+              {status === "Published" ? "Delete Published Results" : "Clear Draft"}
+            </button>
+          )}
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
         </div>
       )}
 

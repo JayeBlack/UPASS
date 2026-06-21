@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { ShieldCheck, UserPlus, X, Trash2, Search, Power, KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { ShieldCheck, UserPlus, X, Trash2, Search, Power, KeyRound, Loader2, Eye, EyeOff, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,10 +32,12 @@ const roleColor = (role: string) => {
 const ManageUsers = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<SystemUser | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -178,6 +180,34 @@ const ManageUsers = () => {
     }
   };
 
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const parseRes = await apiFetch<{ rows: any[] }>("/users/parse-bulk", { method: "POST", body: formData });
+      if (!parseRes.rows?.length) { 
+        toast({ title: "No valid rows found", variant: "destructive" }); 
+        e.target.value = "";
+        return; 
+      }
+      const createRes = await apiFetch<{ created: any[]; errors?: string[] }>("/users/create-bulk", {
+        method: "POST",
+        body: JSON.stringify({ users: parseRes.rows }),
+      });
+      const msg = createRes.errors?.length 
+        ? `${createRes.created.length} users created. ${createRes.errors.length} errors.`
+        : `${createRes.created.length} users created`;
+      toast({ title: "Bulk upload completed", description: msg });
+      setShowBulkUpload(false);
+      load();
+    } catch (err) {
+      toast({ title: "Failed", description: err instanceof ApiError ? err.message : "Error", variant: "destructive" });
+    }
+    e.target.value = "";
+  };
+
   return (
     <DashboardLayout>
       <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
@@ -189,9 +219,14 @@ const ManageUsers = () => {
           <h1 className="text-3xl font-bold font-display text-foreground">Manage Users</h1>
           <p className="text-muted-foreground mt-1">{loading ? "Loading..." : `${users.length} system users`}</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
-          <UserPlus size={15} /> Add User
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setShowBulkUpload(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+            <Upload size={14} /> Bulk Upload
+          </button>
+          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+            <UserPlus size={15} /> Add User
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -249,6 +284,25 @@ const ManageUsers = () => {
           )}
         </div>
       </div>
+
+      {showBulkUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowBulkUpload(false)}>
+          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-bold text-foreground">Bulk User Upload</h3>
+              <button onClick={() => setShowBulkUpload(false)} className="p-1 rounded hover:bg-muted"><X size={18} className="text-muted-foreground" /></button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing staff user details.</p>
+            <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Email, Role, Department (optional), Phone (optional)</p>
+            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+            <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
+              <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-foreground font-medium">Click to upload file</p>
+              <p className="text-xs text-muted-foreground mt-1">CSV or Excel (max 10MB)</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>

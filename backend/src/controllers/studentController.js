@@ -40,7 +40,12 @@ exports.getMyProfile = async (req, res) => {
 // GET /api/students
 exports.getAll = async (req, res) => {
   try {
-    const { department, status, search } = req.query;
+    const { department, status, search, page = '1', limit = '1000' } = req.query;
+    
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+    
     let sql = `
       SELECT s.*, u.first_name, u.last_name, u.email, u.avatar_url,
              p.name AS program_name, d.name AS department_name
@@ -60,10 +65,27 @@ exports.getAll = async (req, res) => {
       params.push(`%${search}%`);
       idx++;
     }
-    sql += " ORDER BY u.last_name";
+    
+    // Get total count
+    const countSql = `SELECT COUNT(*) as total FROM (${sql}) AS count_query`;
+    const countResult = await db.query(countSql, params);
+    const total = parseInt(countResult.rows[0].total);
+    
+    sql += ` ORDER BY u.last_name LIMIT $${idx++} OFFSET $${idx++}`;
+    params.push(limitNum, offset);
 
     const result = await db.query(sql, params);
-    res.json(result.rows);
+    
+    // Return pagination metadata
+    res.json({
+      data: result.rows,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum)
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -256,17 +278,37 @@ exports.remove = async (req, res) => {
 // Returns parsed rows: { rows: [{ name, index, email, program, department }, ...] }
 exports.parseBulk = async (req, res) => {
   try {
+    console.log('📥 parseBulk called');
+    console.log('📎 req.file:', req.file ? 'present' : 'missing');
+    
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    
+    console.log('📄 File details:', {
+      name: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.buffer ? req.file.buffer.length : 'no buffer'
+    });
+    
     const { mimetype, buffer } = req.file;
+    
+    if (!buffer) {
+      return res.status(400).json({ error: "File buffer is empty" });
+    }
+    
     const isExcel = /\.(xlsx?|xls)$|application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|application\/vnd\.ms-excel/i.test(
       mimetype || req.file.originalname
     );
 
+    console.log('📊 Is Excel file:', isExcel);
+
     let rows = [];
     if (isExcel) {
+      console.log('📖 Reading as Excel...');
       const workbook = XLSX.read(buffer, { type: "buffer" });
+      console.log('📚 Workbook sheets:', workbook.SheetNames);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+      console.log('✅ Parsed', rows.length, 'rows');
     } else {
       const text = buffer.toString("utf-8");
       const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -286,11 +328,18 @@ exports.parseBulk = async (req, res) => {
       });
     }
 
+    console.log('📊 Parsed rows count:', rows.length);
+    console.log('📋 First 3 rows:', JSON.stringify(rows.slice(0, 3), null, 2));
+
     if (rows.length < 2) return res.status(400).json({ error: "File must contain header and at least one row" });
 
     // map columns
     const headers = rows[0];
-    const normalized = headers.map((h) => String(h).toLowerCase().replace(/[^a-z]/g, ""));
+    if (!headers || !Array.isArray(headers)) {
+      return res.status(400).json({ error: "Invalid file format: headers not found" });
+    }
+    
+    const normalized = headers.map((h) => h ? String(h).toLowerCase().replace(/[^a-z]/g, "") : "");
     const colMap = {};
     const knownCols = {
       name: ["name", "fullname", "studentname", "student"],
@@ -314,21 +363,34 @@ exports.parseBulk = async (req, res) => {
     }
 
     // parse rows
-    const parsed = rows.slice(1).map((cols) => {
-      const cohortVal = (cols[colMap.cohort ?? 5] || "").toString().trim().toLowerCase();
-      let cohort = "January"; // default
-      if (cohortVal.includes("july") || cohortVal.includes("jul") || cohortVal === "2") {
-        cohort = "July";
-      }
-      return {
-        name: (cols[colMap.name ?? 0] || "").toString().trim(),
-        index: (cols[colMap.index ?? 1] || "").toString().trim(),
-        email: (cols[colMap.email ?? 2] || "").toString().trim(),
-        program: (cols[colMap.program ?? 3] || "").toString().trim(),
-        department: (cols[colMap.department ?? 4] || "").toString().trim(),
-        admission_cycle: cohort,
-      };
-    }).filter((s) => s.name && s.index);
+    const parsed = rows.slice(1)
+      .filter(cols => cols && Array.isArray(cols) && cols.length > 0)
+      .map((cols) => {
+        const nameIdx = colMap.name ?? 0;
+        const indexIdx = colMap.index ?? 1;
+        const emailIdx = colMap.email ?? 2;
+        const programIdx = colMap.program ?? 3;
+        const deptIdx = colMap.department ?? 4;
+        const cohortIdx = colMap.cohort ?? 5;
+        
+        const cohortVal = (cols[cohortIdx] !== undefined && cols[cohortIdx] !== null) 
+          ? String(cols[cohortIdx]).trim().toLowerCase() 
+          : "";
+        let cohort = "January"; // default
+        if (cohortVal.includes("july") || cohortVal.includes("jul") || cohortVal === "2") {
+          cohort = "July";
+        }
+        
+        return {
+          name: (cols[nameIdx] !== undefined && cols[nameIdx] !== null) ? String(cols[nameIdx]).trim() : "",
+          index: (cols[indexIdx] !== undefined && cols[indexIdx] !== null) ? String(cols[indexIdx]).trim() : "",
+          email: (cols[emailIdx] !== undefined && cols[emailIdx] !== null) ? String(cols[emailIdx]).trim() : "",
+          program: (cols[programIdx] !== undefined && cols[programIdx] !== null) ? String(cols[programIdx]).trim() : "",
+          department: (cols[deptIdx] !== undefined && cols[deptIdx] !== null) ? String(cols[deptIdx]).trim() : "",
+          admission_cycle: cohort,
+        };
+      })
+      .filter((s) => s && s.name && s.index);
 
     if (parsed.length === 0) {
       return res.status(400).json({ error: "No valid student records found" });
@@ -336,6 +398,8 @@ exports.parseBulk = async (req, res) => {
 
     res.json({ rows: parsed });
   } catch (err) {
+    console.error('❌ parseBulk error:', err.message);
+    console.error('❌ Stack:', err.stack);
     res.status(500).json({ error: err.message });
   }
 };

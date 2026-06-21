@@ -6,14 +6,20 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 
+<<<<<<< HEAD
 interface GradeRecord {
   id: string;
   course_id: string;
+=======
+interface GradeData {
+  id: string;
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
   code: string;
   course_name: string;
   credits: number;
   grade: string;
   marks: number;
+<<<<<<< HEAD
   semester: string;
   academic_year: string;
 }
@@ -23,6 +29,15 @@ interface SemesterGroup {
   short: string;
   semester: string;
   academic_year: string;
+=======
+  semester: number;
+  academic_year: string;
+}
+
+interface SemesterResult {
+  label: string;
+  short: string;
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
   courses: { code: string; name: string; credits: number; grade: string; marks: number }[];
   cwa: number;
 }
@@ -37,6 +52,7 @@ const calcCwa = (courses: { marks: number; credits: number }[]) => {
 const Results = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+<<<<<<< HEAD
   const [grades, setGrades] = useState<GradeRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,6 +101,73 @@ const Results = () => {
   }));
 
   const allCourses = grades.map((g) => ({ marks: g.marks, credits: g.credits }));
+=======
+  const [semesterData, setSemesterData] = useState<SemesterResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        if (!user?.id) {
+          setError("User not authenticated");
+          setLoading(false);
+          return;
+        }
+
+        const grades = await apiFetch(`/results/student/${user.id}`);
+        
+        if (!grades || grades.length === 0) {
+          setSemesterData([]);
+          setLoading(false);
+          return;
+        }
+
+        const grouped: Record<string, GradeData[]> = {};
+        grades.forEach((g: GradeData) => {
+          const key = `${g.academic_year}-S${g.semester}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(g);
+        });
+
+        const semesters: SemesterResult[] = Object.entries(grouped)
+          .sort(([keyA], [keyB]) => keyB.localeCompare(keyA))
+          .map(([key, courses]) => {
+            const [academicYear, semester] = key.split("-");
+            const sem = parseInt(semester.replace("S", ""));
+            return {
+              label: `Semester ${sem}, ${academicYear}`,
+              short: `S${sem} ${academicYear.split("/").map(y => y.slice(-2)).join("/")}`,
+              courses: courses.map((c) => ({
+                code: c.code,
+                name: c.course_name,
+                credits: c.credits,
+                grade: c.grade,
+                marks: c.marks,
+              })),
+              cwa: 0,
+            };
+          });
+
+        semesters.forEach((s) => {
+          s.cwa = calcCwa(s.courses);
+        });
+
+        setSemesterData(semesters);
+        setError(null);
+      } catch (err) {
+        setError((err as Error).message);
+        setSemesterData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchResults();
+  }, [user?.id]);
+
+  const allCourses = semesterData.flatMap((s) => s.courses);
+>>>>>>> 689107c35da813846b300c12ffac7f366d9ae6fe
   const overallCwa = calcCwa(allCourses);
 
   if (loading) {

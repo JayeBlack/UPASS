@@ -1,13 +1,5 @@
 # UPASS Deployment & Sync Guide
 
-## ✅ What Was Fixed
-
-1. **Department Dropdown** - Already working dynamically
-2. **Migration System** - Idempotent SQL migration for departments
-3. **Schema Export** - Complete database schema with all 28 tables
-4. **Sync Process** - Clear instructions for team synchronization
-
----
 
 ## 🎯 New Team Member Setup
 
@@ -53,8 +45,10 @@ git pull origin main
 cd backend
 npm install
 
-# 3. Run migrations (safe - won't duplicate)
+# 3. Run migrations (safe - automatically runs all .sql files)
+node src/db/migrate.js
 node run_migrations.js
+
 
 # 4. Verify database health
 node check_db.js
@@ -68,8 +62,8 @@ npm install
 
 **Why?** This ensures:
 - New dependencies are installed
-- Database changes are applied
-- Departments are up-to-date
+- Database changes are applied (20+ migration files in `src/db/migrations/`)
+- All tables and columns are up-to-date
 - Everyone has same schema
 
 ### Weekly Health Check
@@ -101,8 +95,9 @@ node check_students.js
 
 ### Database Schema
 - **`backend/schema_export.sql`** - Complete table definitions (28 tables)
-- **`backend/migrations/001_ensure_departments.sql`** - Department migration
-- **`backend/run_migrations.js`** - Migration runner
+- **`backend/src/db/migrations/`** - All migration files (001-020)
+- **`backend/src/db/migrate.js`** - Migration runner (idempotent)
+- **`backend/migrations/001_ensure_departments.sql`** - Legacy department migration
 
 ### Setup Scripts
 - **`backend/create_superadmin.js`** - Create first admin
@@ -117,6 +112,21 @@ node check_students.js
 ---
 
 ## 🗄️ Database Info
+
+### Migration System
+The system uses **idempotent migrations** in `backend/src/db/migrations/`:
+- 20+ migration files (001-020)
+- Run with: `node src/db/migrate.js`
+- Safe to run multiple times
+- Auto-skips existing tables/columns
+
+### Migration Files
+1. `001_create_users.sql` - Users and authentication
+2. `002_create_departments_programs.sql` - 10 departments
+3. `003_create_students.sql` - Student records
+4. `008_create_fees.sql` - Fee records and payments
+5. `020_add_credit_balance.sql` - Credit balance feature
+6. ...and 15 more
 
 ### 28 Tables
 - users, students, supervisors
@@ -145,7 +155,7 @@ node check_students.js
 ### "Departments not showing"
 ```bash
 cd backend
-node run_migrations.js
+node src/db/migrate.js
 ```
 
 ### "Tables don't exist"
@@ -154,11 +164,10 @@ cd backend
 psql -d your_database -f schema_export.sql
 ```
 
-### "Column 'created_at' does not exist"
+### "Column 'credit_balance' does not exist"
 ```bash
-git pull origin main
 cd backend
-node run_migrations.js
+node src/db/migrate.js  # Runs migration 020
 ```
 
 ### "Cannot connect to database"
@@ -171,7 +180,7 @@ Check `backend/.env` has correct `DATABASE_URL`
 **After every git pull:**
 - [ ] `npm install` in backend
 - [ ] `npm install` in root
-- [ ] `node run_migrations.js`
+- [ ] `node src/db/migrate.js`
 - [ ] `node check_db.js`
 - [ ] Restart servers
 

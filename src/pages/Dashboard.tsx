@@ -286,7 +286,12 @@ const Dashboard = () => {
   const adminStats = [
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Total Students", value: String(totalStudents), accent: true, sub: `${activeStudents} active`, onClick: () => navigate("/admin/students") },
     { icon: <BookOpen size={18} className="text-muted-foreground" />, label: "Active Courses", value: activeCoursesCount },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Fees Cleared", value: `${feesClearedPct}%`, onClick: () => navigate("/admin/fees") },
+    { 
+      icon: <BarChart3 size={18} className="text-muted-foreground" />, 
+      label: "Fees Cleared", 
+      value: feeSummary && feeSummary.compliance_rate != null ? `${Math.round(Number(feeSummary.compliance_rate))}%` : "0%", 
+      onClick: () => navigate("/admin/fees") 
+    },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Graduands", value: String(totalGraduands), onClick: () => navigate("/admin/passlist") },
   ];
 
@@ -308,7 +313,11 @@ const Dashboard = () => {
 
   const accountantStats = [
     { icon: <Banknote size={18} className="text-secondary-foreground" />, label: "Total Fees Collected", value: feeSummary ? formatGHS(feeSummary.total_paid) : "GHS 0.00", accent: true, onClick: () => navigate("/accountant/analytics") },
-    { icon: <BarChart3 size={18} className="text-muted-foreground" />, label: "Compliance Rate", value: feeSummary ? `${feeSummary.compliance_rate}%` : "0%" },
+    { 
+      icon: <BarChart3 size={18} className="text-muted-foreground" />, 
+      label: "Compliance Rate", 
+      value: feeSummary && feeSummary.compliance_rate != null ? `${Math.round(Number(feeSummary.compliance_rate))}%` : "0%" 
+    },
     { icon: <Users size={18} className="text-muted-foreground" />, label: "Outstanding Students", value: feeSummary ? String(feeSummary.owing_count) : "0", onClick: () => navigate("/admin/fees") },
     { icon: <Clock size={18} className="text-muted-foreground" />, label: "Total Fees", value: feeSummary ? formatGHS(feeSummary.total_fees) : "GHS 0.00" },
   ];

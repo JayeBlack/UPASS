@@ -27,6 +27,7 @@ const ManageStudents = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [showEnrollForm, setShowEnrollForm] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -73,6 +74,18 @@ const ManageStudents = () => {
     return matchSearch && matchDept;
   });
 
+  // Pagination
+  const itemsPerPage = 50;
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = filtered.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, deptFilter]);
+
   const handleEnroll = async () => {
     if (!form.name || !form.index || !form.email || !form.program || !form.department || !form.cohort) {
       toast({ title: "Missing fields", variant: "destructive" });
@@ -109,7 +122,7 @@ const ManageStudents = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const parseRes = await apiFetch<{ rows: any[] }>("/students/parse-bulk", { method: "POST", body: formData, headers: {} });
+      const parseRes = await apiFetch<{ rows: any[] }>("/students/parse-bulk", { method: "POST", body: formData });
       if (!parseRes.rows?.length) { 
         toast({ title: "No valid rows found", variant: "destructive" }); 
         e.target.value = "";
@@ -303,6 +316,10 @@ const ManageStudents = () => {
         </select>
       </div>
 
+      <p className="text-sm text-muted-foreground mb-4">
+        Showing {paginatedStudents.length} of {filtered.length} students {filtered.length !== students.length ? `(filtered from ${students.length} total)` : ""}
+      </p>
+
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           {loading ? (
@@ -320,7 +337,7 @@ const ManageStudents = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {paginatedStudents.map((s) => (
                   <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-foreground">{s.first_name} {s.last_name}</td>
                     <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{s.index_number}</td>
@@ -337,12 +354,98 @@ const ManageStudents = () => {
                     </td>
                   </tr>
                 ))}
-                {filtered.length === 0 && !loading && <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No students found</td></tr>}
+                {paginatedStudents.length === 0 && !loading && <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No students found</td></tr>}
               </tbody>
             </table>
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <div className="text-sm text-muted-foreground">
+            Showing page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} students)
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              First
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {(() => {
+                const pages: (number | string)[] = [];
+                const showPages = 5;
+                
+                if (totalPages <= showPages + 2) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  if (currentPage <= 3) {
+                    for (let i = 1; i <= showPages; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  } else if (currentPage >= totalPages - 2) {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = totalPages - showPages + 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    pages.push('...');
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+                    pages.push('...');
+                    pages.push(totalPages);
+                  }
+                }
+                
+                return pages.map((page, idx) => 
+                  typeof page === 'number' ? (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] h-[40px] rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'gradient-gold text-secondary-foreground'
+                          : 'border border-border text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ) : (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
+                  )
+                );
+              })()}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
