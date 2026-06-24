@@ -3,9 +3,10 @@
 -- ============================================================
 -- This migration fixes missing columns and tables for supervisor resources functionality
 
--- Add missing recipient_student_ids column to resources table
+-- Add missing columns to resources table
 ALTER TABLE resources 
-ADD COLUMN IF NOT EXISTS recipient_student_ids JSONB DEFAULT '[]';
+ADD COLUMN IF NOT EXISTS recipient_student_ids JSONB DEFAULT '[]',
+ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 
 -- Add missing recipient_student_ids column to announcements table  
 ALTER TABLE announcements

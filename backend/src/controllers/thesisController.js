@@ -37,7 +37,7 @@ exports.getMySubmissions = async (req, res) => {
   }
 };
 
-// GET /api/thesis/pending (for supervisors)
+// GET /api/thesis/pending (for supervisors - returns all submissions, not just pending)
 exports.getPending = async (req, res) => {
   try {
     const result = await db.query(
@@ -45,7 +45,6 @@ exports.getPending = async (req, res) => {
        FROM thesis_submissions ts
        JOIN students s ON ts.student_id = s.id
        JOIN users u ON s.user_id = u.id
-       WHERE ts.status = 'Pending'
        ORDER BY ts.submitted_at DESC`
     );
     res.json(result.rows);
@@ -110,6 +109,11 @@ exports.addRemark = async (req, res) => {
        VALUES ($1, $2, $3)
        RETURNING *`,
       [req.params.id, req.user.id, remark_text]
+    );
+    // Also update the feedback column on thesis_submissions so students can see it
+    await db.query(
+      `UPDATE thesis_submissions SET feedback = $1 WHERE id = $2`,
+      [remark_text, req.params.id]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

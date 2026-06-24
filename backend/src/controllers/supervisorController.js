@@ -131,17 +131,49 @@ exports.getDashboardStats = async (req, res) => {
     }
     const supervisorId = supervisorResult.rows[0].id;
 
+    // Get assigned students count
     const studentsResult = await db.query(
       "SELECT COUNT(*) as count FROM student_supervisors WHERE supervisor_id = $1",
       [supervisorId]
     );
     const assignedStudents = parseInt(studentsResult.rows[0].count, 10);
 
+    // Get assigned student IDs
+    const studentIdsResult = await db.query(
+      "SELECT student_id FROM student_supervisors WHERE supervisor_id = $1",
+      [supervisorId]
+    );
+    const studentIds = studentIdsResult.rows.map(row => row.student_id);
+
+    let pendingReviews = 0;
+    let awaitingApproval = 0;
+
+    if (studentIds.length > 0) {
+      // Count thesis submissions with status 'Pending' for assigned students
+      const pendingResult = await db.query(
+        `SELECT COUNT(*) as count 
+         FROM thesis_submissions 
+         WHERE student_id = ANY($1) 
+         AND status = 'Pending'`,
+        [studentIds]
+      );
+      pendingReviews = parseInt(pendingResult.rows[0].count, 10);
+
+      // Count thesis submissions with status 'Reviewed' or 'Awaiting Approval' for assigned students
+      const awaitingResult = await db.query(
+        `SELECT COUNT(*) as count 
+         FROM thesis_submissions 
+         WHERE student_id = ANY($1) 
+         AND (status = 'Reviewed' OR status = 'Awaiting Approval')`,
+        [studentIds]
+      );
+      awaitingApproval = parseInt(awaitingResult.rows[0].count, 10);
+    }
+
     res.json({
       assignedStudents,
-      pendingReviews: 0,
-      approvedThisMonth: 0,
-      avgReviewTime: "—",
+      pendingReviews,
+      awaitingApproval,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -211,20 +243,27 @@ exports.getCurrentSupervisorSubmissions = async (req, res) => {
     const studentIds = studentsResult.rows.map(row => row.student_id);
 
     if (studentIds.length === 0) {
-      return res.json([]);
+      return res.json({ studentIds: [], students: [] });
     }
 
-    const studentNames = await db.query(
-      `SELECT s.id, CONCAT(u.first_name, ' ', u.last_name) as name, s.index_number
+    const studentDetails = await db.query(
+      `SELECT s.id, 
+              CONCAT(u.first_name, ' ', u.last_name) as name, 
+              s.index_number,
+              p.name AS program_name,
+              d.name AS department_name
        FROM students s
        JOIN users u ON s.user_id = u.id
-       WHERE s.id = ANY($1)`,
+       LEFT JOIN programs p ON s.program_id = p.id
+       LEFT JOIN departments d ON s.department_id = d.id
+       WHERE s.id = ANY($1)
+       ORDER BY u.last_name`,
       [studentIds]
     );
 
     res.json({
       studentIds,
-      students: studentNames.rows,
+      students: studentDetails.rows,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

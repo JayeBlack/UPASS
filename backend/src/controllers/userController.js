@@ -192,8 +192,8 @@ exports.createBulk = async (req, res) => {
 
         const userRole = role || "Supervisor";
         const userInsert = await client.query(
-          `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, department_id, must_change_password)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE)
+          `INSERT INTO users (email, password_hash, role, first_name, last_name, phone, department_id, must_change_password, last_password_change)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW())
            RETURNING id, email, role, first_name, last_name`,
           [emailLower, hash, userRole, first_name, last_name, phone || null, deptId]
         );

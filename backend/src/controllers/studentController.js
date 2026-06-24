@@ -450,8 +450,8 @@ exports.enroll = async (req, res) => {
     const hash = await bcrypt.hash(defaultPwd, salt);
 
     const userInsert = await client.query(
-      `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password)
-       VALUES ($1, $2, 'Student', $3, $4, TRUE)
+      `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change)
+       VALUES ($1, $2, 'Student', $3, $4, TRUE, NOW())
        RETURNING id, email`,
       [email, hash, first_name, last_name]
     );
@@ -737,8 +737,8 @@ exports.enrollBulk = async (req, res) => {
         const hash = await bcrypt.hash(defaultPwd, salt);
 
         const userInsert = await client.query(
-          `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password)
-           VALUES ($1, $2, 'Student', $3, $4, TRUE)
+          `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change)
+           VALUES ($1, $2, 'Student', $3, $4, TRUE, NOW())
            RETURNING id, email`,
           [email, hash, first_name, last_name]
         );

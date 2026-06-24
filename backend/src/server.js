@@ -28,10 +28,17 @@ const departmentRoutes = require("./routes/departmentRoutes");
 const app = express();
 
 // ── Security ──
-app.use(helmet());
+// Allow iframe embedding from frontend origins (needed for PDF preview in supervisor submissions)
+const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173").split(",");
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: false,
+  contentSecurityPolicy: false,
+  frameguard: false,
+}));
 
 // ── CORS ──
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173").split(",");
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // ── Rate Limiting ──

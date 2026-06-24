@@ -240,9 +240,10 @@ exports.parseBulk = async (req, res) => {
     const colMap = {};
     const knownCols = {
       index_number: ["index", "indexnumber", "indexno", "studentid", "regno", "regnumber"],
-      total_amount: ["amount", "totalamount", "fee", "fees", "totalfee", "totalfees", "totalfee"],
-      amount_paid: ["amountpaid", "paid", "payamount", "paymentamount", "paidamount", "amountpaid"],
-      academic_year: ["year", "academicyear", "academicyear", "session", "academicyear"],
+      student_name: ["name", "studentname", "student", "fullname"],
+      total_amount: ["amount", "totalamount", "fee", "fees", "totalfee", "totalfees"],
+      amount_paid: ["amountpaid", "paid", "payamount", "paymentamount", "paidamount"],
+      academic_year: ["year", "academicyear", "session"],
       semester: ["semester", "sem", "term"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
@@ -250,21 +251,25 @@ exports.parseBulk = async (req, res) => {
       if (idx !== -1) colMap[field] = idx;
     }
 
-    // Default column positions by common spreadsheet layouts
-    // NOTE: academic_year and semester are NOT extracted from the CSV.
-    // They will be provided by the frontend (from dropdown selectors) at upload time.
+    // Default column positions by common spreadsheet layout
     const colDefaults = {
       index_number: colMap.index_number ?? 0,
-      total_amount: colMap.total_amount ?? 1,
-      amount_paid: colMap.amount_paid ?? 2,
+      student_name: colMap.student_name ?? 1,
+      total_amount: colMap.total_amount ?? 2,
+      amount_paid: colMap.amount_paid ?? 3,
+      academic_year: colMap.academic_year ?? 4,
+      semester: colMap.semester ?? 5,
     };
 
     // parse rows
     const parsed = rows.slice(1).map((cols) => {
       const item = {
         index_number: (cols[colDefaults.index_number] || "").toString().trim(),
+        student_name: colDefaults.student_name !== undefined ? (cols[colDefaults.student_name] || "").toString().trim() : "",
         total_amount: parseFloat((cols[colDefaults.total_amount] || "0").toString().replace(/[^\d.]/g, "")) || 0,
         amount_paid: parseFloat((colDefaults.amount_paid !== undefined ? (cols[colDefaults.amount_paid] || "0") : "0").toString().replace(/[^\d.]/g, "")) || 0,
+        academic_year: (cols[colDefaults.academic_year] || "").toString().trim(),
+        semester: (cols[colDefaults.semester] || "").toString().trim(),
       };
       return item;
     }).filter((f) => f.index_number && f.total_amount > 0);
@@ -316,16 +321,15 @@ exports.uploadBulk = async (req, res) => {
         const year = academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
         const sem = semester || "First";
         const rawPaid = amount_paid || 0;
-        const paid = Math.min(rawPaid, total_amount);
         const credit_balance = rawPaid > total_amount ? rawPaid - total_amount : 0;
 
         // Determine status
         let status = "Unpaid";
         let is_cleared = false;
-        if (paid >= total_amount) {
+        if (rawPaid >= total_amount) {
           status = "Paid";
           is_cleared = true;
-        } else if (paid > 0) {
+        } else if (rawPaid > 0) {
           status = "Partial";
         }
 
@@ -372,23 +376,23 @@ exports.uploadBulk = async (req, res) => {
           }
           created.push({ index_number, id: feeRecordId, total_amount, amount_paid: newPaid, credit_balance: newCredit, status: newStatus });
         } else {
-          // Create fee record
+          // Create fee record - store actual amount paid (including overpayments)
           const result = await db.query(
             `INSERT INTO fee_records (student_id, academic_year, semester, total_amount, amount_paid, credit_balance, status, is_cleared)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
              RETURNING id`,
-            [studentId, year, sem, total_amount, paid, credit_balance, status, is_cleared]
+            [studentId, year, sem, total_amount, rawPaid, credit_balance, status, is_cleared]
           );
           feeRecordId = result.rows[0].id;
           // Create payment record if amount_paid > 0 (new record only)
-          if (paid > 0) {
+          if (rawPaid > 0) {
             await db.query(
               `INSERT INTO payments (fee_record_id, amount, payment_method, status, verified_by, verified_at)
                VALUES ($1, $2, $3, $4, $5, NOW())`,
-              [feeRecordId, paid, "bank_transfer", "Verified", accountantId]
+              [feeRecordId, rawPaid, "bank_transfer", "Verified", accountantId]
             );
           }
-          created.push({ index_number, id: feeRecordId, total_amount, amount_paid: paid, credit_balance, status });
+          created.push({ index_number, id: feeRecordId, total_amount, amount_paid: rawPaid, credit_balance, status });
         }
       } catch (err) {
         errors.push(`Row ${i + 1}: ${err.message}`);
