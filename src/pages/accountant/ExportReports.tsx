@@ -44,8 +44,9 @@ const ExportReports = () => {
     if (showRefreshIndicator) setRefreshing(true);
     else setLoading(true);
     try {
-      const data = await apiFetch<FeeRecord[]>("/fees");
-      setFees(data || []);
+      const response = await apiFetch<{ data: FeeRecord[] } | FeeRecord[]>("/fees?limit=10000");
+      const data = Array.isArray(response) ? response : response.data || [];
+      setFees(data);
       setLastUpdated(new Date());
     } catch {
       // backend offline
@@ -81,7 +82,8 @@ const ExportReports = () => {
     setRefreshing(true);
     let freshFees: FeeRecord[] = [];
     try {
-      freshFees = await apiFetch<FeeRecord[]>("/fees");
+      const response = await apiFetch<{ data: FeeRecord[] } | FeeRecord[]>("/fees?limit=10000");
+      freshFees = Array.isArray(response) ? response : response.data || [];
       setFees(freshFees);
       setLastUpdated(new Date());
     } catch {

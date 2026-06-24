@@ -83,51 +83,6 @@ const Dashboard = () => {
   const [activeCoursesCount, setActiveCoursesCount] = useState("—");
   const [resultsBatches, setResultsBatches] = useState<any[]>([]);
   const [supervisorData, setSupervisorData] = useState({ assignedStudents: "—", pendingReviews: "—", awaitingApproval: "—" });
-  const [recentActivity, setRecentActivity] = useState<{ text: string; time: string; type?: string }[]>([]);
-  const [activityLoading, setActivityLoading] = useState(true);
-
-  const activityTypeIcon: Record<string, React.ReactNode> = {
-    course: <BookOpen size={14} className="text-primary" />,
-    fee: <Banknote size={14} className="text-green-600" />,
-    thesis: <FileText size={14} className="text-blue-600" />,
-    result: <BarChart3 size={14} className="text-purple-600" />,
-    clearance: <CheckCircle size={14} className="text-success" />,
-    general: <Activity size={14} className="text-muted-foreground" />,
-  };
-
-  const formatActivityTime = (iso: string) => {
-    const diff = Date.now() - new Date(iso).getTime();
-    const m = Math.floor(diff / 60000);
-    const h = Math.floor(diff / 3600000);
-    const d = Math.floor(diff / 86400000);
-    if (m < 1) return "Just now";
-    if (m < 60) return `${m}m ago`;
-    if (h < 24) return `${h}h ago`;
-    return `${d}d ago`;
-  };
-
-  const formatActivityText = (log: any) => {
-    const detail = log.details ? (typeof log.details === "string" ? JSON.parse(log.details) : log.details) : {};
-    const entity = detail.student ? `for ${detail.student}` : log.entity_id ? `#${log.entity_id}` : "";
-    const stage = detail.stage ? ` (${detail.stage})` : "";
-    return `${log.action}${stage ? stage : ""} ${entity}`.trim();
-  };
-
-  // Fetch recent activity for current user
-  useEffect(() => {
-    if (!user?.id) return;
-    const fetchActivity = async () => {
-      try {
-        const logs = await apiFetch<any[]>("/audit-logs/mine");
-        setRecentActivity(
-          (logs || []).map((l) => ({ text: formatActivityText(l), time: formatActivityTime(l.created_at) }))
-        );
-      } catch { /* silently fail */ } finally { setActivityLoading(false); }
-    };
-    fetchActivity();
-    const interval = setInterval(fetchActivity, 15000);
-    return () => clearInterval(interval);
-  }, [user?.id]);
 
   // Generic periodic fetch helper
   const fetchWithInterval = (fetcher: () => Promise<void>, ms: number) => {
@@ -144,16 +99,10 @@ const Dashboard = () => {
     return fetchWithInterval(async () => {
       try {
         const params = adminDepartment ? `?department=${encodeURIComponent(adminDepartment)}` : "";
-        console.log(`[Dashboard] Fetching fee summary for ${user.role}...`);
         const data = await apiFetch<FeeSummary>(`/fees/summary${params}`);
-        console.log(`[Dashboard] Fee summary for ${user.role}:`, data);
         setFeeSummary(data);
-        if (!data || data.total_students === 0) {
-          console.warn(`[Dashboard] No fee data returned for ${user.role}`);
-        }
       } catch (err: any) {
-        console.error(`[Dashboard] Failed to fetch fee summary for ${user.role}:`, err);
-        console.error(`[Dashboard] Error details:`, err.message);
+        // silently fail
       }
     }, 10000);
   }, [user?.role, adminDepartment]);
@@ -220,19 +169,25 @@ const Dashboard = () => {
     }, 10000);
   }, [user?.role, user?.id]);
 
-  // ─── Supervisor average review time ───
-  const [avgReviewTime, setAvgReviewTime] = useState("—");
-  
+  // ─── Supervisor stats ───
   useEffect(() => {
     if (user?.role !== "Supervisor") return;
-    return fetchWithInterval(async () => {
+    const fetchSupervisorStats = async () => {
       try {
-        const stats = await apiFetch<{ avg_review_time_days: number }>("/supervisors/current/review-stats");
-        if (stats?.avg_review_time_days != null) {
-          setAvgReviewTime(`${Math.round(stats.avg_review_time_days)} days`);
-        }
-      } catch { /* ignore */ }
-    }, 30000);
+        const backendStats = await apiFetch<any>("/supervisors/current/stats");
+        const pendingCount = backendStats.pendingReviews ?? 0;
+        const awaitingApproval = backendStats.awaitingApproval ?? 0;
+
+        setSupervisorData({
+          assignedStudents: String(backendStats.assignedStudents || 0),
+          pendingReviews: String(pendingCount),
+          awaitingApproval: String(awaitingApproval),
+        });
+      } catch { /* silently fail */ }
+    };
+    fetchSupervisorStats();
+    const interval = setInterval(fetchSupervisorStats, 10000); // Poll every 10 seconds for real-time updates
+    return () => clearInterval(interval);
   }, [user?.role]);
 
   // ─── Active courses count ───
@@ -273,30 +228,6 @@ const Dashboard = () => {
         }
       } catch { setPassRate("—"); }
     }, 15000);
-  }, [user?.role]);
-
-  // ─── Supervisor stats ───
-  useEffect(() => {
-    if (user?.role !== "Supervisor") return;
-    const fetchSupervisorStats = async () => {
-      try {
-        const [backendStats, supervisorStudents] = await Promise.all([
-          apiFetch<any>("/supervisors/current/stats"),
-          apiFetch<any>("/supervisors/current/submissions"),
-        ]);
-        const pendingCount = backendStats.pendingReviews ?? 0;
-        const awaitingApproval = backendStats.awaitingApproval ?? 0;
-
-        setSupervisorData({
-          assignedStudents: String(backendStats.assignedStudents || 0),
-          pendingReviews: String(pendingCount),
-          awaitingApproval: String(awaitingApproval),
-        });
-      } catch { /* silently fail */ }
-    };
-    fetchSupervisorStats();
-    const interval = setInterval(fetchSupervisorStats, 30000);
-    return () => clearInterval(interval);
   }, [user?.role]);
 
   // Filter data by department for departmental admins
@@ -345,7 +276,6 @@ const Dashboard = () => {
     { icon: <Users size={18} className="text-secondary-foreground" />, label: "Assigned Students", value: supervisorData.assignedStudents, accent: true, onClick: () => navigate("/students") },
     { icon: <FileText size={18} className="text-muted-foreground" />, label: "Pending Reviews", value: supervisorData.pendingReviews, onClick: () => navigate("/submissions") },
     { icon: <CheckCircle size={18} className="text-muted-foreground" />, label: "Awaiting Approval", value: supervisorData.awaitingApproval },
-    { icon: <Clock size={18} className="text-muted-foreground" />, label: "Avg Review Time", value: avgReviewTime },
   ];
 
   const adminStats = [
@@ -520,7 +450,7 @@ const Dashboard = () => {
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold font-display text-foreground">
-          Welcome back, {user?.name?.split(" ")[0]} 👋
+          Welcome back, {user?.name} 😊
         </h1>
         <p className="text-sm text-muted-foreground mt-1.5">
           {user?.role === "Student" && `${user.program} · ${user.department}`}
@@ -543,57 +473,23 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Two-Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="font-display text-lg font-bold text-foreground">Recent Activity</h2>
-            <span className="text-xs font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
-              {recentActivity.length} updates
-            </span>
-          </div>
-          <div className="overflow-y-auto max-h-72 space-y-1 pr-1 scrollbar-thin">
-            {activityLoading ? (
-              <div className="flex items-center justify-center py-8 text-muted-foreground text-sm gap-2">
-                <Activity size={14} className="animate-pulse" /> Loading activity...
-              </div>
-            ) : recentActivity.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">No recent activity</div>
-            ) : (
-              recentActivity.map((a, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors">
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center mt-0.5 shrink-0">
-                    {activityTypeIcon[a.type || 'general'] ?? <Activity size={14} className="text-muted-foreground" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground leading-relaxed">{a.text}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">{formatActivityTime(a.time)}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-card rounded-2xl border border-border p-6 flex flex-col">
-          <h2 className="font-display text-lg font-bold text-foreground mb-5">Quick Actions</h2>
-          <div className="overflow-y-auto max-h-72 space-y-2 pr-1 scrollbar-thin">
-            {quickActions.map((action) => (
-              <button
-                key={action}
-                onClick={() => navigate(quickActionRoutes[action])}
-                className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted hover:border-muted-foreground/20 transition-all duration-200"
-              >
-                <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  {quickActionIcons[action] || <ArrowUpRight size={15} />}
-                </span>
-                <span className="flex-1 text-left">{action}</span>
-                <ArrowUpRight size={14} className="text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
-              </button>
-            ))}
-          </div>
+      {/* Quick Actions */}
+      <div className="bg-card rounded-2xl border border-border p-6 flex flex-col">
+        <h2 className="font-display text-lg font-bold text-foreground mb-5">Quick Actions</h2>
+        <div className="overflow-y-auto max-h-72 space-y-2 pr-1 scrollbar-thin">
+          {quickActions.map((action) => (
+            <button
+              key={action}
+              onClick={() => navigate(quickActionRoutes[action])}
+              className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted hover:border-muted-foreground/20 transition-all duration-200"
+            >
+              <span className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                {quickActionIcons[action] || <ArrowUpRight size={15} />}
+              </span>
+              <span className="flex-1 text-left">{action}</span>
+              <ArrowUpRight size={14} className="text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+            </button>
+          ))}
         </div>
       </div>
     </DashboardLayout>

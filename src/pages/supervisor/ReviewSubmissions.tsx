@@ -44,7 +44,6 @@ const ReviewSubmissions = () => {
   const [newRemark, setNewRemark] = useState("");
   const [saving, setSaving] = useState(false);
   const [showAI, setShowAI] = useState(true);
-  const [debugUnfiltered, setDebugUnfiltered] = useState<Submission[]>([]);
 
   const loadSubmissions = async () => {
     setLoading(true);
@@ -52,57 +51,34 @@ const ReviewSubmissions = () => {
       // Fetch supervisor's assigned students
       const supervisorStudents = await apiFetch<any>("/supervisors/current/submissions");
       const students = supervisorStudents.students || [];
+      const studentIds = supervisorStudents.studentIds || [];
       setAssignedStudents(students);
 
-      // Fetch all submissions
-      const { data, error } = await supabase
-        .from("thesis_submissions")
-        .select("*")
-        .order("submitted_at", { ascending: false });
-      
-      if (error) {
-        toast({ title: "Failed to load", description: error.message, variant: "destructive" });
-        setSubmissions([]);
-        setDebugUnfiltered([]);
-      } else {
-        const allSubmissions = (data as Submission[]) || [];
-        setDebugUnfiltered(allSubmissions);
+      // Fetch all submissions from PostgreSQL backend
+      const allSubmissionsResult = await apiFetch<any[]>("/thesis/pending");
+      const allSubmissions = allSubmissionsResult.map((sub: any) => ({
+        id: sub.id.toString(),
+        student_id: sub.student_id,
+        student_name: `${sub.first_name} ${sub.last_name}`,
+        student_index: sub.index_number,
+        stage: sub.stage,
+        status: sub.status,
+        feedback: sub.feedback,
+        file_path: sub.file_url,
+        file_name: sub.file_name,
+        submitted_at: sub.submitted_at,
+      }));
 
-        // Build a normalized set of assigned student index numbers
-        const assignedIndexSet = new Set(
-          students
-            .map((s: AssignedStudent) => s.index_number?.trim().toLowerCase())
-            .filter(Boolean)
-        );
+      // Build a set of assigned student IDs
+      const assignedStudentIds = new Set(studentIds);
 
-        console.log("[ReviewSubmissions] DEBUG START");
-        console.log("[ReviewSubmissions] Assigned students:", students);
-        console.log("[ReviewSubmissions] Assigned index set:", Array.from(assignedIndexSet));
-        console.log("[ReviewSubmissions] Raw submissions count:", allSubmissions.length);
-        console.log("[ReviewSubmissions] Sample submissions:", allSubmissions.slice(0, 3).map(s => ({
-          id: s.id,
-          student_index: s.student_index,
-          student_name: s.student_name
-        })));
+      // Filter to only show submissions from assigned students
+      const filtered = allSubmissions.filter(sub => assignedStudentIds.has(sub.student_id));
 
-        // Filter to only show submissions from assigned students
-        const filtered = allSubmissions.filter(sub => {
-          const subIndex = sub.student_index?.trim().toLowerCase();
-          const isIncluded = assignedIndexSet.has(subIndex);
-          console.log(`[ReviewSubmissions] Checking ${sub.student_name} (${subIndex}): ${isIncluded}`);
-          return isIncluded;
-        });
-
-        console.log("[ReviewSubmissions] Filtered submissions count:", filtered.length);
-        console.log("[ReviewSubmissions] DEBUG END");
-
-        setSubmissions(filtered);
-      }
+      setSubmissions(filtered);
     } catch (err: any) {
-      console.error("[ReviewSubmissions] Error:", err);
       toast({ title: "Failed to load submissions", description: err.message, variant: "destructive" });
       setSubmissions([]);
-      setDebugUnfiltered([]);
     }
     setLoading(false);
   };
@@ -110,16 +86,10 @@ const ReviewSubmissions = () => {
   useEffect(() => {
     loadSubmissions();
 
-    // Real-time subscription
-    const channel = supabase
-      .channel('thesis_submissions_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'thesis_submissions' },
-        () => { loadSubmissions(); }
-      )
-      .subscribe();
+    // Poll for updates every 30 seconds instead of real-time subscription
+    const interval = setInterval(loadSubmissions, 30000);
 
-    return () => { supabase.removeChannel(channel); };
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -139,51 +109,28 @@ const ReviewSubmissions = () => {
 
     // Mark as Reviewed when opened for the first time
     if (sub.status === "Pending") {
-      await supabase
-        .from("thesis_submissions")
-        .update({ status: "Reviewed", reviewed_by: user?.name, reviewed_at: new Date().toISOString() })
-        .eq("id", sub.id);
+      await apiFetch(`/thesis/${sub.id}/review`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "Reviewed" }),
+      });
       setSelectedSubmission({ ...sub, status: "Reviewed" });
       logActivity("Reviewed submission", "thesis_submission", sub.id, { student: sub.student_name, stage: sub.stage });
     }
 
     try {
+      // Use local file URL from backend uploads
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const serverBase = apiBase.replace('/api', '');
+      const fileUrl = `${serverBase}${sub.file_path}`;
+      console.log('File preview URL:', fileUrl);
+      setPreviewUrl(fileUrl);
       const name = sub.file_name.toLowerCase();
-
-      if (name.endsWith(".docx")) {
-        // DOCX needs blob for mammoth conversion
-        const { data: blob, error: dlErr } = await supabase.storage
-          .from("thesis-files")
-          .download(sub.file_path);
-        if (dlErr || !blob) throw new Error(dlErr?.message || "Failed to load file");
-        setPreviewUrl(URL.createObjectURL(blob));
-        setFileKind("docx");
-        try {
-          const mammoth = (await import("mammoth")).default;
-          const arrayBuffer = await blob.arrayBuffer();
-          const result = await mammoth.convertToHtml({ arrayBuffer }, {
-            styleMap: [
-              "p[style-name='Heading 1'] => h1:fresh",
-              "p[style-name='Heading 2'] => h2:fresh",
-              "p[style-name='Heading 3'] => h3:fresh",
-            ],
-          });
-          setDocxHtml(result.value);
-        } catch {
-          setDocxError(true);
-        }
-      } else {
-        // For all other types, use a signed URL (no download triggered)
-        const { data, error: signErr } = await supabase.storage
-          .from("thesis-files")
-          .createSignedUrl(sub.file_path, 3600);
-        if (signErr || !data?.signedUrl) throw new Error(signErr?.message || "Failed to get file URL");
-        setPreviewUrl(data.signedUrl);
-        if (name.endsWith(".pdf")) setFileKind("pdf");
-        else if (name.endsWith(".doc")) setFileKind("doc");
-        else if (/\.(png|jpe?g|gif|webp|svg)$/.test(name)) setFileKind("image");
-        else setFileKind("other");
-      }
+      
+      if (name.endsWith(".pdf")) setFileKind("pdf");
+      else if (name.endsWith(".docx")) setFileKind("docx");
+      else if (name.endsWith(".doc")) setFileKind("doc");
+      else if (/\.(png|jpe?g|gif|webp|svg)$/.test(name)) setFileKind("image");
+      else setFileKind("other");
     } catch (err: any) {
       toast({ title: "Failed to load file", description: err.message, variant: "destructive" });
     } finally {
@@ -194,15 +141,14 @@ const ReviewSubmissions = () => {
   const downloadFile = async () => {
     if (!selectedSubmission) return;
     try {
-      const { data: blob, error } = await supabase.storage
-        .from("thesis-files")
-        .download(selectedSubmission.file_path);
-      if (error || !blob) throw new Error(error?.message || "Download failed");
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const serverBase = apiBase.replace('/api', '');
+      const fileUrl = `${serverBase}${selectedSubmission.file_path}`;
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = fileUrl;
       a.download = selectedSubmission.file_name;
+      a.target = "_blank";
       a.click();
-      URL.revokeObjectURL(a.href);
     } catch (err: any) {
       toast({ title: "Download failed", description: err.message, variant: "destructive" });
     }
@@ -211,48 +157,50 @@ const ReviewSubmissions = () => {
   const submitReview = async (status: "Approved" | "Rejected") => {
     if (!selectedSubmission) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("thesis_submissions")
-      .update({
-        status,
-        feedback: newRemark.trim() || null,
-        reviewed_by: user?.name,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", selectedSubmission.id);
-    setSaving(false);
-    if (error) {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await apiFetch(`/thesis/${selectedSubmission.id}/review`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+      
+      // Update feedback if provided
+      if (newRemark.trim()) {
+        await apiFetch(`/thesis/${selectedSubmission.id}/remarks`, {
+          method: "POST",
+          body: JSON.stringify({ remark_text: newRemark.trim() }),
+        });
+      }
+      
+      toast({ title: `Submission ${status.toLowerCase()}` });
+      logActivity(`${status} submission`, "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
+      await loadSubmissions();
+      setSelectedSubmission(null);
+      setNewRemark("");
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: `Submission ${status.toLowerCase()}` });
-    logActivity(`${status} submission`, "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
-    await loadSubmissions();
-    setSelectedSubmission(null);
-    setNewRemark("");
   };
 
   const sendFeedbackOnly = async () => {
     if (!selectedSubmission || !newRemark.trim()) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("thesis_submissions")
-      .update({
-        feedback: newRemark.trim(),
-        reviewed_by: user?.name,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", selectedSubmission.id);
-    setSaving(false);
-    if (error) {
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await apiFetch(`/thesis/${selectedSubmission.id}/remarks`, {
+        method: "POST",
+        body: JSON.stringify({ remark_text: newRemark.trim() }),
+      });
+      toast({ title: "Feedback sent" });
+      logActivity("Sent feedback", "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
+      await loadSubmissions();
+      setSelectedSubmission(null);
+      setNewRemark("");
+    } catch (err: any) {
+      toast({ title: "Save failed", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    toast({ title: "Feedback sent" });
-    logActivity("Sent feedback", "thesis_submission", selectedSubmission.id, { student: selectedSubmission.student_name, stage: selectedSubmission.stage });
-    await loadSubmissions();
-    setSelectedSubmission(null);
-    setNewRemark("");
   };
 
   const formatDate = (iso: string) =>
@@ -306,70 +254,19 @@ const ReviewSubmissions = () => {
           <div className="space-y-6 min-w-0">
             {/* Document viewer */}
             <div className="bg-card rounded-xl border border-border overflow-hidden">
-              <div className="flex items-center justify-between gap-2 px-5 py-3 border-b border-border bg-muted/30">
+              <div className="flex items-center justify-between gap-2 px-5 py-4">
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText size={16} className="text-muted-foreground shrink-0" />
                   <span className="text-sm font-medium text-foreground truncate">{selectedSubmission.file_name}</span>
                 </div>
-                {!previewing && selectedSubmission && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={downloadFile}
-                  >
-                    <Download size={14} className="mr-1.5" /> Download
-                  </Button>
-                )}
-              </div>
-              <div className="h-[70vh]">
-                {previewing ? (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                    <Loader2 size={20} className="animate-spin mr-2" /> Loading document...
-                  </div>
-                ) : fileKind === "pdf" ? (
-                  <iframe
-                    src={`${previewUrl}#toolbar=1&navpanes=0`}
-                    title={selectedSubmission.file_name}
-                    className="w-full h-full border-0"
-                  />
-                ) : fileKind === "docx" ? (
-                  docxError ? (
-                    <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
-                      <FileWarning size={28} className="text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground max-w-sm">
-                        Could not render this DOCX file. Please download to view.
-                      </p>
-                    </div>
-                  ) : docxHtml ? (
-                    <div className="h-full overflow-auto px-6 py-8">
-                      <div className="mx-auto w-full max-w-[9.5in] bg-white text-neutral-900 rounded-md border border-border shadow-lg px-8 py-10 docx-page">
-                        <div className="docx-content" dangerouslySetInnerHTML={{ __html: docxHtml }} />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                      <Loader2 size={20} className="animate-spin mr-2" /> Converting document...
-                    </div>
-                  )
-                ) : fileKind === "doc" ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6">
-                    <FileWarning size={28} className="text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground max-w-sm">
-                      Legacy <code className="px-1 py-0.5 rounded bg-muted text-xs">.doc</code> files can't be previewed.
-                      Ask the student to re-upload as <strong>.docx</strong> or <strong>.pdf</strong>.
-                    </p>
-                  </div>
-                ) : fileKind === "image" ? (
-                  <div className="h-full overflow-auto flex items-center justify-center p-4">
-                    <img src={previewUrl!} alt={selectedSubmission.file_name} className="max-w-full max-h-full rounded-md border border-border shadow-sm" />
-                  </div>
-                ) : fileKind === "other" ? (
-                  <div className="h-full flex flex-col items-center justify-center gap-2 text-muted-foreground text-sm text-center">
-                    <FileWarning size={28} />
-                    <span>Preview not supported. Please download to view.</span>
-                  </div>
-                ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={downloadFile}
+                >
+                  <Download size={14} className="mr-1.5" /> Download
+                </Button>
               </div>
             </div>
 
@@ -439,25 +336,6 @@ const ReviewSubmissions = () => {
               </p>
             )}
           </div>
-
-          {/* Debug: Show all submissions if any exist */}
-          {debugUnfiltered.length > 0 && (
-            <div className="bg-yellow-50 dark:bg-yellow-950 rounded-xl border border-yellow-200 dark:border-yellow-800 p-5">
-              <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-200 mb-3">
-                🔍 Debug: {debugUnfiltered.length} total submissions exist (not filtered for your students)
-              </p>
-              <div className="space-y-2">
-                {debugUnfiltered.slice(0, 5).map(sub => (
-                  <div key={sub.id} className="text-xs text-yellow-700 dark:text-yellow-300 bg-white dark:bg-black/20 p-2 rounded">
-                    <strong>{sub.student_name}</strong> ({sub.student_index}) - {sub.stage} - {sub.status}
-                  </div>
-                ))}
-                {debugUnfiltered.length > 5 && (
-                  <div className="text-xs text-yellow-700 dark:text-yellow-300">... and {debugUnfiltered.length - 5} more</div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       ) : (
         <div className="space-y-4">

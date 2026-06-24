@@ -26,8 +26,10 @@ const CWAResults = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<StudentResult[]>("/students");
-      setStudents(data || []);
+      const data = await apiFetch<any>("/students");
+      // Handle both direct arrays and wrapped responses like { students: [...] }
+      const arr = Array.isArray(data) ? data : (data?.students ?? []);
+      setStudents(arr);
     } catch {
       // backend offline
     } finally {

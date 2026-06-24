@@ -1,45 +1,51 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Users, FileText, Clock, Loader2 } from "lucide-react";
+import { Users, FileText, Clock, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 interface Student {
-  id: string;
+  id: number;
   name: string;
   index_number: string;
   program_name: string;
   department_name: string;
 }
 
-interface SubmissionStage {
-  student_index: string;
+interface Submission {
+  id: number;
+  student_id: number;
   stage: string;
   status: string;
+  submitted_at: string;
 }
 
 const AssignedStudents = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
-  const [stages, setStages] = useState<SubmissionStage[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const studentsRef = useRef<Student[]>([]);
+  const studentIdsRef = useRef<number[]>([]);
 
-  const fetchStages = useCallback(async () => {
-    const list = studentsRef.current;
-    if (list.length === 0) { setStages([]); return; }
-    const assignedIndexSet = new Set(
-      list.map((s) => s.index_number?.trim().toLowerCase()).filter(Boolean)
-    );
-    const { data: subs } = await supabase
-      .from("thesis_submissions")
-      .select("student_index, stage, status")
-      .order("submitted_at", { ascending: false });
-    const filtered = (subs || []).filter((s: any) =>
-      assignedIndexSet.has(s.student_index?.trim().toLowerCase())
-    );
-    setStages(filtered);
+  const fetchSubmissions = useCallback(async () => {
+    const ids = studentIdsRef.current;
+    if (ids.length === 0) { setSubmissions([]); return; }
+    
+    setRefreshing(true);
+    try {
+      const allSubs = await apiFetch<any[]>("/thesis/pending");
+      const filtered = allSubs.filter((s: any) => ids.includes(s.student_id));
+      setSubmissions(filtered);
+      setLastUpdate(new Date());
+    } catch {
+      setSubmissions([]);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -47,11 +53,13 @@ const AssignedStudents = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const supervisorStudents = await apiFetch<any>("/supervisors/current/submissions");
-        const list: Student[] = supervisorStudents.students || [];
+        const supervisorData = await apiFetch<any>("/supervisors/current/submissions");
+        const list: Student[] = supervisorData.students || [];
+        const ids: number[] = supervisorData.studentIds || [];
         studentsRef.current = list;
+        studentIdsRef.current = ids;
         setStudents(list);
-        await fetchStages();
+        await fetchSubmissions();
       } catch {
         // backend not reachable
       } finally {
@@ -60,27 +68,78 @@ const AssignedStudents = () => {
     };
     load();
 
-    const channel = supabase
-      .channel("assigned_students_stages")
-      .on("postgres_changes",
-        { event: "*", schema: "public", table: "thesis_submissions" },
-        () => fetchStages()
-      )
-      .subscribe();
+    // Poll for updates every 10 seconds
+    const interval = setInterval(() => {
+      fetchSubmissions();
+    }, 10000);
 
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id, fetchStages]);
+    return () => clearInterval(interval);
+  }, [user?.id, fetchSubmissions]);
 
-  const latestStage = (indexNumber: string) => {
-    const sub = stages.find((s) => s.student_index?.trim().toLowerCase() === indexNumber?.trim().toLowerCase());
-    return sub?.stage ?? "Not started";
+  const pendingCount = submissions.filter((s) => s.status === "Pending").length;
+  const awaitingApproval = submissions.filter((s) => s.status === "Reviewed" || s.status === "Awaiting Approval").length;
+
+  const handleManualRefresh = () => {
+    fetchSubmissions();
   };
+
+  const formatLastUpdate = () => {
+    if (!lastUpdate) return "";
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
+    if (diff < 10) return "Just now";
+    if (diff < 60) return `${diff}s ago`;
+    return lastUpdate.toLocaleTimeString();
+  };
+
+  const latestStage = useCallback((studentId: number) => {
+    const studentSubs = submissions.filter((s) => s.student_id === studentId);
+    
+    if (studentSubs.length === 0) return "Not started";
+    
+    // Sort by date descending (most recent first)
+    const sorted = studentSubs.sort((a, b) => {
+      const dateA = new Date(a.submitted_at).getTime();
+      const dateB = new Date(b.submitted_at).getTime();
+      return dateB - dateA;
+    });
+    
+    const latest = sorted[0];
+    return `${latest.stage} — ${latest.status}`;
+  }, [submissions]);
 
   return (
     <DashboardLayout>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold font-display text-foreground">Assigned Students</h1>
-        <p className="text-muted-foreground mt-1">Students under your supervision</p>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl font-bold font-display text-foreground">Assigned Students</h1>
+            <p className="text-muted-foreground mt-1">
+              Students under your supervision
+              {lastUpdate && (
+                <span className="ml-2 text-xs">• Updated {formatLastUpdate()}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {refreshing && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
+                <Loader2 size={12} className="animate-spin" />
+                Refreshing...
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+              className="gap-2"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              Refresh
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
@@ -99,7 +158,7 @@ const AssignedStudents = () => {
           </div>
           <div>
             <p className="text-2xl font-bold font-display text-foreground">
-              {loading ? "—" : stages.filter((s) => s.status === "Pending").length}
+              {loading ? "—" : pendingCount}
             </p>
             <p className="text-xs text-muted-foreground">Pending Reviews</p>
           </div>
@@ -110,7 +169,7 @@ const AssignedStudents = () => {
           </div>
           <div>
             <p className="text-2xl font-bold font-display text-foreground">
-              {loading ? "—" : stages.filter((s) => s.status !== "Approved" && s.status !== "Rejected").length}
+              {loading ? "—" : awaitingApproval}
             </p>
             <p className="text-xs text-muted-foreground">Awaiting Approval</p>
           </div>
@@ -139,8 +198,18 @@ const AssignedStudents = () => {
                 <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-foreground">{s.name}</td>
                   <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{s.index_number}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{s.program_name}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{latestStage(s.index_number)}</td>
+                  <td className="px-6 py-4 text-sm text-muted-foreground">{s.program_name || "N/A"}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    <span className={`inline-flex items-center gap-1.5 ${
+                      latestStage(s.id).includes("Pending") ? "text-warning" :
+                      latestStage(s.id).includes("Approved") ? "text-success" :
+                      latestStage(s.id).includes("Rejected") ? "text-destructive" :
+                      latestStage(s.id).includes("Reviewed") ? "text-blue-500" :
+                      "text-muted-foreground"
+                    }`}>
+                      {latestStage(s.id)}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

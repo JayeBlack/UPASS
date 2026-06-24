@@ -23,13 +23,6 @@ interface FeeRecord {
   is_cleared: boolean;
 }
 
-const currentYear = new Date().getFullYear();
-const academicYearOptions = [
-  `${currentYear - 1}/${currentYear}`,
-  `${currentYear}/${currentYear + 1}`,
-  `${currentYear + 1}/${currentYear + 2}`,
-];
-
 const FeesStatus = () => {
   const { user } = useAuth();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
@@ -59,8 +52,6 @@ const FeesStatus = () => {
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [importSemester, setImportSemester] = useState("Semester 1");
-  const [importAcademicYear, setImportAcademicYear] = useState(academicYearOptions[1]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -177,17 +168,23 @@ const FeesStatus = () => {
         return;
       }
 
-      // Step 2: Attach academic year and semester from dropdowns
-      const feesWithMeta = parsed.rows.map((r: any) => ({
-        ...r,
-        academic_year: importAcademicYear,
-        semester: importSemester,
-      }));
+      // Validate that all rows have academic_year and semester
+      const missingData = parsed.rows.filter((r: any) => !r.academic_year || !r.semester);
+      if (missingData.length > 0) {
+        toast({ 
+          title: "Missing data", 
+          description: `${missingData.length} rows are missing Academic Year or Semester. Please ensure all rows have these values.`, 
+          variant: "destructive" 
+        });
+        setUploading(false);
+        e.target.value = "";
+        return;
+      }
 
-      // Step 3: Directly import without preview
+      // Step 2: Directly import without preview (academic_year and semester are already in the file)
       const result = await apiFetch<{ created: any[]; errors?: string[] }>("/fees/upload-bulk", {
         method: "POST",
-        body: JSON.stringify({ fees: feesWithMeta }),
+        body: JSON.stringify({ fees: parsed.rows }),
       });
 
       if (result.errors && result.errors.length > 0) {
@@ -268,25 +265,8 @@ const FeesStatus = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowImport(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-lg font-bold text-foreground mb-2">Import Manual Payments</h3>
-            <p className="text-sm text-muted-foreground mb-4">Upload a CSV or Excel file containing the list of students who made bank payments at their departments. The system will read and import the payments directly.</p>
-            <p className="text-xs text-muted-foreground mb-3">Expected columns: Student Name, Index Number, Department, Programme, Total Fees, Amount Paid</p>
-
-            {/* Semester & Academic Year selectors */}
-            <div className="flex gap-3 mb-4">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Semester</label>
-                <select value={importSemester} onChange={(e) => setImportSemester(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  <option>Semester 1</option>
-                  <option>Semester 2</option>
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
-                <select value={importAcademicYear} onChange={(e) => setImportAcademicYear(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                  {academicYearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-            </div>
+            <p className="text-sm text-muted-foreground mb-4">Upload a CSV or Excel file containing the list of students who made bank payments. The file must include Academic Year and Semester for each student.</p>
+            <p className="text-xs text-muted-foreground mb-4">Required columns: Index Number, Student Name, Total Amount, Amount Paid, Academic Year, Semester</p>
 
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportFile} disabled={uploading} />
             <div

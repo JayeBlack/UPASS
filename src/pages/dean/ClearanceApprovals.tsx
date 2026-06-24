@@ -44,7 +44,8 @@ const nonDeanCleared = (steps: ClearanceStep[]) =>
   steps.filter(s => s.department !== "Dean of Postgraduate").every(s => s.status === "cleared");
 
 const StepBadge = ({ step }: { step: ClearanceStep }) => {
-  const meta = STEP_META[step.department] ?? { color: "text-foreground", bg: "bg-muted", border: "border-border", abbr: step.department.slice(0, 4).toUpperCase() };
+  const dept = step.department ?? "Unknown";
+  const meta = STEP_META[dept] ?? { color: "text-foreground", bg: "bg-muted", border: "border-border", abbr: dept.slice(0, 4).toUpperCase() };
   const cleared = step.status === "cleared";
   return (
     <div
