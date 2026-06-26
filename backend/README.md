@@ -32,10 +32,10 @@ cp .env.example .env
 # Edit .env with your PostgreSQL credentials and JWT secret
 
 # 3. Create database
-createdb umat_postgrad_db
+createdb upass
 
 # 4. Run migrations
-npm run migrate
+node export_schema.js
 
 # 5. Start development server
 npm run dev

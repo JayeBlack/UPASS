@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 /**
  * Hook that returns admin department context.
  * - Departmental admins: locked to their department, no filter shown
- * - Super admin, Dean, ViceDean, Accountant, ExamsOfficer, Registrar, AdminAssistant: sees all departments
+ * - Super admin, Dean, ViceDean, Accountant, AccountingAssistant, ExamsOfficer, Registrar, AdminAssistant: sees all departments
  */
 export const useAdminDepartment = () => {
   const { user } = useAuth();
@@ -12,6 +12,7 @@ export const useAdminDepartment = () => {
     user?.role === "Dean" || 
     user?.role === "ViceDean" ||
     user?.role === "Accountant" || 
+    user?.role === "AccountingAssistant" ||
     user?.role === "ExamsOfficer" ||
     user?.role === "Registrar" ||
     user?.role === "AdminAssistant";

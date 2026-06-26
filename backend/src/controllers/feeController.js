@@ -197,6 +197,150 @@ exports.getSummary = async (req, res) => {
   }
 };
 
+// GET /api/fees/filter-options — distinct academic years and departments that have fee records
+exports.getFilterOptions = async (req, res) => {
+  try {
+    const [yearsResult, deptsResult] = await Promise.all([
+      db.query(`
+        SELECT DISTINCT f.academic_year
+        FROM fee_records f
+        ORDER BY f.academic_year DESC
+      `),
+      db.query(`
+        SELECT DISTINCT d.name AS department
+        FROM fee_records f
+        JOIN students s ON f.student_id = s.id
+        LEFT JOIN departments d ON s.department_id = d.id
+        WHERE d.name IS NOT NULL
+        ORDER BY d.name
+      `),
+    ]);
+    res.json({
+      academicYears: yearsResult.rows.map((r) => r.academic_year),
+      departments: deptsResult.rows.map((r) => r.department),
+    });
+  } catch (err) {
+    console.error(`[Fee Filter Options] Error:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/fees/charts (chart data for analytics)
+exports.getCharts = async (req, res) => {
+  try {
+    const { academic_year, department } = req.query;
+    console.log(`[Fee Charts] Filters - academic_year: ${academic_year}, department: ${department}`);
+
+    const baseJoin = `
+      FROM fee_records f
+      JOIN students s ON f.student_id = s.id
+      LEFT JOIN departments d ON s.department_id = d.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let idx = 1;
+    let whereClause = "";
+    if (academic_year) { whereClause += ` AND f.academic_year = $${idx++}`; params.push(academic_year); }
+    if (department) { whereClause += ` AND d.name = $${idx++}`; params.push(department); }
+
+    // 1. By Department
+    const deptSql = `
+      SELECT
+        COALESCE(d.name, 'Unknown') AS label,
+        COALESCE(SUM(f.amount_paid), 0)::NUMERIC AS collected,
+        COALESCE(SUM(GREATEST(f.total_amount - f.amount_paid, 0)), 0)::NUMERIC AS outstanding,
+        COALESCE(SUM(f.total_amount), 0)::NUMERIC AS total
+      ${baseJoin} ${whereClause}
+      GROUP BY d.name
+      ORDER BY total DESC
+      LIMIT 10
+    `;
+
+    // 2. By Academic Year
+    const yearSql = `
+      SELECT
+        f.academic_year AS label,
+        COALESCE(SUM(f.amount_paid), 0)::NUMERIC AS collected,
+        COALESCE(SUM(GREATEST(f.total_amount - f.amount_paid, 0)), 0)::NUMERIC AS outstanding,
+        COALESCE(SUM(f.total_amount), 0)::NUMERIC AS total
+      ${baseJoin} ${whereClause}
+      GROUP BY f.academic_year
+      ORDER BY f.academic_year
+    `;
+
+    // 3. By Semester
+    const semSql = `
+      SELECT
+        f.semester AS label,
+        COALESCE(SUM(f.amount_paid), 0)::NUMERIC AS collected,
+        COALESCE(SUM(GREATEST(f.total_amount - f.amount_paid, 0)), 0)::NUMERIC AS outstanding,
+        COALESCE(SUM(f.total_amount), 0)::NUMERIC AS total,
+        COUNT(*) FILTER (WHERE f.status = 'Paid')::INTEGER AS paid_count,
+        COUNT(*) FILTER (WHERE f.status = 'Partial')::INTEGER AS partial_count,
+        COUNT(*) FILTER (WHERE f.status = 'Unpaid' OR f.status = 'Pending')::INTEGER AS unpaid_count
+      ${baseJoin} ${whereClause}
+      GROUP BY f.semester
+      ORDER BY f.semester
+    `;
+
+    // 4. Payment status breakdown
+    const statusSql = `
+      SELECT
+        CASE
+          WHEN f.status = 'Paid' THEN 'Paid'
+          WHEN f.status = 'Partial' THEN 'Partial'
+          ELSE 'Unpaid'
+        END AS label,
+        COUNT(*)::INTEGER AS count,
+        COALESCE(SUM(f.total_amount), 0)::NUMERIC AS total_amount
+      ${baseJoin} ${whereClause}
+      GROUP BY label
+      ORDER BY label
+    `;
+
+    const [deptResult, yearResult, semResult, statusResult] = await Promise.all([
+      db.query(deptSql, params),
+      db.query(yearSql, params),
+      db.query(semSql, params),
+      db.query(statusSql, params),
+    ]);
+
+    const toNum = (v) => parseFloat(v) || 0;
+
+    res.json({
+      byDepartment: deptResult.rows.map(r => ({
+        label: r.label,
+        collected: toNum(r.collected),
+        outstanding: toNum(r.outstanding),
+        total: toNum(r.total),
+      })),
+      byYear: yearResult.rows.map(r => ({
+        label: r.label,
+        collected: toNum(r.collected),
+        outstanding: toNum(r.outstanding),
+        total: toNum(r.total),
+      })),
+      bySemester: semResult.rows.map(r => ({
+        label: r.label,
+        collected: toNum(r.collected),
+        outstanding: toNum(r.outstanding),
+        total: toNum(r.total),
+        paid_count: r.paid_count,
+        partial_count: r.partial_count,
+        unpaid_count: r.unpaid_count,
+      })),
+      byStatus: statusResult.rows.map(r => ({
+        label: r.label,
+        count: r.count,
+        total_amount: toNum(r.total_amount),
+      })),
+    });
+  } catch (err) {
+    console.error(`[Fee Charts] Error:`, err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /api/fees/parse-bulk
 // Accepts multipart file (CSV or XLSX)
 // Returns parsed rows: { rows: [{ index_number, total_amount, amount_paid, academic_year, semester }, ...] }

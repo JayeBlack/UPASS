@@ -5,19 +5,20 @@
 ### For New Members (After Cloning)
 
 1. **Run `sync.bat`** — Syncs environment variables and initial configuration
-2. **Run `migrate.js`** — Creates the database schema (tables, indexes, etc.)
+2. **Run `export_schema.js`** — Creates the database schema (tables, indexes, etc.)
 3. **Run `run_migrations.js`** — Applies any pending migrations
 
 ```bash
 # From the project root:
 sync.bat
-node backend/src/db/migrate.js
+node backend/export_schema.js
 node backend/run_migrations.js
 ```
 
 ### For Existing Members
 
 #### Creating a Superadmin
+## Run all batch scripts from the root dir with a cmd terminlaf
 ```bash
 create-admin.bat
 ```
@@ -29,7 +30,7 @@ clear-database.bat
 ```
 **Warning:** This deletes all data. After clearing, you must re-run:
 ```bash
-node backend/src/db/migrate.js
+node backend/export_schema.js
 node backend/run_migrations.js
 ```
 
