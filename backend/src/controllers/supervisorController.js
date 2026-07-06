@@ -356,9 +356,10 @@ exports.uploadResource = async (req, res) => {
     }
 
     const result = await db.query(
-      `INSERT INTO resources (uploaded_by, file_name, file_url, file_type, file_size, category, description, recipient_student_ids)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [req.user.id, title, fileUrl, req.file.originalname.split('.').pop()?.toUpperCase() || 'FILE',
+      `INSERT INTO resources (uploaded_by, name, file_name, file_url, file_type, file_size, category, description, recipient_student_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [req.user.id, title, req.file.originalname, fileUrl,
+       req.file.originalname.split('.').pop()?.toUpperCase() || 'FILE',
        `${Math.round(req.file.size / 1024)} KB`, category, description || null, JSON.stringify(studentIdArray)]
     );
     const resourceId = result.rows[0].id;
