@@ -148,12 +148,10 @@ const TemplatesAnnouncements = () => {
       formData.append("description", uploadDesc);
       formData.append("student_ids", JSON.stringify(recipientIds));
 
-      const res = await fetch("/api/supervisors/resources/upload", {
+      const res = await apiFetch("/supervisors/resources/upload", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${getToken()}` },
         body: formData,
       });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || "Upload failed"); }
 
       toast({ title: "File uploaded", description: `Shared with ${recipientIds.length} student(s)` });
       setUploadFile(null);
