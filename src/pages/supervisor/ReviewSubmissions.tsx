@@ -118,10 +118,8 @@ const ReviewSubmissions = () => {
     }
 
     try {
-      // Use local file URL from backend uploads
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-      const serverBase = apiBase.replace('/api', '');
-      const fileUrl = `${serverBase}${sub.file_path}`;
+      // file_path is a full Cloudinary URL in production
+      const fileUrl = sub.file_path.startsWith("http") ? sub.file_path : `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace('/api', '')}${sub.file_path}`;
       console.log('File preview URL:', fileUrl);
       setPreviewUrl(fileUrl);
       const name = sub.file_name.toLowerCase();
@@ -141,9 +139,7 @@ const ReviewSubmissions = () => {
   const downloadFile = async () => {
     if (!selectedSubmission) return;
     try {
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-      const serverBase = apiBase.replace('/api', '');
-      const fileUrl = `${serverBase}${selectedSubmission.file_path}`;
+      const fileUrl = selectedSubmission.file_path.startsWith("http") ? selectedSubmission.file_path : `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace('/api', '')}${selectedSubmission.file_path}`;
       const a = document.createElement("a");
       a.href = fileUrl;
       a.download = selectedSubmission.file_name;

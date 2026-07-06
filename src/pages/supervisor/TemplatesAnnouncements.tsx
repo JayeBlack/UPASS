@@ -181,7 +181,7 @@ const TemplatesAnnouncements = () => {
   };
 
   const downloadResource = async (r: Resource) => {
-    window.open(r.file_url.startsWith("/") ? `http://localhost:5000${r.file_url}` : r.file_url, "_blank");
+    window.open(r.file_url, "_blank");
   };
 
   const filteredResources = resources

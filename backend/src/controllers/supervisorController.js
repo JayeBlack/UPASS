@@ -1,5 +1,6 @@
 const db = require("../db");
 const { createNotification } = require("./notificationController");
+const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
 
 // GET /api/supervisors
 exports.getAll = async (req, res) => {
@@ -345,7 +346,14 @@ exports.uploadResource = async (req, res) => {
     if (!title || !category) return res.status(400).json({ error: "Missing required fields" });
 
     const studentIdArray = student_ids ? JSON.parse(student_ids) : [];
-    const fileUrl = `/uploads/supervisor-resources/${req.file.filename}`;
+
+    let fileUrl;
+    if (useCloudinary) {
+      const uploaded = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/resources");
+      fileUrl = uploaded.secure_url;
+    } else {
+      fileUrl = `/uploads/supervisor-resources/${req.file.filename}`;
+    }
 
     const result = await db.query(
       `INSERT INTO resources (uploaded_by, file_name, file_url, file_type, file_size, category, description, recipient_student_ids)

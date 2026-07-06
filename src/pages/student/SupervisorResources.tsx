@@ -147,7 +147,7 @@ const SupervisorResources = () => {
                     </div>
                   </div>
                   <a
-                    href={r.file_url.startsWith("/") ? `http://localhost:5000${r.file_url}` : r.file_url}
+                    href={r.file_url}
                     target="_blank"
                     rel="noreferrer"
                     className="shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
