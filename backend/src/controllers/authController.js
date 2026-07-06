@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
+const { uploadToCloudinary, deleteFromCloudinary, useCloudinary } = require("../middleware/upload");
 
 // POST /api/auth/register
 exports.register = async (req, res) => {
@@ -219,19 +220,23 @@ exports.uploadAvatar = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    // Fetch old avatar before updating
     const old = await db.query("SELECT avatar_url FROM users WHERE id = $1", [req.user.id]);
     const oldUrl = old.rows[0]?.avatar_url;
 
-    const avatarUrl = `/uploads/general/${req.file.filename}`;
-    await db.query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2", [avatarUrl, req.user.id]);
-
-    // Delete old file if it was in uploads/general
-    if (oldUrl && oldUrl.startsWith("/uploads/general/")) {
-      const oldPath = path.join(__dirname, "../../..", oldUrl);
-      fs.unlink(oldPath, () => {});
+    let avatarUrl;
+    if (useCloudinary) {
+      const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/avatars");
+      avatarUrl = result.secure_url;
+      // Delete old Cloudinary avatar
+      if (oldUrl && oldUrl.startsWith("http")) await deleteFromCloudinary(oldUrl);
+    } else {
+      avatarUrl = `/uploads/general/${req.file.filename}`;
+      if (oldUrl && oldUrl.startsWith("/uploads/general/")) {
+        fs.unlink(path.join(__dirname, "../../..", oldUrl), () => {});
+      }
     }
 
+    await db.query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2", [avatarUrl, req.user.id]);
     res.json({ avatar_url: avatarUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });

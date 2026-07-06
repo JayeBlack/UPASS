@@ -1,4 +1,5 @@
 const db = require("../db");
+const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
 
 // GET /api/thesis/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -57,9 +58,6 @@ exports.getPending = async (req, res) => {
 exports.upload = async (req, res) => {
   try {
     const { stage } = req.body;
-    const file_url = req.file ? `/uploads/thesis/${req.file.filename}` : null;
-    const file_name = req.file ? req.file.originalname : null;
-
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     if (!stage) return res.status(400).json({ error: "Stage is required" });
 
@@ -71,6 +69,15 @@ exports.upload = async (req, res) => {
       return res.status(404).json({ error: "Student record not found" });
     }
     const student_id = studentResult.rows[0].id;
+
+    let file_url, file_name;
+    file_name = req.file.originalname;
+    if (useCloudinary) {
+      const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/thesis");
+      file_url = result.secure_url;
+    } else {
+      file_url = `/uploads/thesis/${req.file.filename}`;
+    }
 
     const result = await db.query(
       `INSERT INTO thesis_submissions (student_id, stage, file_url, file_name)

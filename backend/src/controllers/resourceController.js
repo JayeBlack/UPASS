@@ -1,4 +1,5 @@
 const db = require("../db");
+const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
 
 // GET /api/resources
 exports.getAll = async (req, res) => {
@@ -21,10 +22,19 @@ exports.getAll = async (req, res) => {
 exports.upload = async (req, res) => {
   try {
     const { category, description } = req.body;
-    const file_url = req.file ? `/uploads/resources/${req.file.filename}` : null;
     const file_name = req.file ? req.file.originalname : req.body.file_name;
     const file_type = file_name?.split(".").pop()?.toUpperCase() || "FILE";
     const file_size = req.file ? `${Math.round(req.file.size / 1024)} KB` : req.body.file_size;
+
+    let file_url = null;
+    if (req.file) {
+      if (useCloudinary) {
+        const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/resources");
+        file_url = result.secure_url;
+      } else {
+        file_url = `/uploads/resources/${req.file.filename}`;
+      }
+    }
 
     const result = await db.query(
       `INSERT INTO resources (uploaded_by, file_name, file_url, file_type, file_size, category, description)
