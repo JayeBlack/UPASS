@@ -43,7 +43,12 @@ app.use(helmet({
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // ── Rate Limiting ──
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200 }));
+// Skip health check from rate limiting
+app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+// General: 1000 req/15min per IP
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000, standardHeaders: true, legacyHeaders: false }));
+// Auth: 100 login attempts per 15min per IP (still brute-force safe)
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false });
 
 // ── Parsing & Logging ──
 app.use(express.json({ limit: "10mb" }));
@@ -54,7 +59,7 @@ app.use(morgan("dev"));
 app.use("/uploads", express.static(process.env.UPLOAD_DIR || "./uploads"));
 
 // ── Routes ──
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/supervisors", supervisorRoutes);
@@ -74,9 +79,6 @@ app.use("/api/resources", resourceRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/departments", departmentRoutes);
 app.use("/api/programs", programRoutes);
-
-// ── Health check ──
-app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
 
 // ── 404 Handler ──
 app.use((req, res) => res.status(404).json({ error: "Route not found" }));

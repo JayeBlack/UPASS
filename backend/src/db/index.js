@@ -4,11 +4,13 @@ require("dotenv").config();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000,  // wait up to 10s for Neon cold-start
+  idleTimeoutMillis: 30000,        // release idle connections after 30s
+  max: 5,                          // Neon free tier has a low connection limit
 });
 
 pool.on("error", (err) => {
   console.error("Unexpected DB pool error:", err);
-  process.exit(-1);
 });
 
 module.exports = {
