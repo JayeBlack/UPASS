@@ -65,13 +65,18 @@ const Login = () => {
         </div>
       </div>
 
+      {/* Mobile top banner */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-10 gradient-navy px-6 py-5 flex items-center gap-4">
+        <img src={umatLogo} alt="UMaT Logo" className="w-12 h-auto shrink-0" />
+        <div>
+          <p className="font-display text-sm font-bold text-primary-foreground leading-tight">Postgraduate Administrative Support System</p>
+          <p className="text-xs text-primary-foreground/60 mt-0.5">University of Mines and Technology, Tarkwa</p>
+        </div>
+      </div>
+
       {/* Right panel - form */}
-      <main className="flex-1 flex items-center justify-center p-8">
+      <main className="flex-1 flex items-center justify-center p-8 lg:pt-8 pt-32">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex flex-col items-center gap-3 mb-8">
-            <img src={umatLogo} alt="UMaT Logo" className="w-20 h-auto" />
-            <p className="font-display text-xl font-bold text-center">Postgraduate Administrative Support System</p>
-          </div>
 
           <h2 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h2>
           <p className="text-muted-foreground mb-8">Sign in to your account to continue</p>
