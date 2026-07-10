@@ -61,7 +61,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       } catch { /* ignore */ }
     };
     fetchCount();
-    const id = setInterval(fetchCount, 15000);
+    const id = setInterval(fetchCount, 5000);
     return () => clearInterval(id);
   }, [user]);
 
@@ -73,7 +73,9 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <MobileHeader />
 
       {/* Top bar */}
-      <div className={`no-print ${isMobile ? "px-4 py-3" : "ml-64 px-8 py-4"} flex items-center justify-between gap-4 border-b border-border bg-background/70 backdrop-blur-md sticky top-0 z-30`}>
+      <div className={`no-print ${isMobile ? "px-4 py-3" : "ml-64 px-8 py-4"} flex items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30`}>
+        {/* Subtle gold accent line at very top */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-secondary/40 to-transparent pointer-events-none" />
         {user && (
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-foreground truncate">

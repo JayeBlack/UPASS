@@ -175,7 +175,7 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
       {/* Logo */}
       <div className="px-5 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center p-1">
+          <div className="w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/20 flex items-center justify-center p-1 shadow-lg">
             <img src={umatLogo} alt="UMaT Logo" className="w-8 h-8 object-contain" />
           </div>
           <div>
@@ -183,6 +183,8 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
             <p className="text-[11px] text-sidebar-foreground/50 tracking-wide uppercase">Support System</p>
           </div>
         </div>
+        {/* Gold accent line under logo */}
+        <div className="mt-4 h-px bg-gradient-to-r from-secondary/50 via-secondary/20 to-transparent rounded-full" />
       </div>
 
       {/* User info */}
@@ -216,12 +218,14 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
             <button
               key={item.path}
               onClick={() => handleNav(item.path)}
-              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
+              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                 isActive
                   ? "bg-sidebar-primary/15 text-sidebar-primary shadow-sm"
                   : "text-sidebar-foreground/65 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
               }`}
             >
+              {/* Active gold left bar */}
+              {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-secondary" />}
               <span className={`transition-colors ${isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/70"}`}>
                 {item.icon}
               </span>

@@ -109,7 +109,8 @@ const Dashboard = () => {
 
   // ─── Analytics Overview (real student/graduand counts from DB) ───
   useEffect(() => {
-    if (user?.role !== "Admin" && user?.role !== "Dean" && user?.role !== "ViceDean" && user?.role !== "Registrar" && user?.role !== "AdminAssistant") return;
+    const roles = ["Admin", "Dean", "ViceDean", "Registrar", "AdminAssistant", "ExamsOfficer"];
+    if (!user?.role || !roles.includes(user.role)) return;
     return fetchWithInterval(async () => {
       try {
         const data = await apiFetch<{ total_students: number; active_students: number; graduands_eligible: number }>("/analytics/overview");

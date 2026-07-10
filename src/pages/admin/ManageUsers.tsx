@@ -213,7 +213,7 @@ const ManageUsers = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-8 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck size={18} className="text-secondary-foreground" />
@@ -244,7 +244,8 @@ const ManageUsers = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading users...</div>
           ) : (
@@ -285,6 +286,32 @@ const ManageUsers = () => {
               </tbody>
             </table>
           )}
+        </div>
+        {/* Mobile card list */}
+        <div className="sm:hidden divide-y divide-border">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading...</div>
+          ) : filtered.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">No users found</p>
+          ) : filtered.map((u) => (
+            <div key={u.id} className="px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-foreground">{u.name}</p>
+                  {u.is_super_admin && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-secondary/15 text-secondary-foreground uppercase">Super</span>}
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleColor(u.role)}`}>{u.role}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{u.email}</p>
+                {u.department && <p className="text-xs text-muted-foreground mt-0.5">{u.department}</p>}
+                <span className={`inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${u.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{u.is_active ? "Active" : "Inactive"}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button onClick={() => { setResetPasswordUser(u); setNewPassword(""); setConfirmPassword(""); setShowNewPassword(false); setShowConfirmPassword(false); }} className="p-2 rounded-lg hover:bg-muted text-muted-foreground"><KeyRound size={15} /></button>
+                <button onClick={() => handleToggle(u)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground"><Power size={15} /></button>
+                <button onClick={() => setConfirmDelete(u.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"><Trash2 size={15} /></button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

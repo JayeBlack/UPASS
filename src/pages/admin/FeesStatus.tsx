@@ -239,7 +239,7 @@ const FeesStatus = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
           <p className="text-muted-foreground mt-1">
@@ -253,7 +253,7 @@ const FeesStatus = () => {
         {canModifyFees && (
           <button
             onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors shrink-0"
           >
             <Upload size={14} /> Import Manual Payments
           </button>
@@ -373,7 +373,8 @@ const FeesStatus = () => {
       </p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 size={18} className="animate-spin mr-2" /> Loading financial records...
@@ -443,6 +444,38 @@ const FeesStatus = () => {
             </tbody>
           </table>
           )}
+        </div>
+        {/* Mobile card list */}
+        <div className="sm:hidden divide-y divide-border">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading...</div>
+          ) : filtered.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">{records.length === 0 ? "No fee records available" : "No students match filters"}</p>
+          ) : filtered.map((f) => (
+            <div key={f.id} className="px-4 py-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{f.first_name} {f.last_name}</p>
+                  <p className="text-xs font-mono text-muted-foreground">{f.index_number}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{f.program_name}</p>
+                </div>
+                <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${f.is_cleared ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
+                  {f.is_cleared ? "Cleared" : "Owing"}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mt-2">
+                <span className="text-muted-foreground">Total: <span className="text-foreground font-medium">GHS {Number(f.total_amount).toLocaleString()}</span></span>
+                <span className="text-muted-foreground">Paid: <span className="text-foreground font-medium">GHS {Number(f.amount_paid).toLocaleString()}</span></span>
+                <span className="text-muted-foreground">Outstanding: <span className={(Number(f.total_amount) - Number(f.amount_paid)) > 0 ? "text-destructive font-semibold" : "text-success font-medium"}>GHS {Math.max(0, Number(f.total_amount) - Number(f.amount_paid)).toLocaleString()}</span></span>
+                {Number(f.credit_balance) > 0 && <span className="text-muted-foreground">Credit: <span className="text-blue-500 font-medium">GHS {Number(f.credit_balance).toLocaleString()}</span></span>}
+              </div>
+              {canModifyFees && (
+                <button onClick={() => handleToggleClearance(f.id)} className={`mt-3 px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${f.is_cleared ? "border border-border text-muted-foreground" : "gradient-gold text-secondary-foreground"}`}>
+                  {f.is_cleared ? "Revoke Clearance" : "Mark Cleared"}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

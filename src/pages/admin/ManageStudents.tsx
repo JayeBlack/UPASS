@@ -189,7 +189,7 @@ const ManageStudents = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
           <p className="text-muted-foreground mt-1">{loading ? "Loading..." : `${students.length} registered postgraduate students`}</p>
@@ -334,7 +334,8 @@ const ManageStudents = () => {
       </p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading students...</div>
           ) : (
@@ -371,6 +372,29 @@ const ManageStudents = () => {
               </tbody>
             </table>
           )}
+        </div>
+        {/* Mobile card list */}
+        <div className="sm:hidden divide-y divide-border">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading...</div>
+          ) : paginatedStudents.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">No students found</p>
+          ) : paginatedStudents.map((s) => (
+            <div key={s.id} className="px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{s.first_name} {s.last_name}</p>
+                <p className="text-xs font-mono text-muted-foreground mt-0.5">{s.index_number}</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate">{s.program_name}</p>
+                <span className={`inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${s.status === "Active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{s.status}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                {user?.isSuperAdmin && (
+                  <button onClick={() => handleResetPassword(s)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground" title="Reset password"><KeyRound size={16} /></button>
+                )}
+                <button onClick={() => setDeleteConfirm(s.id)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -87,22 +87,13 @@ const svArray = Array.isArray(supervisorsData)
   const [departments, setDepartments] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fetch departments from database instead of deriving from students/supervisors
-    const fetchDepartments = async () => {
-      try {
-        const data = await apiFetch<any>("/departments");
+    apiFetch<any>("/departments")
+      .then((data) => {
         const depts = Array.isArray(data) ? data : data?.data ?? [];
         setDepartments(depts.map((d: any) => d.name).sort());
-      } catch {
-        // fallback to deriving from students/supervisors
-        const derived = [...new Set([...students.map((s) => s.department_name), ...supervisors.map((s) => s.department_name)].filter(Boolean))];
-        setDepartments(derived.sort());
-      }
-    };
-    if (students.length > 0 || supervisors.length > 0) {
-      fetchDepartments();
-    }
-  }, [students, supervisors]);
+      })
+      .catch(() => {});
+  }, []);
 
   const allRows = useMemo(() => {
     const q = tableSearch.toLowerCase();
@@ -163,7 +154,7 @@ const svArray = Array.isArray(supervisorsData)
 
   return (
     <DashboardLayout>
-      <div className="flex items-start justify-between mb-8 gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-8 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck size={18} className="text-secondary-foreground" />
@@ -174,32 +165,35 @@ const svArray = Array.isArray(supervisorsData)
             {loading ? "Loading..." : `${assignments.length} active links · ${supervisors.length} supervisors · ${students.length} students`}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             value={tableSearch}
             onChange={(e) => { setTableSearch(e.target.value); setCurrentPage(1); }}
             placeholder="Search by name or index..."
-            className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-56"
+            className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-56"
           />
-          <select
-            value={deptFilter}
-            onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="all">All Departments</option>
-            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <button
-            onClick={() => setOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
-          >
-            <Link2 size={15} /> New Assignment
-          </button>
+          <div className="flex gap-3">
+            <select
+              value={deptFilter}
+              onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
+              className="flex-1 px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Departments</option>
+              {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <button
+              onClick={() => setOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity shrink-0"
+            >
+              <Link2 size={15} /> New Assignment
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
               <Loader2 size={18} className="animate-spin mr-2" /> Loading assignments...
@@ -260,6 +254,35 @@ const svArray = Array.isArray(supervisorsData)
               </tbody>
             </table>
           )}
+        </div>
+        {/* Mobile card list */}
+        <div className="sm:hidden divide-y divide-border">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm"><Loader2 size={18} className="animate-spin mr-2" /> Loading...</div>
+          ) : rows.length === 0 ? (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">No students found</p>
+          ) : rows.map(({ student, links }) => (
+            <div key={student.id} className="px-4 py-4">
+              <p className="text-sm font-semibold text-foreground">{student.first_name} {student.last_name}</p>
+              <p className="text-xs font-mono text-muted-foreground">{student.index_number}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{student.program_name}</p>
+              <div className="mt-2">
+                {links.length === 0 ? (
+                  <span className="text-xs text-muted-foreground italic">No supervisor assigned</span>
+                ) : (
+                  <div className="flex flex-col gap-1.5 mt-1">
+                    {links.map(({ assignment, supervisor }) => (
+                      <div key={assignment.id} className="inline-flex items-center gap-2 bg-muted/60 rounded-lg pl-3 pr-1 py-1.5 w-fit">
+                        <span className="text-xs text-foreground">{supervisor ? `${supervisor.first_name} ${supervisor.last_name}` : "Unknown"}</span>
+                        {assignment.is_primary && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary uppercase">Primary</span>}
+                        <button onClick={() => handleUnassign(assignment.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

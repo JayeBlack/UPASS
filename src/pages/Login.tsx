@@ -44,93 +44,118 @@ const Login = () => {
         title="Sign in — UMaT Postgraduate Portal"
         description="Sign in to the UMaT School of Postgraduate Studies portal for students, supervisors and staff."
       />
-      {/* Left panel */}
+
+      {/* Left panel — desktop only */}
       <div className="hidden lg:flex lg:w-1/2 gradient-navy items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-72 h-72 rounded-full border border-sidebar-foreground/20" />
-          <div className="absolute bottom-32 right-16 w-48 h-48 rounded-full border border-sidebar-foreground/20" />
-          <div className="absolute top-1/2 left-1/3 w-96 h-96 rounded-full border border-sidebar-foreground/10" />
-        </div>
-        <div className="relative z-10 text-center max-w-md">
-          <img src={umatLogo} alt="UMaT Logo" className="w-32 h-auto mx-auto mb-8" />
-          <h1 className="font-display text-3xl font-bold text-primary-foreground mb-2">
+        {/* Layered decorative rings */}
+        <div className="absolute top-16 left-16 w-80 h-80 rounded-full border border-white/10" />
+        <div className="absolute top-24 left-24 w-64 h-64 rounded-full border border-white/[0.06]" />
+        <div className="absolute bottom-20 right-12 w-56 h-56 rounded-full border border-white/10" />
+        <div className="absolute bottom-28 right-20 w-40 h-40 rounded-full border border-white/[0.06]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full border border-white/[0.04]" />
+        {/* Faint watermark logo bottom-right */}
+        <img src={umatLogo} alt="" aria-hidden="true" className="absolute bottom-8 right-8 w-40 opacity-[0.06] pointer-events-none select-none" />
+        <div className="relative z-10 text-center max-w-sm">
+          <div className="w-24 h-24 rounded-2xl bg-white/10 backdrop-blur-sm flex items-center justify-center mx-auto mb-8 shadow-2xl ring-1 ring-white/20">
+            <img src={umatLogo} alt="UMaT Logo" className="w-16 h-auto" />
+          </div>
+          <h1 className="font-display text-3xl font-bold text-primary-foreground mb-3 leading-tight">
             Postgraduate Administrative Support System
           </h1>
-          <p className="text-sm text-primary-foreground/60 mt-4">
-            University of Mines and Technology, Tarkwa
-          </p>
-          <p className="text-xs text-primary-foreground/70 mt-1 italic">
-            Knowledge, Truth and Excellence
-          </p>
+          <div className="w-12 h-0.5 bg-secondary/60 mx-auto my-4 rounded-full" />
+          <p className="text-sm text-primary-foreground/70 font-medium">University of Mines and Technology</p>
+          <p className="text-xs text-primary-foreground/40 mt-1">Tarkwa, Ghana</p>
+          <p className="text-xs text-secondary/70 mt-4 italic tracking-wide">Knowledge · Truth · Excellence</p>
         </div>
       </div>
 
-      {/* Mobile top banner */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-10 gradient-navy px-6 py-5 flex items-center gap-4">
-        <img src={umatLogo} alt="UMaT Logo" className="w-12 h-auto shrink-0" />
-        <div>
-          <p className="font-display text-sm font-bold text-primary-foreground leading-tight">Postgraduate Administrative Support System</p>
-          <p className="text-xs text-primary-foreground/60 mt-0.5">University of Mines and Technology, Tarkwa</p>
+      {/* Right panel / Mobile full-screen */}
+      <main className="flex-1 relative flex items-center justify-center p-6 lg:p-8 overflow-hidden">
+
+        {/* Mobile background — navy gradient + decorative rings, hidden on desktop */}
+        <div className="lg:hidden absolute inset-0 gradient-navy">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute -top-16 -left-16 w-72 h-72 rounded-full border border-white/20" />
+            <div className="absolute -bottom-20 -right-10 w-80 h-80 rounded-full border border-white/20" />
+            <div className="absolute top-1/3 right-1/4 w-48 h-48 rounded-full border border-white/10" />
+          </div>
+          {/* Watermark logo */}
+          <img
+            src={umatLogo}
+            alt=""
+            aria-hidden="true"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 opacity-[0.04] pointer-events-none select-none"
+          />
         </div>
-      </div>
 
-      {/* Right panel - form */}
-      <main className="flex-1 flex items-center justify-center p-8 lg:pt-8 pt-32">
-        <div className="w-full max-w-md">
+        {/* Form card */}
+        <div className="relative z-10 w-full max-w-md">
 
-          <h2 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h2>
-          <p className="text-muted-foreground mb-8">Sign in to your account to continue</p>
+          {/* Mobile branding above card */}
+          <div className="lg:hidden text-center mb-8">
+            <img src={umatLogo} alt="UMaT Logo" className="w-16 h-auto mx-auto mb-3 drop-shadow-lg" />
+            <p className="font-display text-base font-bold text-primary-foreground leading-snug">
+              Postgraduate Administrative Support System
+            </p>
+            <p className="text-xs text-primary-foreground/60 mt-1">
+              University of Mines and Technology, Tarkwa
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
-              <div className="relative">
-                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@umat.edu.gh"
-                  className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                />
+          {/* Card */}
+          <div className="bg-card/95 backdrop-blur-sm rounded-2xl border border-border shadow-2xl p-7 lg:p-0 lg:bg-transparent lg:border-0 lg:shadow-none lg:backdrop-blur-none">
+            <h2 className="font-display text-3xl font-bold text-foreground mb-2">Welcome back</h2>
+            <p className="text-muted-foreground mb-8">Sign in to your account to continue</p>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Email</label>
+                <div className="relative">
+                  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@umat.edu.gh"
+                    className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-11 pr-11 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Password</label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-11 pr-11 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 rounded-lg gradient-gold text-secondary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-            >
-              {submitting ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 rounded-lg gradient-gold text-secondary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+              >
+                {submitting ? "Signing in…" : "Sign In"}
+              </button>
+            </form>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} UMaT School of Postgraduate Studies
-          </p>
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              © {new Date().getFullYear()} UMaT School of Postgraduate Studies
+            </p>
+          </div>
         </div>
       </main>
     </div>

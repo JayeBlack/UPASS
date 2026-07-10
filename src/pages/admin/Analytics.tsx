@@ -292,36 +292,36 @@ const Analytics = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div
           onClick={() => navigate("/admin/fees")}
-          className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow"
+          className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow min-w-0"
         >
           <CheckCircle size={18} className="text-success shrink-0" />
-          <div>
+          <div className="min-w-0">
             <p className="text-lg font-bold font-display text-foreground">{overview?.fees_cleared || 0}</p>
-            <p className="text-xs text-muted-foreground">Fees Cleared</p>
+            <p className="text-xs text-muted-foreground truncate">Fees Cleared</p>
           </div>
         </div>
         <div
           onClick={() => navigate("/admin/fees")}
-          className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow"
+          className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:shadow-md transition-shadow min-w-0"
         >
           <AlertTriangle size={18} className="text-warning shrink-0" />
-          <div>
+          <div className="min-w-0">
             <p className="text-lg font-bold font-display text-foreground">{overview?.fees_owing_count || 0}</p>
-            <p className="text-xs text-muted-foreground">Fees Owing</p>
+            <p className="text-xs text-muted-foreground truncate">Fees Owing</p>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+        <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 min-w-0">
           <BarChart3 size={18} className="text-info shrink-0" />
-          <div>
+          <div className="min-w-0">
             <p className="text-lg font-bold font-display text-foreground">{overview?.avg_cwa || "—"}</p>
-            <p className="text-xs text-muted-foreground">Avg. CWA</p>
+            <p className="text-xs text-muted-foreground truncate">Avg. CWA</p>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3">
+        <div className="bg-card rounded-xl border border-border p-4 flex items-center gap-3 min-w-0">
           <CheckCircle size={18} className="text-secondary shrink-0" />
-          <div>
+          <div className="min-w-0">
             <p className="text-lg font-bold font-display text-foreground">{overview?.thesis_defended || 0}</p>
-            <p className="text-xs text-muted-foreground">Thesis Defended</p>
+            <p className="text-xs text-muted-foreground truncate">Thesis Defended</p>
           </div>
         </div>
       </div>
@@ -399,8 +399,8 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Graduation Eligibility</h2>
           <p className="text-xs text-muted-foreground mb-4">Eligible vs ineligible</p>
           {totalGraduands > 0 ? (
-            <div className="flex items-center gap-6">
-              <ResponsiveContainer width="50%" height={220}>
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              <ResponsiveContainer width="100%" height={200} className="sm:w-1/2 sm:flex-none" style={{ maxWidth: '50%' }}>
                 <PieChart>
                   <Pie data={graduationEligibility} cx="50%" cy="50%" innerRadius={50} outerRadius={85} paddingAngle={5} dataKey="value">
                     {graduationEligibility.map((_, index) => (
@@ -412,14 +412,14 @@ const Analytics = () => {
               </ResponsiveContainer>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[0] }} />
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ background: PIE_COLORS[0] }} />
                   <div>
                     <p className="text-sm font-semibold text-foreground">{overview?.graduands_eligible || 0} Eligible</p>
                     <p className="text-xs text-muted-foreground">{eligiblePct}%</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ background: PIE_COLORS[1] }} />
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ background: PIE_COLORS[1] }} />
                   <div>
                     <p className="text-sm font-semibold text-foreground">{overview?.graduands_ineligible || 0} Ineligible</p>
                     <p className="text-xs text-muted-foreground">{(100 - parseFloat(eligiblePct)).toFixed(1)}%</p>
@@ -463,22 +463,24 @@ const Analytics = () => {
           <h2 className="font-display text-lg font-bold text-foreground mb-1">Program Distribution</h2>
           <p className="text-xs text-muted-foreground mb-4">Students per program</p>
           {programBreakdown.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={220}>
-                <PieChart>
-                  <Pie data={programBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={false}>
-                    {programBreakdown.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[index % PROGRAM_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-2 max-h-[220px] overflow-y-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-full sm:w-1/2 shrink-0">
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={programBreakdown} cx="50%" cy="50%" outerRadius={85} dataKey="value" label={false}>
+                      {programBreakdown.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={PROGRAM_COLORS[index % PROGRAM_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto w-full">
                 {programBreakdown.map((p, i) => (
                   <div key={p.program} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PROGRAM_COLORS[i % PROGRAM_COLORS.length] }} />
-                    <span className="text-xs text-muted-foreground truncate">{p.program}</span>
+                    <span className="text-xs text-muted-foreground truncate flex-1">{p.program}</span>
                     <span className="text-xs font-semibold text-foreground ml-auto">{p.value}</span>
                   </div>
                 ))}
