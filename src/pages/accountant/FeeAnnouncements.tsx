@@ -90,7 +90,7 @@ const FeeAnnouncements = () => {
           setAnnouncements(res.map((n) => ({
             id: n.id,
             title: n.title,
-            message: n.message.replace(/📎.*$/s, "").trim(),
+            message: n.message,
             audience: "All Students",
             sentAt: n.created_at,
             recipients: n.recipient_count || 0,
@@ -237,23 +237,17 @@ const FeeAnnouncements = () => {
 
   const handleSendFeeList = async () => {
     if (importedFeeList.length === 0) return;
-    const feeMsg = importedFeeList.map((f) => `${f.programme} (${f.level}): GHS ${f.amount}`).join("\n");
-    const title = "School Fees Schedule Published";
-    const message = `The following fee schedule has been published for the current academic year:\n\n${feeMsg}\n\nPlease make payments before the deadline.`;
+    const noticeTitle = "School Fees Schedule Published";
+    const noticeMessage = "The fee schedule for the current academic year has been published. Please download the attached file and make payments before the deadline.";
     try {
-      // Send notification with download link embedded
-      const fullMessage = scheduleDownloadUrl
-        ? `${message}\n\n📎 Download the full fee schedule: ${scheduleDownloadUrl}`
-        : message;
-      
       await apiFetch("/notifications/broadcast", {
         method: "POST",
-        body: JSON.stringify({ title, message: fullMessage, type: "fee", severity: "info", download_url: scheduleDownloadUrl }),
+        body: JSON.stringify({ title: noticeTitle, message: noticeMessage, type: "fee", severity: "info", download_url: scheduleDownloadUrl }),
       });
       setAnnouncements((prev) => [{
         id: `a${Date.now()}`,
-        title,
-        message,
+        title: noticeTitle,
+        message: noticeMessage,
         audience: "All Students",
         sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
         recipients: totalStudentCount,

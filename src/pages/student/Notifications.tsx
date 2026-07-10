@@ -150,9 +150,7 @@ const Notifications = () => {
                     <div className="mt-2">
                     {n.type === "fee" ? (
                       <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground whitespace-pre-line">
-                          {n.message.replace(/📎.*$/s, "").trim()}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{n.message}</p>
                         {n.download_url && (
                           <a
                             href={n.download_url}
