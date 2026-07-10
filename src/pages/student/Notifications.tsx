@@ -148,19 +148,25 @@ const Notifications = () => {
                   </div>
                   <div className="mt-2">
                     {n.type === "fee" ? (
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={(() => {
-                            const urlMatch = n.message.match(/(https?:\/\/[^\s]+\.(xlsx|xls|csv))/);
-                            return urlMatch ? urlMatch[1] : "#";
-                          })()}
-                          download
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Download size={14} />
-                          Download Fee Schedule
-                        </a>
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground whitespace-pre-line">
+                          {n.message.replace(/📎.*$/s, "").trim()}
+                        </p>
+                        {(() => {
+                          const urlMatch = n.message.match(/https?:\/\/[^\s]+/);
+                          return urlMatch ? (
+                            <a
+                              href={urlMatch[0]}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Download size={14} />
+                              Download Fee Schedule
+                            </a>
+                          ) : null;
+                        })()}
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground whitespace-pre-line">{n.message}</p>

@@ -125,17 +125,23 @@ const ExportReports = () => {
       ]);
     } else if (report === "outstanding") {
       title = `Outstanding Balances Report${filterSuffix}`;
-      const owing = freshFiltered.filter((f) => Number(f.outstanding) > 0);
+      const owing = freshFiltered.filter((f) => {
+        const outstanding = f.outstanding != null ? Number(f.outstanding) : Math.max((f.total_amount || 0) - (f.amount_paid || 0), 0);
+        return outstanding > 0;
+      });
       headers = ["#", "Student Name", "Index Number", "Program", "Semester", "Academic Year", "Outstanding (GHS)"];
-      rows = owing.map((f, i) => [
-        String(i + 1),
-        `${f.first_name} ${f.last_name}`,
-        f.index_number,
-        f.program_name,
-        f.semester,
-        f.academic_year,
-        Number(f.outstanding).toFixed(2),
-      ]);
+      rows = owing.map((f, i) => {
+        const outstanding = f.outstanding != null ? Number(f.outstanding) : Math.max((f.total_amount || 0) - (f.amount_paid || 0), 0);
+        return [
+          String(i + 1),
+          `${f.first_name} ${f.last_name}`,
+          f.index_number,
+          f.program_name,
+          f.semester,
+          f.academic_year,
+          outstanding.toFixed(2),
+        ];
+      });
     } else if (report === "compliance") {
       title = `Payment Compliance Report${filterSuffix}`;
       const byProgram = freshFiltered.reduce((acc, f) => {

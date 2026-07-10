@@ -248,7 +248,10 @@ const Dashboard = () => {
   // Student computed data - always calculate
   const totalStudentFees = studentFeeData.reduce((sum: number, f: any) => sum + (f.total_amount || 0), 0);
   const totalStudentPaid = studentFeeData.reduce((sum: number, f: any) => sum + (f.amount_paid || 0), 0);
-  const totalStudentOwed = studentFeeData.reduce((sum: number, f: any) => sum + (f.outstanding || 0), 0);
+  const totalStudentOwed = studentFeeData.reduce((sum: number, f: any) => {
+    const outstanding = f.outstanding != null ? f.outstanding : Math.max((f.total_amount || 0) - (f.amount_paid || 0), 0);
+    return sum + outstanding;
+  }, 0);
 
   // Exams Officer computed
   const publishedBatches = resultsBatches.filter((b: any) => b.status === "Published").length;

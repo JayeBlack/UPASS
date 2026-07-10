@@ -156,63 +156,52 @@ export function exportData({ title, subtitle, headers, rows, fileName, format }:
     const MARGIN = 10;
     const availW = pageW - MARGIN * 2;
     const colCount = headers.length;
-    const colW = availW / colCount; // equal-width columns
-    const rowH = 6.5; // fixed row height
+    const colW = availW / colCount;
+    const rowH = 6.5;
     const headerH = 6.5;
-
-    // Determine which column is "program" for shortening
     const programColIdx = headers.findIndex((h) => /program/i.test(h));
-
     let tableTop = subtitle ? 42 : 38;
 
-    // ── Draw table ──
-    function drawTable(startY: number, endY: number): number {
+    // ── Draw a slice of rows, returns how many rows were drawn ──
+    function drawTable(startY: number, endY: number, pageRows: string[][]): number {
       let currentY = startY;
 
-      // Header
       doc.setFillColor(30, 58, 95);
       doc.rect(MARGIN, currentY, availW, headerH, "F");
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       for (let i = 0; i < colCount; i++) {
-        const x = MARGIN + i * colW;
-        doc.text(String(headers[i]), x + 1.5, currentY + 4.2, { align: "left" });
+        doc.text(String(headers[i]), MARGIN + i * colW + 1.5, currentY + 4.2, { align: "left" });
       }
       currentY += headerH;
 
-      // Rows
       doc.setTextColor(30, 30, 30);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
 
       let rowIndex = 0;
-      while (rowIndex < rows.length && currentY + rowH <= endY) {
-        const row = rows[rowIndex];
+      while (rowIndex < pageRows.length && currentY + rowH <= endY) {
+        const row = pageRows[rowIndex];
         const yPos = currentY;
 
-        // Alternating background
         if (rowIndex % 2 === 1) {
           doc.setFillColor(245, 245, 245);
           doc.rect(MARGIN, yPos, availW, rowH, "F");
         }
 
-        // Full cell borders (horizontal + vertical grid)
         doc.setDrawColor(180, 180, 180);
         doc.setLineWidth(0.15);
-        // Horizontal lines
         doc.line(MARGIN, yPos, MARGIN + availW, yPos);
         doc.line(MARGIN, yPos + rowH, MARGIN + availW, yPos + rowH);
-        // Vertical lines
         for (let i = 0; i <= colCount; i++) {
           const lx = MARGIN + i * colW;
           doc.line(lx, yPos, lx, yPos + rowH);
         }
 
-        // Cell text
         for (let i = 0; i < colCount; i++) {
           const raw = String(row[i] || "");
-          const processed = (i === programColIdx) ? shortenProgramName(raw) : raw;
+          const processed = i === programColIdx ? shortenProgramName(raw) : raw;
           const display = truncateToFit(processed, colW, 8);
           doc.text(display, MARGIN + i * colW + 1.5, yPos + 4.2, { align: "left" });
         }
@@ -224,13 +213,12 @@ export function exportData({ title, subtitle, headers, rows, fileName, format }:
       return rowIndex;
     }
 
-    // ── Paginate ──
+    // ── Paginate without mutating rows ──
     const footerH = 10;
     let rowOffset = 0;
     let pageNum = 1;
-    const allRows = rows.slice(); // non-destructive copy
 
-    while (rowOffset < allRows.length) {
+    while (rowOffset < rows.length) {
       if (pageNum > 1) {
         doc.addPage();
         doc.setFontSize(13);
@@ -245,21 +233,13 @@ export function exportData({ title, subtitle, headers, rows, fileName, format }:
         tableTop = 38;
       }
 
-      // Slice only the rows for this page into the shared `rows` ref used by drawTable
-      const pageRows = allRows.slice(rowOffset);
-      // Temporarily replace rows content for drawTable
-      rows.length = 0;
-      pageRows.forEach((r) => rows.push(r));
-
-      const rowsOnThisPage = drawTable(tableTop, pageH - footerH);
+      const rowsOnThisPage = drawTable(tableTop, pageH - footerH, rows.slice(rowOffset));
       rowOffset += rowsOnThisPage;
 
-      // Footer
-      const footerY = pageH - 6;
       doc.setFontSize(7);
       doc.setFont("helvetica", "italic");
       doc.setTextColor(130, 130, 130);
-      doc.text(`Generated: ${new Date().toLocaleString()} — Page ${pageNum}`, MARGIN, footerY);
+      doc.text(`Generated: ${new Date().toLocaleString()} — Page ${pageNum}`, MARGIN, pageH - 6);
 
       pageNum++;
     }

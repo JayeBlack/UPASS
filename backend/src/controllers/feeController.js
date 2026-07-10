@@ -342,27 +342,28 @@ exports.getCharts = async (req, res) => {
 };
 
 // POST /api/fees/save-schedule
-// Saves the original Excel file directly without modification
+// Saves the original Excel/CSV file to Cloudinary and returns a direct download URL
 exports.saveSchedule = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
-    const fs = require("fs");
+    const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
     const path = require("path");
-    const uploadDir = path.join(__dirname, "..", "..", "uploads", "fee-schedules");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-    const originalName = req.file.originalname || "fee-schedule";
-    const ext = path.extname(originalName) || ".xlsx";
-    const uniqueName = `fee-schedule-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    const destPath = path.join(uploadDir, uniqueName);
-    
-    // Save the original file buffer directly - no parsing or regeneration
-    const buffer = Buffer.from(req.file.buffer);
-    fs.writeFileSync(destPath, buffer);
+    let downloadUrl;
+    if (useCloudinary) {
+      const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/fee-schedules");
+      downloadUrl = result.secure_url;
+    } else {
+      const fs = require("fs");
+      const uploadDir = path.join(__dirname, "..", "..", "uploads", "fee-schedules");
+      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+      const ext = path.extname(req.file.originalname) || ".xlsx";
+      const uniqueName = `fee-schedule-${Date.now()}${ext}`;
+      fs.writeFileSync(path.join(uploadDir, uniqueName), req.file.buffer);
+      downloadUrl = `/uploads/fee-schedules/${uniqueName}`;
+    }
 
-    const downloadUrl = `/uploads/fee-schedules/${uniqueName}`;
-    res.status(201).json({ downloadUrl, fileName: uniqueName });
+    res.status(201).json({ downloadUrl, fileName: req.file.originalname });
   } catch (err) {
     console.error(`[Fee Save Schedule] Error:`, err.message);
     res.status(500).json({ error: err.message });
