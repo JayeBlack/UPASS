@@ -36,14 +36,7 @@ interface StudentRow {
 const FeeAnnouncements = () => {
   const { students, graduands } = useDataStore();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
-    try {
-      const saved = localStorage.getItem("sentNotices");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const noticesCount = announcements.length;
   const [showCompose, setShowCompose] = useState(false);
   const [showImport, setShowImport] = useState(false);

@@ -309,12 +309,12 @@ exports.broadcast = async (req, res) => {
     const params = [];
     let idx = 1;
     userIds.forEach((uid) => {
-      values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-      params.push(uid, title, message, type, severity);
+      values.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+      params.push(uid, title, message, type, severity, download_url || null);
     });
 
     await db.query(
-      `INSERT INTO notifications (user_id, title, message, type, severity) VALUES ${values.join(", ")}`,
+      `INSERT INTO notifications (user_id, title, message, type, severity, download_url) VALUES ${values.join(", ")}`,
       params
     );
 
