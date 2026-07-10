@@ -1,7 +1,6 @@
 const db = require("../db");
 const { createNotification } = require("./notificationController");
 const xlsx = require("xlsx");
-const fs = require("fs");
 
 // GET /api/results/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -158,38 +157,15 @@ exports.parseGradesFile = async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const filePath = req.file.path;
-    
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(400).json({ error: "File not found" });
-    }
-
-    // Parse the file
-    const workbook = xlsx.readFile(filePath);
+    // Parse directly from buffer (memory storage — no disk path)
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-    // Clean up uploaded file
-    try {
-      fs.unlinkSync(filePath);
-    } catch (cleanupErr) {
-      console.warn('Failed to delete temp file:', cleanupErr);
-    }
-
-    // Return parsed data as array of arrays
     return res.status(200).json({ data });
   } catch (err) {
     console.error('Parse error:', err);
-    // Clean up file if it exists
-    if (req.file?.path && fs.existsSync(req.file.path)) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (cleanupErr) {
-        console.warn('Failed to delete temp file:', cleanupErr);
-      }
-    }
     return res.status(500).json({ error: `Failed to parse file: ${err.message}` });
   }
 };
