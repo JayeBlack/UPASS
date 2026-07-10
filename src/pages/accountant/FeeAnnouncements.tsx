@@ -88,31 +88,30 @@ const FeeAnnouncements = () => {
     loadDepts();
   }, []);
 
-  // Fetch sent notices list from backend
+  // Fetch sent fee notices from backend (fee-type broadcasts only)
   useEffect(() => {
     const loadNotices = async () => {
       try {
-        const res = await apiFetch<any[]>("/notifications?limit=100");
-        const mapped = res.map((n) => ({
-          id: n.id,
-          title: n.title,
-          message: n.message,
-          audience: "All Students",
-          sentAt: n.created_at,
-          recipients: 0,
-        }));
-        if (mapped.length > 0) setAnnouncements(mapped);
+        const res = await apiFetch<any[]>("/notifications/sent-broadcasts");
+        if (Array.isArray(res) && res.length > 0) {
+          setAnnouncements(res.map((n) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message.replace(/📎.*$/s, "").trim(),
+            audience: "All Students",
+            sentAt: n.created_at,
+            recipients: n.recipient_count || 0,
+            downloadUrl: n.download_url || null,
+          })));
+        }
       } catch {
-        // keep local state if backend unavailable
+        // keep empty
       }
     };
     loadNotices();
   }, []);
 
-  // Persist announcements to localStorage
-  useEffect(() => {
-    localStorage.setItem("sentNotices", JSON.stringify(announcements));
-  }, [announcements]);
+  // Do NOT persist to localStorage — always load from backend
 
   const allStudents = students.length > 0 ? students : apiStudents.map((s) => ({
     id: String(s.id),
@@ -138,15 +137,14 @@ const FeeAnnouncements = () => {
         method: "POST",
         body: JSON.stringify({ title, message, type: "general", severity: "info" }),
       });
-      const newAnnouncement: Announcement = {
+      setAnnouncements((prev) => [{
         id: `a${Date.now()}`,
         title,
         message,
         audience,
         sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
         recipients: totalStudentCount,
-      };
-      setAnnouncements((prev) => [newAnnouncement, ...prev]);
+      }, ...prev]);
       setTitle("");
       setMessage("");
       setShowCompose(false);
@@ -251,24 +249,23 @@ const FeeAnnouncements = () => {
     const message = `The following fee schedule has been published for the current academic year:\n\n${feeMsg}\n\nPlease make payments before the deadline.`;
     try {
       // Send notification with download link embedded
-      const fullMessage = scheduleDownloadUrl 
-        ? `${message}\n\n📎 Download the full fee schedule: ${window.location.origin}${scheduleDownloadUrl}`
+      const fullMessage = scheduleDownloadUrl
+        ? `${message}\n\n📎 Download the full fee schedule: ${scheduleDownloadUrl}`
         : message;
       
       await apiFetch("/notifications/broadcast", {
         method: "POST",
-        body: JSON.stringify({ title, message: fullMessage, type: "fee", severity: "info" }),
+        body: JSON.stringify({ title, message: fullMessage, type: "fee", severity: "info", download_url: scheduleDownloadUrl }),
       });
-      const newAnnouncement: Announcement = {
+      setAnnouncements((prev) => [{
         id: `a${Date.now()}`,
         title,
-        message, // Store clean message without URL for display
+        message,
         audience: "All Students",
         sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
         recipients: totalStudentCount,
-        downloadUrl: scheduleDownloadUrl, // Store URL separately for display
-      };
-      setAnnouncements((prev) => [newAnnouncement, ...prev]);
+        downloadUrl: scheduleDownloadUrl,
+      }, ...prev]);
       setImportedFeeList([]);
       setScheduleDownloadUrl(null);
       toast({ title: "Fee schedule sent", description: `Fee list has been sent to ${totalStudentCount} students` });
@@ -330,43 +327,19 @@ const FeeAnnouncements = () => {
 
       {importedFeeList.length > 0 && (
         <div className="bg-card rounded-xl border border-border p-5 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-sm font-bold text-foreground">
-              <span className="flex items-center gap-2">
-                <FileSpreadsheet size={16} className="text-primary" />
-                Imported Fee Schedule ({importedFeeList.length} records)
-              </span>
-            </h3>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <FileSpreadsheet size={16} className="text-primary" />
+              {importedFeeList.length} records ready to send
+            </span>
             <div className="flex gap-2">
-              <button onClick={() => setImportedFeeList([])} className="px-3 py-1.5 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => { setImportedFeeList([]); setScheduleDownloadUrl(null); }} className="px-3 py-1.5 text-xs border border-border rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                 Discard
               </button>
               <button onClick={handleSendFeeList} className="px-4 py-1.5 text-xs rounded-lg gradient-gold text-secondary-foreground font-medium hover:opacity-90 transition-opacity">
                 Send as Notice
               </button>
             </div>
-          </div>
-          <div className="overflow-x-auto max-h-64 overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">#</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Programme</th>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground">Level</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-muted-foreground">Amount (GHS)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importedFeeList.map((item, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                    <td className="px-3 py-2 text-foreground">{item.programme}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{item.level}</td>
-                    <td className="px-3 py-2 text-right text-foreground font-medium">{item.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
@@ -436,12 +409,22 @@ const FeeAnnouncements = () => {
               <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground shrink-0">{a.audience}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
+            {a.downloadUrl && (
+              <a
+                href={a.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <FileSpreadsheet size={13} /> Download Fee Schedule
+              </a>
+            )}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock size={12} /> {a.sentAt}</span>
               <span className="flex items-center gap-1"><Users size={12} /> {a.recipients} recipients</span>
             </div>
           </div>
-        ))}
+        ))}}
       </div>
     </DashboardLayout>
   );

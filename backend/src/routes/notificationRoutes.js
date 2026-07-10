@@ -4,6 +4,7 @@ const { authenticate, authorize } = require("../middleware/auth");
 router.use(authenticate);
 router.get("/unread-count", ctrl.getUnreadCount);
 router.get("/activity", ctrl.getActivity);
+router.get("/sent-broadcasts", authorize("Accountant", "AccountingAssistant", "Admin", "Dean", "ViceDean", "Registrar"), ctrl.getSentBroadcasts);
 router.get("/", ctrl.getForUser);
 router.put("/read-all", ctrl.markAllRead);
 router.put("/:id/read", ctrl.markRead);

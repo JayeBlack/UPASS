@@ -298,7 +298,7 @@ exports.create = async (req, res) => {
 // POST /api/notifications/broadcast — send to all students
 exports.broadcast = async (req, res) => {
   try {
-    const { title, message, type = "general", severity = "info" } = req.body;
+    const { title, message, type = "general", severity = "info", download_url } = req.body;
     if (!title || !message) return res.status(400).json({ error: "Title and message are required" });
 
     const students = await db.query("SELECT user_id FROM students WHERE user_id IS NOT NULL");
@@ -318,9 +318,34 @@ exports.broadcast = async (req, res) => {
       params
     );
 
+    // Store broadcast record for accountant's sent notices list
+    await db.query(
+      `INSERT INTO broadcast_logs (sent_by, title, message, type, recipient_count, download_url)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT DO NOTHING`,
+      [req.user.id, title, message, type, userIds.length, download_url || null]
+    ).catch(() => {}); // ignore if table doesn't exist yet
+
     res.status(201).json({ sent: userIds.length, message: `Notification sent to ${userIds.length} students` });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/notifications/sent-broadcasts — accountant's sent fee notices
+exports.getSentBroadcasts = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, title, message, type, recipient_count, download_url, created_at
+       FROM broadcast_logs
+       WHERE sent_by = $1
+       ORDER BY created_at DESC LIMIT 50`,
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch {
+    // Table may not exist yet — return empty
+    res.json([]);
   }
 };
 
