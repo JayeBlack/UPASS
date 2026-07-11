@@ -9,6 +9,7 @@ const setDocumentSubdir = (req, res, next) => {
   next();
 };
 
+router.get("/download/:id", ctrl.downloadFile); // Public — serves file by request ID with path guard
 router.use(authenticate);
 router.get("/", authorize("Admin", "Dean", "ViceDean", "Registrar", "AdminAssistant"), ctrl.getAll);
 router.get("/dean/uploads", authorize("Admin", "Dean", "ViceDean"), ctrl.getDeanUploads);

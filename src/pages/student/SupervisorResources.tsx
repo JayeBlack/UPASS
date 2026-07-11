@@ -148,9 +148,9 @@ const SupervisorResources = () => {
                   </div>
                   <button
                     onClick={async () => {
-                      if (!r.file_url.startsWith("https://")) return;
                       try {
-                        const resp = await fetch(r.file_url);
+                        const fetchUrl = r.file_url.startsWith("/") ? `${import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000"}${r.file_url}` : r.file_url;
+                        const resp = await fetch(fetchUrl);
                         if (!resp.ok) throw new Error("Download failed");
                         const blob = await resp.blob();
                         const blobUrl = URL.createObjectURL(blob);
@@ -160,7 +160,7 @@ const SupervisorResources = () => {
                         document.body.appendChild(a);
                         a.click();
                         setTimeout(() => { URL.revokeObjectURL(blobUrl); document.body.removeChild(a); }, 500);
-                      } catch { if (r.file_url.startsWith("https://")) window.open(r.file_url, "_blank"); }
+                      } catch { window.open(r.file_url, "_blank"); }
                     }}
                     className="shrink-0 p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
                     title="Download"

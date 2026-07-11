@@ -140,7 +140,7 @@ const ReviewSubmissions = () => {
     if (!selectedSubmission) return;
     try {
       const fileUrl = selectedSubmission.file_path.startsWith("http") ? selectedSubmission.file_path : `${(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace('/api', '')}${selectedSubmission.file_path}`;
-      const safeUrl = resolveSafeAssetUrl(fileUrl, window.location.origin);
+      const safeUrl = resolveSafeAssetUrl(fileUrl, window.location.origin) ?? (fileUrl.startsWith("http") ? fileUrl : null);
       if (!safeUrl) throw new Error("Invalid file URL");
       const response = await fetch(safeUrl);
       if (!response.ok) throw new Error("Failed to fetch file");

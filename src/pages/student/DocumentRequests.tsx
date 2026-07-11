@@ -3,7 +3,7 @@ import { FileText, Clock, CheckCircle, Plus, Loader2, X, Download } from "lucide
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch, ApiError } from "@/lib/api";
+import { apiFetch, ApiError, API_BASE_URL } from "@/lib/api";
 
 type DocType = "Recommendation Letter" | "Attestation Letter" | "Letter of Good Standing" | "Other";
 type RequestStatus = "Pending" | "Ready";
@@ -192,8 +192,7 @@ const DocumentRequests = () => {
                         <td className="px-6 py-4 text-center">
                           {hasDownload ? (
                             <a
-                              href={(r as any).file_url}
-                              download
+                              href={`${API_BASE_URL}/documents/download/${r.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 px-3 py-1 rounded-full gradient-gold text-secondary-foreground text-xs font-medium hover:opacity-90 transition-opacity"

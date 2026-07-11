@@ -4,6 +4,35 @@ const fs = require("fs").promises;
 const { createNotification } = require("./notificationController");
 const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
 
+// GET /api/documents/download/:id — public, serves file by request ID
+exports.downloadFile = async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT file_url, doc_type FROM document_requests WHERE id = $1 AND status = 'Ready'",
+      [req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: "File not found" });
+    const { file_url, doc_type } = result.rows[0];
+    if (!file_url) return res.status(404).json({ error: "No file attached" });
+
+    // Cloudinary URL — redirect directly
+    if (file_url.startsWith("http")) {
+      return res.redirect(file_url);
+    }
+
+    // Local path — serve with path traversal guard
+    const uploadsDir = path.resolve(__dirname, "..", "..", "uploads");
+    const filePath = path.resolve(uploadsDir, file_url.replace(/^\/uploads\//, ""));
+    if (!filePath.startsWith(uploadsDir)) return res.status(403).json({ error: "Access denied" });
+    const { access } = await fs.access(filePath).then(() => ({ access: true })).catch(() => ({ access: false }));
+    if (!access) return res.status(404).json({ error: "File not found on server" });
+    res.setHeader("Content-Disposition", `attachment; filename="${doc_type.replace(/[^a-zA-Z0-9 ._-]/g, "")}.pdf"`);
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /api/documents (all — admin/registrar)
 exports.getAll = async (req, res) => {
   try {
