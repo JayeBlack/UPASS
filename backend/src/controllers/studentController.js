@@ -336,20 +336,15 @@ async function autoRegisterCourses(client, studentId, department, admissionCycle
 }
 
 // GET /api/students/graduands/count
+// Returns count of students marked Eligible in the most recently generated pass list
 exports.getGraduandsCount = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT COUNT(*) AS count
-       FROM (
-         SELECT g.student_id
-         FROM grades g
-         JOIN students s ON g.student_id = s.id
-         WHERE s.status = 'Active' AND g.marks IS NOT NULL
-         GROUP BY g.student_id
-         HAVING AVG(g.marks) >= 50
-       ) eligible`
+      `SELECT COUNT(DISTINCT student_id)::INTEGER AS count
+       FROM graduands
+       WHERE status = 'Eligible'`
     );
-    res.json({ count: parseInt(result.rows[0].count) || 0 });
+    res.json({ count: result.rows[0].count || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
