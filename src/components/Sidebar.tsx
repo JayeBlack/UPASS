@@ -160,7 +160,6 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => {
       ? [
           { label: "Manage Users", path: "/admin/users", icon: <UserCog size={18} /> },
           { label: "Supervisor Assignments", path: "/admin/assignments", icon: <Link2 size={18} /> },
-          { label: "System Log", path: "/admin/log", icon: <FileText size={18} /> },
         ]
       : [];
   const items = [...baseItems, ...superAdminExtras];

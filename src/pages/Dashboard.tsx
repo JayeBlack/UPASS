@@ -385,7 +385,6 @@ const Dashboard = () => {
     "Update Fees": "/admin/fees",
     "Generate List": "/admin/passlist",
     "View Analytics": "/admin/analytics",
-    "System Log": "/admin/log",
     "Approve Clearance": "/dean/clearance",
     "CWA Results": "/dean/results",
     "Manage Students": "/admin/students",
@@ -411,7 +410,6 @@ const Dashboard = () => {
     "Update Fees": <Banknote size={15} />,
     "Generate List": <CheckCircle size={15} />,
     "View Analytics": <BarChart3 size={15} />,
-    "System Log": <FileText size={15} />,
     "Approve Clearance": <CheckCircle size={15} />,
     "CWA Results": <BarChart3 size={15} />,
     "Manage Students": <Users size={15} />,
@@ -441,7 +439,7 @@ const Dashboard = () => {
     : user?.role === "ExamsOfficer"
     ? ["Enter Grades", "Pass List", "Publish Results", "View Analytics"]
     : isSuperAdmin
-    ? ["Enroll Students", "Update Fees", "Generate List", "System Log"]
+    ? ["Enroll Students", "Update Fees", "Generate List"]
     : ["Enroll Students", "Update Fees", "Generate List"];
 
   return (
