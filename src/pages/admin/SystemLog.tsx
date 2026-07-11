@@ -3,7 +3,7 @@ import { Clock, Filter, Users, Shield, BookOpen, Banknote, FileText, Loader2 } f
 import { useState, useEffect } from "react";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
 import { Navigate } from "react-router-dom";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, logActivity } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface LogEntry {
@@ -32,8 +32,8 @@ const SystemLog = () => {
   const { user } = useAdminDepartment();
   const { toast } = useToast();
 
-  // Superadmin has role="Admin" + isSuperAdmin=true; also allow Dean/ViceDean/Registrar
-  const canAccess = user?.role === "Admin" || user?.role === "Dean" || user?.role === "ViceDean" || user?.role === "Registrar";
+  // Allow the administrative roles that are expected to view audit activity.
+  const canAccess = user?.role === "Admin" || user?.role === "Dean" || user?.role === "ViceDean" || user?.role === "Registrar" || user?.role === "AdminAssistant" || user?.role === "Accountant" || user?.role === "AccountingAssistant" || user?.role === "ExamsOfficer";
 
   useEffect(() => {
     if (!user) return; // still loading auth
@@ -46,7 +46,11 @@ const SystemLog = () => {
     apiFetch<LogEntry[]>("/audit-logs")
       .then((data) => {
         if (!active) return;
-        setLogs(Array.isArray(data) ? data : []);
+        const nextLogs = Array.isArray(data) ? data : [];
+        setLogs(nextLogs);
+        if (nextLogs.length === 0) {
+          void logActivity("Viewed system log", "System Log", "system_log", { path: "/admin/log" });
+        }
       })
       .catch((err) => {
         if (!active) return;

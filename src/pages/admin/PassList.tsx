@@ -108,8 +108,8 @@ const PassList = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between mb-8">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold font-display text-foreground">Pass List</h1>
           <p className="text-muted-foreground mt-1">
             {isSuperAdmin ? "Graduands eligible for convocation" : `${adminDepartment} — Graduands eligible for convocation`}

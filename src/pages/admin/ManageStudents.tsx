@@ -189,16 +189,16 @@ const ManageStudents = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between mb-8">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold font-display text-foreground">Manage Students</h1>
           <p className="text-muted-foreground mt-1">{loading ? "Loading..." : `${students.length} registered postgraduate students`}</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowBulkUpload(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+          <button onClick={() => setShowBulkUpload(true)} className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors sm:w-auto">
             <Upload size={14} /> Bulk Upload
           </button>
-          <button onClick={() => setShowEnrollForm(true)} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+          <button onClick={() => setShowEnrollForm(true)} className="w-full px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity sm:w-auto">
             + Enroll Student
           </button>
         </div>

@@ -154,8 +154,8 @@ const svArray = Array.isArray(supervisorsData)
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-8 gap-4">
-        <div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between mb-8">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck size={18} className="text-secondary-foreground" />
             <span className="text-xs font-semibold uppercase tracking-widest text-secondary-foreground">Super Admin</span>
@@ -165,25 +165,25 @@ const svArray = Array.isArray(supervisorsData)
             {loading ? "Loading..." : `${assignments.length} active links · ${supervisors.length} supervisors · ${students.length} students`}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex w-full flex-col gap-3 xl:w-auto xl:min-w-[420px]">
           <input
             value={tableSearch}
             onChange={(e) => { setTableSearch(e.target.value); setCurrentPage(1); }}
             placeholder="Search by name or index..."
-            className="px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-full sm:w-56"
+            className="w-full px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <select
               value={deptFilter}
               onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-2.5 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-48"
             >
               <option value="all">All Departments</option>
               {departments.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
             <button
               onClick={() => setOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity shrink-0"
+              className="inline-flex w-full items-center justify-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity shrink-0 sm:w-auto"
             >
               <Link2 size={15} /> New Assignment
             </button>
