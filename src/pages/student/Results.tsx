@@ -453,7 +453,7 @@ const Results = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg gradient-gold flex items-center justify-center">
             <BarChart3 size={20} className="text-secondary-foreground" />

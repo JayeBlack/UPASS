@@ -279,14 +279,14 @@ const FeeAnnouncements = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Fee Notices</h1>
           <p className="text-muted-foreground mt-1">
             {isSuperAdmin ? "Import fee schedules and send payment notifications to students" : `${adminDepartment} — Fee notifications`}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           <button onClick={() => setShowImport(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
             <Upload size={14} /> Import Fee Schedule
           </button>
