@@ -239,8 +239,8 @@ const FeesStatus = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between mb-8">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold font-display text-foreground">Students Fees</h1>
           <p className="text-muted-foreground mt-1">
             {isViewOnlyUser 
@@ -253,7 +253,7 @@ const FeesStatus = () => {
         {canModifyFees && (
           <button
             onClick={() => setShowImport(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors shrink-0"
+            className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors shrink-0 sm:w-auto"
           >
             <Upload size={14} /> Import Manual Payments
           </button>
@@ -287,7 +287,7 @@ const FeesStatus = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 mb-6">
         <div className="bg-card rounded-xl border border-border px-5 py-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-success" />
           <div>
@@ -311,17 +311,17 @@ const FeesStatus = () => {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 mb-4 lg:flex-row">
+        <div className="relative flex-1 min-w-0">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or index..." className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="w-full px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring lg:w-auto">
           <option value="all">All Statuses</option>
           <option value="cleared">Cleared Only</option>
           <option value="owing">Owing Only</option>
         </select>
-        <button onClick={() => setShowFilterPanel(!showFilterPanel)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm hover:bg-muted transition-colors flex items-center gap-2">
+        <button onClick={() => setShowFilterPanel(!showFilterPanel)} className="w-full px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm hover:bg-muted transition-colors flex items-center justify-center gap-2 lg:w-auto">
           <Filter size={14} /> Filters {(deptFilter !== "all" || progFilter !== "all") && <span className="w-2 h-2 rounded-full bg-primary" />}
         </button>
       </div>
@@ -481,11 +481,11 @@ const FeesStatus = () => {
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 px-2">
+        <div className="flex flex-col gap-3 mt-6 px-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="text-sm text-muted-foreground">
             Showing page {currentPage} of {totalPages} ({totalRecords.toLocaleString()} total records)
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
@@ -502,7 +502,7 @@ const FeesStatus = () => {
             </button>
             
             {/* Page Numbers */}
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               {(() => {
                 const pages: (number | string)[] = [];
                 const showPages = 5;

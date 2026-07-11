@@ -68,12 +68,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   if (!isAuthenticated) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <Sidebar />
       <MobileHeader />
 
       {/* Top bar */}
-      <div className={`no-print ${isMobile ? "px-4 py-3" : "ml-64 px-8 py-4"} flex items-center justify-between gap-4 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30`}>
+      <div className={`no-print relative ${isMobile ? "px-4 py-3" : "ml-64 px-8 py-4"} flex items-center justify-between gap-3 sm:gap-4 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30`}>
         {/* Subtle gold accent line at very top */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-secondary/40 to-transparent pointer-events-none" />
         {user && (
@@ -159,7 +159,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         )}
       </div>
 
-      <main className={`${isMobile ? "p-4 pt-6" : "ml-64 p-8"} animate-fade-in`}>
+      <main className={`${isMobile ? "p-4 pt-6" : "ml-64 p-8"} min-w-0 animate-fade-in overflow-x-hidden`}>
         {children}
       </main>
 

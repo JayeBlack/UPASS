@@ -213,8 +213,8 @@ const ManageUsers = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-8 gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start justify-between mb-8">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck size={18} className="text-secondary-foreground" />
             <span className="text-xs font-semibold uppercase tracking-widest text-secondary-foreground">Super Admin</span>
@@ -222,22 +222,22 @@ const ManageUsers = () => {
           <h1 className="text-3xl font-bold font-display text-foreground">Manage Users</h1>
           <p className="text-muted-foreground mt-1">{loading ? "Loading..." : `${users.length} system users`}</p>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => setShowBulkUpload(true)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:gap-3">
+          <button onClick={() => setShowBulkUpload(true)} className="inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors sm:w-auto">
             <Upload size={14} /> Bulk Upload
           </button>
-          <button onClick={() => setShowForm(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+          <button onClick={() => setShowForm(true)} className="inline-flex w-full items-center justify-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity sm:w-auto">
             <UserPlus size={15} /> Add User
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 mb-6 sm:flex-row">
+        <div className="relative flex-1 min-w-0">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name or email…" className="w-full pl-11 pr-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring sm:w-auto">
           <option value="all">All Roles</option>
           {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
