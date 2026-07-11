@@ -192,8 +192,9 @@ const FeeAnnouncements = () => {
           body: saveForm,
         });
         const safeDownloadUrl = resolveSafeAssetUrl(saveResult.downloadUrl, window.location.origin);
-        if (!safeDownloadUrl || !safeDownloadUrl.startsWith("https://")) throw new Error("Invalid download URL from server");
-        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeDownloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
+        if (!safeDownloadUrl && !saveResult.downloadUrl?.startsWith("/uploads/")) throw new Error("Invalid download URL from server");
+        const resolvedUrl = safeDownloadUrl ?? saveResult.downloadUrl;
+        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
         setScheduleDownloadUrl(proxyUrl);
 
         // Also parse for preview
@@ -218,8 +219,9 @@ const FeeAnnouncements = () => {
           body: saveForm,
         });
         const safeDownloadUrl2 = resolveSafeAssetUrl(saveResult2.downloadUrl, window.location.origin);
-        if (!safeDownloadUrl2 || !safeDownloadUrl2.startsWith("https://")) throw new Error("Invalid download URL from server");
-        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeDownloadUrl2)}&name=${encodeURIComponent(saveResult2.fileName)}`;
+        if (!safeDownloadUrl2 && !saveResult2.downloadUrl?.startsWith("/uploads/")) throw new Error("Invalid download URL from server");
+        const resolvedUrl2 = safeDownloadUrl2 ?? saveResult2.downloadUrl;
+        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl2)}&name=${encodeURIComponent(saveResult2.fileName)}`;
         setScheduleDownloadUrl(proxyUrl2);
 
         const reader = new FileReader();
@@ -406,11 +408,14 @@ const FeeAnnouncements = () => {
             </div>
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
 {(() => {
-              const safeUrl = resolveSafeAssetUrl(a.downloadUrl ?? null, window.location.origin);
-              if (!safeUrl?.startsWith("https://")) return null;
+              const rawUrl = a.downloadUrl ?? null;
+              const safeUrl = resolveSafeAssetUrl(rawUrl, window.location.origin);
+              const isLocalPath = rawUrl?.startsWith("/uploads/");
+              if (!safeUrl && !isLocalPath) return null;
+              const resolvedUrl = safeUrl ?? rawUrl!;
               return (
                 <a
-                  href={`${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeUrl)}&name=fee-schedule.xlsx`}
+                  href={`${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl)}&name=fee-schedule.xlsx`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"

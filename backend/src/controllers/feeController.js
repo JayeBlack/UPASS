@@ -373,6 +373,18 @@ exports.downloadSchedule = async (req, res) => {
   try {
     const { url, name } = req.query;
     if (!url) return res.status(400).json({ error: "Missing url parameter" });
+    const fileName = (name || "fee-schedule.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    // Local relative path (non-Cloudinary deployments)
+    if (url.startsWith("/uploads/")) {
+      const uploadDir = path.resolve(__dirname, "..", "..", "uploads");
+      const filePath = path.resolve(uploadDir, url.replace(/^\/uploads\//, ""));
+      if (!filePath.startsWith(uploadDir)) return res.status(403).json({ error: "Access denied" });
+      if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found" });
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      return res.sendFile(filePath);
+    }
+
     // SSRF protection: only allow Cloudinary URLs
     const allowedHosts = ["res.cloudinary.com"];
     let parsedUrl;
@@ -380,7 +392,6 @@ exports.downloadSchedule = async (req, res) => {
     if (!allowedHosts.some(h => parsedUrl.hostname === h || parsedUrl.hostname.endsWith("." + h))) {
       return res.status(403).json({ error: "URL not allowed" });
     }
-    const fileName = (name || "fee-schedule.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
     https.get(parsedUrl.href, (upstream) => {
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
       res.setHeader("Content-Type", upstream.headers["content-type"] || "application/octet-stream");
