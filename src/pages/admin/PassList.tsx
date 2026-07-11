@@ -2,7 +2,6 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
-import { useDataStore } from "@/contexts/DataStoreContext";
 import ExportDropdown from "@/components/ExportDropdown";
 import { exportData } from "@/lib/exportUtils";
 import { apiFetch } from "@/lib/api";
@@ -12,37 +11,35 @@ import { useAuth } from "@/contexts/AuthContext";
 // v2
 const PassList = () => {
   const { user } = useAuth();
-  const { graduands: storeGraduands } = useDataStore();
-  const [graduands, setGraduands] = useState(storeGraduands);
-  const [loading, setLoading] = useState(false);
+  const [graduands, setGraduands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [progFilter, setProgFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [minCwa, setMinCwa] = useState("50");
   const currentYear = new Date().getFullYear();
   const defaultYear = `${currentYear}/${currentYear + 1}`;
   const yearOptions = Array.from({ length: 6 }, (_, i) => { const y = currentYear - 2 + i; return `${y}/${y + 1}`; });
   const [academicYear, setAcademicYear] = useState(defaultYear);
-  const [yearFilter, setYearFilter] = useState(defaultYear);
   const { toast } = useToast();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
   const canGenerate = user?.isSuperAdmin || user?.role === "Admin" || user?.role === "Dean" || user?.role === "ViceDean";
 
-  // Load graduands on mount and when store updates
   useEffect(() => {
-    setGraduands(storeGraduands);
-    // Also fetch from API to get latest
     const fetchGraduands = async () => {
+      setLoading(true);
       try {
         const data = await apiFetch<any[]>("/passlist");
         setGraduands(data || []);
       } catch {}
+      finally { setLoading(false); }
     };
     fetchGraduands();
-  }, [storeGraduands]);
+  }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -58,7 +55,6 @@ const PassList = () => {
       // Refresh local state and sync year filter
       const data = await apiFetch<any[]>("/passlist");
       setGraduands(data || []);
-      setYearFilter(academicYear);
     } catch (err: any) {
       toast({ title: "Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -68,6 +64,7 @@ const PassList = () => {
 
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
+  const years = [...new Set(graduands.map((g: any) => g.academic_year).filter(Boolean))].sort().reverse();
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
@@ -85,10 +82,7 @@ const PassList = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedGraduands = filtered.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [deptFilter, progFilter, yearFilter, statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [deptFilter, progFilter, yearFilter, statusFilter]);
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Eligibility"];
@@ -157,18 +151,22 @@ const PassList = () => {
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+          <option value="all">All Years</option>
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+          <option value="all">All Programmes</option>
+          {programs.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
         {isSuperAdmin && (
           <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
             <option value="all">All Departments</option>
             {departments.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         )}
-        <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Programmes</option>
-          {programs.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Status</option>
+          <option value="all">All Statuses</option>
           <option value="Eligible">Eligible</option>
           <option value="Ineligible">Ineligible</option>
         </select>
@@ -190,7 +188,13 @@ const PassList = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedGraduands.map((g) => (
+              {loading ? (
+                <tr><td colSpan={6} className="px-6 py-16 text-center">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 size={18} className="animate-spin" /> Loading pass list...
+                  </div>
+                </td></tr>
+              ) : paginatedGraduands.map((g) => (
                 <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                   <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
                   <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
@@ -202,9 +206,10 @@ const PassList = () => {
                   </td>
                 </tr>
               ))}
-              {paginatedGraduands.length === 0 && (
+              )}
+              {!loading && paginatedGraduands.length === 0 && (
                 <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                  No records found for <strong>{academicYear}</strong>. Please select a different year.
+                  No records found. Click "Generate Pass List" (Admin/Dean) or adjust filters.
                 </td></tr>
               )}
             </tbody>
