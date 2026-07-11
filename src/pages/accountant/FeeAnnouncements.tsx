@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDataStore } from "@/contexts/DataStoreContext";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
+import { resolveSafeAssetUrl } from "@/lib/safe-url";
 
 interface Announcement {
   id: string;
@@ -21,8 +22,6 @@ interface FeeListItem {
   level: string;
   amount: string;
 }
-
-const mockAnnouncements: Announcement[] = [];
 
 interface StudentRow {
   id: number;
@@ -193,7 +192,9 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(saveResult.downloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
+        const safeDownloadUrl = resolveSafeAssetUrl(saveResult.downloadUrl, window.location.origin);
+        if (!safeDownloadUrl || !safeDownloadUrl.startsWith("https://")) throw new Error("Invalid download URL from server");
+        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeDownloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
         setScheduleDownloadUrl(proxyUrl);
 
         // Also parse for preview
@@ -217,7 +218,9 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(saveResult2.downloadUrl)}&name=${encodeURIComponent(saveResult2.fileName)}`;
+        const safeDownloadUrl2 = resolveSafeAssetUrl(saveResult2.downloadUrl, window.location.origin);
+        if (!safeDownloadUrl2 || !safeDownloadUrl2.startsWith("https://")) throw new Error("Invalid download URL from server");
+        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeDownloadUrl2)}&name=${encodeURIComponent(saveResult2.fileName)}`;
         setScheduleDownloadUrl(proxyUrl2);
 
         const reader = new FileReader();
@@ -403,16 +406,20 @@ const FeeAnnouncements = () => {
               <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground shrink-0">{a.audience}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
-            {a.downloadUrl && (
-              <a
-                href={a.downloadUrl.startsWith("http") ? `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(a.downloadUrl)}&name=fee-schedule.xlsx` : a.downloadUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
-              >
-                <FileSpreadsheet size={13} /> Download Fee Schedule
-              </a>
-            )}
+{(() => {
+              const safeUrl = resolveSafeAssetUrl(a.downloadUrl ?? null, window.location.origin);
+              if (!safeUrl?.startsWith("https://")) return null;
+              return (
+                <a
+                  href={`${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(safeUrl)}&name=fee-schedule.xlsx`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileSpreadsheet size={13} /> Download Fee Schedule
+                </a>
+              );
+            })()}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock size={12} /> {a.sentAt}</span>
               <span className="flex items-center gap-1"><Users size={12} /> {a.recipients} recipients</span>
