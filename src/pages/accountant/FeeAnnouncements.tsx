@@ -48,6 +48,7 @@ const FeeAnnouncements = () => {
   const [apiStudents, setApiStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [departments, setDepartments] = useState<string[]>([]);
+  const [totalGraduandCount, setTotalGraduandCount] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -103,6 +104,13 @@ const FeeAnnouncements = () => {
     loadNotices();
   }, []);
 
+  // Fetch graduands count from backend
+  useEffect(() => {
+    apiFetch<{ count: number }>("/students/graduands/count")
+      .then((res) => setTotalGraduandCount(res.count || 0))
+      .catch(() => {});
+  }, []);
+
   // Do NOT persist to localStorage — always load from backend
 
   const allStudents = students.length > 0 ? students : apiStudents.map((s) => ({
@@ -116,7 +124,6 @@ const FeeAnnouncements = () => {
   }));
 
   const totalStudentCount = allStudents.length;
-  const totalGraduandCount = 0;
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) {

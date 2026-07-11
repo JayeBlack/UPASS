@@ -335,6 +335,23 @@ async function autoRegisterCourses(client, studentId, department, admissionCycle
   }
 }
 
+// GET /api/students/graduands/count
+exports.getGraduandsCount = async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT COUNT(DISTINCT g.student_id)::INTEGER AS count
+       FROM grades g
+       JOIN students s ON g.student_id = s.id
+       WHERE s.status = 'Active'
+       GROUP BY g.student_id
+       HAVING AVG(g.marks) >= 50`
+    );
+    res.json({ count: result.rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // GET /api/students/by-user/:userId
 exports.getByUserId = async (req, res) => {
   try {

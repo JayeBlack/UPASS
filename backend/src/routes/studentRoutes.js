@@ -4,6 +4,7 @@ const { authenticate, authorize } = require("../middleware/auth");
 const upload = require("../middleware/upload");
 router.use(authenticate);
 router.get("/me", ctrl.getMyProfile);
+router.get("/graduands/count", authorize("Accountant", "AccountingAssistant", "Admin", "Dean", "ViceDean", "Registrar", "ExamsOfficer"), ctrl.getGraduandsCount);
 router.get("/by-user/:userId", authorize("Admin", "Dean", "ViceDean", "Registrar", "AdminAssistant", "ExamsOfficer", "Accountant", "AccountingAssistant", "Supervisor", "Student"), ctrl.getByUserId);
 router.post("/parse-bulk", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), upload.memory.single("file"), ctrl.parseBulk);
 router.post("/enroll-bulk", authorize("Admin", "Dean", "ViceDean", "Registrar", "AssistantRegistrar", "AdminAssistant"), ctrl.enrollBulk);
