@@ -28,19 +28,22 @@ const SystemLog = () => {
   const [loading, setLoading] = useState(true);
   const [catFilter, setCatFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
-  const { isSuperAdmin } = useAdminDepartment();
+  const { user } = useAdminDepartment();
   const { toast } = useToast();
 
-  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
+  const canAccess = user?.isSuperAdmin === true || user?.role === "Admin" || user?.role === "Dean" || user?.role === "ViceDean" || user?.role === "Registrar";
 
   useEffect(() => {
+    if (!canAccess) return;
     apiFetch<LogEntry[]>("/audit-logs")
       .then((data) => setLogs(Array.isArray(data) ? data : []))
       .catch((error) => {
         toast({ title: "Failed to load audit logs", description: error instanceof Error ? error.message : "Please try again later.", variant: "destructive" });
       })
       .finally(() => setLoading(false));
-  }, [toast]);
+  }, [canAccess, toast]);
+
+  if (!canAccess) return <Navigate to="/dashboard" replace />;
 
   const categories = [...new Set(logs.map((l) => l.entity).filter(Boolean))];
   const roles = [...new Set(logs.map((l) => l.actor_role).filter(Boolean))];
