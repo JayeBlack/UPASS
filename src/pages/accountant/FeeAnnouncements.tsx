@@ -33,7 +33,7 @@ interface StudentRow {
 }
 
 const FeeAnnouncements = () => {
-  const { students, graduands } = useDataStore();
+  const { students } = useDataStore();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const noticesCount = announcements.length;
@@ -115,7 +115,6 @@ const FeeAnnouncements = () => {
     status: "Active" as const,
   }));
 
-  const deptStudents = adminDepartment ? allStudents.filter((s) => s.department === adminDepartment) : allStudents;
   const totalStudentCount = allStudents.length;
   const totalGraduandCount = 0;
 
