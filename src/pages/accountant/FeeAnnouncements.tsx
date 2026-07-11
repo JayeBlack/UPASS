@@ -189,11 +189,12 @@ const FeeAnnouncements = () => {
         // Save the Excel file to backend for download, then parse it
         const saveForm = new FormData();
         saveForm.append("file", file);
-        const saveResult = await apiFetch<{ downloadUrl: string }>("/fees/save-schedule", {
+        const saveResult = await apiFetch<{ downloadUrl: string; fileName: string }>("/fees/save-schedule", {
           method: "POST",
           body: saveForm,
         });
-        setScheduleDownloadUrl(saveResult.downloadUrl);
+        const proxyUrl = `/api/fees/download-schedule?url=${encodeURIComponent(saveResult.downloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
+        setScheduleDownloadUrl(proxyUrl);
 
         // Also parse for preview
         const parseForm = new FormData();
@@ -212,11 +213,12 @@ const FeeAnnouncements = () => {
         // Save CSV to backend for download, then parse in-browser
         const saveForm = new FormData();
         saveForm.append("file", file);
-        const saveResult = await apiFetch<{ downloadUrl: string }>("/fees/save-schedule", {
+        const saveResult2 = await apiFetch<{ downloadUrl: string; fileName: string }>("/fees/save-schedule", {
           method: "POST",
           body: saveForm,
         });
-        setScheduleDownloadUrl(saveResult.downloadUrl);
+        const proxyUrl2 = `/api/fees/download-schedule?url=${encodeURIComponent(saveResult2.downloadUrl)}&name=${encodeURIComponent(saveResult2.fileName)}`;
+        setScheduleDownloadUrl(proxyUrl2);
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -403,7 +405,7 @@ const FeeAnnouncements = () => {
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
             {a.downloadUrl && (
               <a
-                href={a.downloadUrl}
+                href={a.downloadUrl.startsWith("http") ? `/api/fees/download-schedule?url=${encodeURIComponent(a.downloadUrl)}&name=fee-schedule.xlsx` : a.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"

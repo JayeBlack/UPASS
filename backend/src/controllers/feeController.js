@@ -341,6 +341,26 @@ exports.getCharts = async (req, res) => {
   }
 };
 
+// GET /api/fees/download-schedule?url=...&name=...
+// Proxies a Cloudinary raw file so the browser downloads it with the correct filename
+exports.downloadSchedule = async (req, res) => {
+  try {
+    const { url, name } = req.query;
+    if (!url) return res.status(400).json({ error: "Missing url parameter" });
+    const https = require("https");
+    const http = require("http");
+    const fileName = (name || "fee-schedule.xlsx").replace(/[^a-zA-Z0-9._-]/g, "_");
+    const client = url.startsWith("https") ? https : http;
+    client.get(url, (upstream) => {
+      res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      res.setHeader("Content-Type", upstream.headers["content-type"] || "application/octet-stream");
+      upstream.pipe(res);
+    }).on("error", (err) => res.status(500).json({ error: err.message }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /api/fees/save-schedule
 // Saves the original Excel/CSV file to Cloudinary and returns a direct download URL
 exports.saveSchedule = async (req, res) => {
@@ -352,11 +372,7 @@ exports.saveSchedule = async (req, res) => {
     let downloadUrl;
     if (useCloudinary) {
       const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/fee-schedules");
-      // Force correct filename on download — include extension in fl_attachment flag
-      const originalName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const nameWithoutExt = originalName.replace(/\.[^.]+$/, "");
-      const attachUrl = result.secure_url.replace("/upload/", `/upload/fl_attachment:${nameWithoutExt}/`);
-      downloadUrl = attachUrl;
+      downloadUrl = result.secure_url;
     } else {
       const fs = require("fs");
       const uploadDir = path.join(__dirname, "..", "..", "uploads", "fee-schedules");
