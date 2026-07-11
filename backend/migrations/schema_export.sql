@@ -1,6 +1,6 @@
 -- ============================================================
 -- UPASS Database Schema Export
--- Generated: 2026-07-05T16:27:14.136Z
+-- Generated: 2026-07-11T15:00:18.746Z
 -- ============================================================
 
 BEGIN;
@@ -24,13 +24,15 @@ CREATE TABLE announcements (id integer NOT NULL DEFAULT nextval('announcements_i
 ALTER TABLE announcements ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
 ALTER TABLE announcements ADD CONSTRAINT announcements_author_id_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
 
--- Table: broadcast_logs
-CREATE TABLE broadcast_logs (id SERIAL PRIMARY KEY, sent_by INTEGER REFERENCES users(id) ON DELETE SET NULL, title TEXT NOT NULL, message TEXT NOT NULL, type VARCHAR(50) DEFAULT 'general', recipient_count INTEGER DEFAULT 0, download_url TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
-
 -- Table: audit_logs
-CREATE TABLE audit_logs (id integer NOT NULL DEFAULT nextval('audit_logs_id_seq'::regclass), user_id integer, actor_name character varying(255), actor_role USER-DEFINED, action character varying(100) NOT NULL, entity character varying(100), entity_id character varying(100), details jsonb, ip_address character varying(50), created_at timestamp without time zone DEFAULT now());
+CREATE TABLE audit_logs (id integer NOT NULL DEFAULT nextval('audit_logs_id_seq'::regclass), user_id integer, actor_name character varying(255), actor_role character varying(50), action character varying(100) NOT NULL, entity character varying(100), entity_id character varying(100), details jsonb, ip_address character varying(50), created_at timestamp without time zone DEFAULT now());
 ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
 ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
+
+-- Table: broadcast_logs
+CREATE TABLE broadcast_logs (id integer NOT NULL DEFAULT nextval('broadcast_logs_id_seq'::regclass), sent_by integer, title text NOT NULL, message text NOT NULL, type character varying(50) DEFAULT 'general'::character varying, recipient_count integer DEFAULT 0, download_url text, created_at timestamp with time zone DEFAULT now(), audience text DEFAULT 'All Students'::text);
+ALTER TABLE broadcast_logs ADD CONSTRAINT broadcast_logs_pkey PRIMARY KEY (id);
+ALTER TABLE broadcast_logs ADD CONSTRAINT broadcast_logs_sent_by_fkey FOREIGN KEY (sent_by) REFERENCES users(id) ON DELETE SET NULL;
 
 -- Table: clearance_steps
 CREATE TABLE clearance_steps (id integer NOT NULL DEFAULT nextval('clearance_steps_id_seq'::regclass), student_id integer, department character varying(100) NOT NULL, description text, status character varying(20) DEFAULT 'not_started'::character varying, cleared_by character varying(150), cleared_at timestamp without time zone, note text, step_order integer DEFAULT 0, created_at timestamp without time zone DEFAULT now(), supervisor_user_id integer);

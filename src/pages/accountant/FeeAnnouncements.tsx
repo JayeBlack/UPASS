@@ -91,7 +91,7 @@ const FeeAnnouncements = () => {
             id: n.id,
             title: n.title,
             message: n.message,
-            audience: "All Students",
+            audience: n.audience || "All Students",
             sentAt: n.created_at,
             recipients: n.recipient_count || 0,
             downloadUrl: n.download_url || null,
@@ -125,10 +125,14 @@ const FeeAnnouncements = () => {
       toast({ title: "Missing fields", description: "Please fill in the title and message", variant: "destructive" });
       return;
     }
+    const isDeptAudience = audience !== "All Students" && audience !== "Students with Outstanding Fees";
+    const recipientCount = isDeptAudience
+      ? apiStudents.filter((s) => s.department_name === audience).length
+      : apiStudents.length;
     try {
       await apiFetch("/notifications/broadcast", {
         method: "POST",
-        body: JSON.stringify({ title, message, type: "general", severity: "info" }),
+        body: JSON.stringify({ title, message, type: "general", severity: "info", department: isDeptAudience ? audience : undefined }),
       });
       setAnnouncements((prev) => [{
         id: `a${Date.now()}`,
@@ -136,12 +140,13 @@ const FeeAnnouncements = () => {
         message,
         audience,
         sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
-        recipients: totalStudentCount,
+        recipients: recipientCount,
       }, ...prev]);
       setTitle("");
       setMessage("");
+      setAudience("All Students");
       setShowCompose(false);
-      toast({ title: "Notice sent", description: `Fee notice sent to ${totalStudentCount} students` });
+      toast({ title: "Notice sent", description: `Fee notice sent to ${recipientCount} students` });
     } catch (err: any) {
       toast({ title: "Failed to send", description: err.message || "Could not send notice", variant: "destructive" });
     }

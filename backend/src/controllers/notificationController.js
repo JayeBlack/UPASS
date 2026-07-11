@@ -302,15 +302,26 @@ exports.create = async (req, res) => {
   }
 };
 
-// POST /api/notifications/broadcast — send to all students
+// POST /api/notifications/broadcast — send to all students or a specific department
 exports.broadcast = async (req, res) => {
   try {
-    const { title, message, type = "general", severity = "info", download_url } = req.body;
+    const { title, message, type = "general", severity = "info", download_url, department } = req.body;
     if (!title || !message) return res.status(400).json({ error: "Title and message are required" });
 
-    const students = await db.query("SELECT user_id FROM students WHERE user_id IS NOT NULL");
-    const userIds = students.rows.map((r) => r.user_id);
-    if (userIds.length === 0) return res.status(400).json({ error: "No students found" });
+    let studentsQuery;
+    if (department && department !== "All Students" && department !== "Students with Outstanding Fees") {
+      studentsQuery = await db.query(
+        `SELECT s.user_id FROM students s
+         JOIN departments d ON s.department_id = d.id
+         WHERE s.user_id IS NOT NULL AND d.name = $1`,
+        [department]
+      );
+    } else {
+      studentsQuery = await db.query("SELECT user_id FROM students WHERE user_id IS NOT NULL");
+    }
+
+    const userIds = studentsQuery.rows.map((r) => r.user_id);
+    if (userIds.length === 0) return res.status(400).json({ error: "No students found for the selected audience" });
 
     const values = [];
     const params = [];
@@ -326,12 +337,12 @@ exports.broadcast = async (req, res) => {
     );
 
     // Store broadcast record for accountant's sent notices list
+    const audienceLabel = department && department !== "All Students" ? department : "All Students";
     await db.query(
-      `INSERT INTO broadcast_logs (sent_by, title, message, type, recipient_count, download_url)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT DO NOTHING`,
-      [req.user.id, title, message, type, userIds.length, download_url || null]
-    ).catch(() => {}); // ignore if table doesn't exist yet
+      `INSERT INTO broadcast_logs (sent_by, title, message, type, recipient_count, download_url, audience)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.user.id, title, message, type, userIds.length, download_url || null, audienceLabel]
+    ).catch(() => {});
 
     res.status(201).json({ sent: userIds.length, message: `Notification sent to ${userIds.length} students` });
   } catch (err) {
@@ -343,7 +354,7 @@ exports.broadcast = async (req, res) => {
 exports.getSentBroadcasts = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, title, message, type, recipient_count, download_url, created_at
+      `SELECT id, title, message, type, recipient_count, download_url, audience, created_at
        FROM broadcast_logs
        WHERE sent_by = $1
        ORDER BY created_at DESC LIMIT 50`,
