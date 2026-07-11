@@ -3,9 +3,10 @@ import { Bot, Send, Sparkles, Loader2, GraduationCap } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { API_BASE_URL, getToken } from "@/lib/api";
 import { toast } from "sonner";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/student-chatbot`;
+const CHAT_URL = `${API_BASE_URL}/chatbot/chat`;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -118,7 +119,7 @@ const ChatAssistant = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify({ messages: userMessages }),
     });

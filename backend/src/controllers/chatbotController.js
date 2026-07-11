@@ -1,14 +1,3 @@
-/**
- * Chatbot Proxy Controller
- *
- * This proxies chat requests to the standalone chatbot service or directly
- * to an AI gateway. This allows the frontend to make all requests through
- * a single backend URL while keeping the chatbot independently deployable.
- *
- * Deployment options:
- *   1. Chatbot as a standalone service (CHATBOT_SERVICE_URL)
- *   2. Direct AI gateway call (AI_GATEWAY_URL + AI_GATEWAY_API_KEY)
- */
 const fetch = require("node-fetch");
 
 // ── Knowledge base (same as in the standalone chatbot) ──
@@ -57,61 +46,83 @@ Answer questions about admissions, programmes, fees, registration, seminars, and
 Be concise, professional, and use markdown. If unsure, suggest contacting the SPS office.
 ${KNOWLEDGE_BASE}`;
 
+const SUPERVISOR_SYSTEM_PROMPT = `You are an AI assistant for thesis supervisors at the University of Mines and Technology (UMaT), School of Postgraduate Studies.
+Help supervisors with: thesis evaluation criteria, writing constructive feedback, tracking student progress, formatting guidelines, handling milestone delays, and best practices in postgraduate supervision.
+Be professional, concise, and practical.`;
+
 // POST /api/chatbot/chat
 exports.chat = async (req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "AI service not configured" });
+
   try {
     const { messages, mode } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0)
+      return res.status(400).json({ error: "messages array is required" });
 
-    // Option 1: Proxy to standalone chatbot service
-    const chatbotUrl = process.env.CHATBOT_SERVICE_URL;
-    if (chatbotUrl) {
-      const response = await fetch(`${chatbotUrl}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, mode }),
-      });
+    const systemPrompt = mode === "supervisor" ? SUPERVISOR_SYSTEM_PROMPT : SYSTEM_PROMPT;
 
-      // Stream the response back
-      res.setHeader("Content-Type", response.headers.get("Content-Type") || "text/event-stream");
-      response.body.pipe(res);
-      return;
-    }
+    // Build Gemini contents array — system prompt injected as first user/model exchange
+    const contents = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Understood. I'm ready to help." }] },
+      ...messages.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      })),
+    ];
 
-    // Option 2: Direct AI gateway call
-    const aiUrl = process.env.AI_GATEWAY_URL;
-    const aiKey = process.env.AI_GATEWAY_API_KEY;
-    if (!aiUrl || !aiKey) {
-      return res.status(503).json({
-        error: "Chatbot service not configured. Set CHATBOT_SERVICE_URL or AI_GATEWAY_URL in .env"
-      });
-    }
-
-    const systemPrompt = mode === "supervisor"
-      ? "You are an AI assistant for thesis supervisors at UMaT. Help with evaluation, feedback, and student progress."
-      : SYSTEM_PROMPT;
-
-    const response = await fetch(aiUrl, {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const geminiRes = await fetch(geminiUrl, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${aiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: true,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents }),
     });
 
-    if (!response.ok) {
-      const status = response.status;
+    if (!geminiRes.ok) {
+      const err = await geminiRes.json().catch(() => ({}));
+      const status = geminiRes.status;
       if (status === 429) return res.status(429).json({ error: "Rate limit exceeded" });
-      if (status === 402) return res.status(402).json({ error: "AI credits exhausted" });
-      return res.status(500).json({ error: "AI service error" });
+      return res.status(500).json({ error: err?.error?.message || "Gemini API error" });
     }
 
+    // Stream back in OpenAI SSE format so the frontend parser needs no changes
     res.setHeader("Content-Type", "text/event-stream");
-    response.body.pipe(res);
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const reader = geminiRes.body;
+    let buffer = "";
+
+    reader.on("data", (chunk) => {
+      buffer += chunk.toString();
+      let idx;
+      while ((idx = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, idx).replace(/\r$/, "");
+        buffer = buffer.slice(idx + 1);
+        if (!line.startsWith("data: ")) continue;
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr) continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            // Emit in OpenAI delta format
+            res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`);
+          }
+        } catch { /* skip malformed chunks */ }
+      }
+    });
+
+    reader.on("end", () => {
+      res.write("data: [DONE]\n\n");
+      res.end();
+    });
+
+    reader.on("error", (err) => {
+      console.error("Gemini stream error:", err);
+      res.end();
+    });
   } catch (err) {
     console.error("Chatbot error:", err);
     res.status(500).json({ error: err.message });

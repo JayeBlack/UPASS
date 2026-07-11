@@ -4,9 +4,10 @@ import { Bot, Send, Sparkles, Loader2, ThumbsUp, ThumbsDown } from "lucide-react
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { API_BASE_URL, getToken } from "@/lib/api";
 import { toast } from "sonner";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supervisor-ai`;
+const CHAT_URL = `${API_BASE_URL}/chatbot/chat`;
 
 // Clean markdown artifacts from AI responses (skip table lines)
 const cleanResponse = (text: string): string => {
@@ -187,9 +188,9 @@ const AIAssistant = () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${getToken()}`,
       },
-      body: JSON.stringify({ messages: userMessages, mode: "chat" }),
+      body: JSON.stringify({ messages: userMessages, mode: "supervisor" }),
     });
 
     if (!resp.ok) {
