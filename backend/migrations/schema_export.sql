@@ -24,6 +24,9 @@ CREATE TABLE announcements (id integer NOT NULL DEFAULT nextval('announcements_i
 ALTER TABLE announcements ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
 ALTER TABLE announcements ADD CONSTRAINT announcements_author_id_fkey FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE;
 
+-- Table: broadcast_logs
+CREATE TABLE broadcast_logs (id SERIAL PRIMARY KEY, sent_by INTEGER REFERENCES users(id) ON DELETE SET NULL, title TEXT NOT NULL, message TEXT NOT NULL, type VARCHAR(50) DEFAULT 'general', recipient_count INTEGER DEFAULT 0, download_url TEXT, created_at TIMESTAMPTZ DEFAULT NOW());
+
 -- Table: audit_logs
 CREATE TABLE audit_logs (id integer NOT NULL DEFAULT nextval('audit_logs_id_seq'::regclass), user_id integer, actor_name character varying(255), actor_role USER-DEFINED, action character varying(100) NOT NULL, entity character varying(100), entity_id character varying(100), details jsonb, ip_address character varying(50), created_at timestamp without time zone DEFAULT now());
 ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
@@ -90,7 +93,7 @@ ALTER TABLE graduands ADD CONSTRAINT graduands_pkey PRIMARY KEY (id);
 ALTER TABLE graduands ADD CONSTRAINT graduands_student_id_fkey FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE;
 
 -- Table: notifications
-CREATE TABLE notifications (id integer NOT NULL DEFAULT nextval('notifications_id_seq'::regclass), user_id integer, title character varying(255) NOT NULL, message text NOT NULL, type character varying(50) DEFAULT 'general'::character varying, severity character varying(20) DEFAULT 'info'::character varying, is_read boolean DEFAULT false, created_at timestamp without time zone DEFAULT now());
+CREATE TABLE notifications (id integer NOT NULL DEFAULT nextval('notifications_id_seq'::regclass), user_id integer, title character varying(255) NOT NULL, message text NOT NULL, type character varying(50) DEFAULT 'general'::character varying, severity character varying(20) DEFAULT 'info'::character varying, is_read boolean DEFAULT false, created_at timestamp without time zone DEFAULT now(), download_url text);
 ALTER TABLE notifications ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
 ALTER TABLE notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
