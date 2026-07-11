@@ -412,23 +412,16 @@ const FeeAnnouncements = () => {
               <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground shrink-0">{a.audience}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
-{(() => {
-              const rawUrl = a.downloadUrl ?? null;
-              const safeUrl = resolveSafeAssetUrl(rawUrl, window.location.origin);
-              const isLocalPath = rawUrl?.startsWith("/uploads/");
-              if (!safeUrl && !isLocalPath) return null;
-              const resolvedUrl = safeUrl ?? rawUrl!;
-              return (
-                <a
-                  href={`${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl)}&name=fee-schedule.xlsx`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
-                >
-                  <FileSpreadsheet size={13} /> Download Fee Schedule
-                </a>
-              );
-            })()}
+{a.downloadUrl && (
+              <a
+                href={a.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <FileSpreadsheet size={13} /> Download Fee Schedule
+              </a>
+            )}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock size={12} /> {a.sentAt}</span>
               <span className="flex items-center gap-1"><Users size={12} /> {a.recipients} recipients</span>

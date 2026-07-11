@@ -38,10 +38,13 @@ exports.getOverview = async (req, res) => {
       params
     );
 
-    // Graduands
+    // Graduands — count distinct students, deduplicated across all academic years
     const graduandsQuery = await db.query(
-      `SELECT COUNT(CASE WHEN g.status = 'Eligible' THEN 1 END) as eligible,
-              COUNT(CASE WHEN g.status = 'Ineligible' THEN 1 END) as ineligible
+      `SELECT
+         COUNT(DISTINCT CASE WHEN g.status = 'Eligible' THEN g.student_id END)::INTEGER as eligible,
+         COUNT(DISTINCT CASE WHEN g.status = 'Ineligible' AND g.student_id NOT IN (
+           SELECT student_id FROM graduands WHERE status = 'Eligible'
+         ) THEN g.student_id END)::INTEGER as ineligible
        FROM graduands g
        JOIN students s ON g.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
@@ -437,9 +440,9 @@ exports.getAlerts = async (req, res) => {
       });
     }
 
-    // Eligible graduands
+    // Eligible graduands — distinct students
     const graduandsResult = await db.query(
-      `SELECT COUNT(*) as count
+      `SELECT COUNT(DISTINCT g.student_id) as count
        FROM graduands g
        JOIN students s ON g.student_id = s.id
        LEFT JOIN departments d ON s.department_id = d.id
