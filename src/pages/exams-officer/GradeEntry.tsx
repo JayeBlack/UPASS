@@ -297,7 +297,7 @@ const GradeEntry = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold font-display text-foreground">Grade Entry</h1>
@@ -310,10 +310,10 @@ const GradeEntry = () => {
         <div className="flex gap-3">
           <input ref={fileRef} type="file" accept={SHEET_ACCEPT} className="hidden" onChange={handleCSVUpload} />
           <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
-            <Upload size={14} /> Upload CSV / Excel
+            <Upload size={14} /> <span className="hidden sm:inline">Upload CSV / Excel</span><span className="sm:hidden">Upload</span>
           </button>
           <button onClick={addRow} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-            <Plus size={14} /> Add Row
+            <Plus size={14} /> <span className="hidden sm:inline">Add Row</span><span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>

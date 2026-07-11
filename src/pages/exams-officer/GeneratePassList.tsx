@@ -113,7 +113,7 @@ const GeneratePassList = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Generate Pass List</h1>
           <p className="text-muted-foreground mt-1">Filter by programme, department, and academic year</p>
@@ -179,45 +179,63 @@ const GeneratePassList = () => {
       <p className="text-sm text-muted-foreground mb-4">Showing {paginatedGraduands.length} of {filtered.length} students {filtered.length !== graduands.length ? `(filtered from ${graduands.length} total)` : ""}</p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-              <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
-                  <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
-                  <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedGraduands.map((g) => (
-                  <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
-                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{g.program_name}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{g.department_name}</td>
-                    <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{Number(g.cwa).toFixed(2)}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-                        {g.status}
-                      </span>
-                    </td>
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+            <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
+          </div>
+        ) : paginatedGraduands.length === 0 ? (
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters. Click "Generate Pass List" to compute from grades.</p>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
+                    <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
+                    <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                   </tr>
-                ))}
-                {paginatedGraduands.length === 0 && !loading && (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters. Click "Generate Pass List" to compute from grades.</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {paginatedGraduands.map((g) => (
+                    <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
+                      <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{g.program_name}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{g.department_name}</td>
+                      <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{Number(g.cwa).toFixed(2)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-border">
+              {paginatedGraduands.map((g) => (
+                <div key={g.id} className="px-4 py-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{g.first_name} {g.last_name}</p>
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5">{g.index_number}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{g.program_name}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-foreground">{Number(g.cwa).toFixed(2)}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

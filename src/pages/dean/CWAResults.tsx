@@ -215,7 +215,8 @@ const CWAResults = () => {
 
           <div className="bg-card rounded-xl border border-border p-6">
             <h2 className="font-display text-lg font-bold text-foreground mb-4">Top Performing Students</h2>
-            <div className="overflow-x-auto">
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
@@ -238,14 +239,27 @@ const CWAResults = () => {
                       <td className="px-4 py-3 font-bold text-foreground">{s.cwa.toFixed(2)}</td>
                     </tr>
                   )) : (
-                    <tr>
-                      <td colSpan={isSuperAdmin ? 6 : 5} className="px-4 py-8 text-center text-muted-foreground">
-                        No CWA results available
-                      </td>
-                    </tr>
+                    <tr><td colSpan={isSuperAdmin ? 6 : 5} className="px-4 py-8 text-center text-muted-foreground">No CWA results available</td></tr>
                   )}
                 </tbody>
               </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-border">
+              {topStudents.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">No CWA results available</p>
+              ) : topStudents.map((s, i) => (
+                <div key={s.id} className="py-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-sm font-bold text-muted-foreground w-5 shrink-0">{i + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{s.first_name} {s.last_name}</p>
+                      <p className="text-xs font-mono text-muted-foreground">{s.index_number}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-foreground shrink-0">{s.cwa.toFixed(2)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </>

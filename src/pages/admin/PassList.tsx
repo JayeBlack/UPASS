@@ -108,7 +108,7 @@ const PassList = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold font-display text-foreground">Pass List</h1>
           <p className="text-muted-foreground mt-1">
@@ -175,128 +175,74 @@ const PassList = () => {
       <p className="text-sm text-muted-foreground mb-4">Showing {paginatedGraduands.length} of {filtered.length} graduands {filtered.length !== graduands.length ? `(filtered from ${graduands.length} total)` : ""}</p>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
-                <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
-                <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Eligibility</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6} className="px-6 py-16 text-center">
-                  <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
-                    <Loader2 size={18} className="animate-spin" /> Loading pass list...
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+            <Loader2 size={18} className="animate-spin" /> Loading pass list...
+          </div>
+        ) : paginatedGraduands.length === 0 ? (
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No records found. Click "Generate Pass List" (Admin/Dean) or adjust filters.</p>
+        ) : (
+          <>
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Index</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Programme</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Department</th>
+                    <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">CWA</th>
+                    <th className="text-center px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Eligibility</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedGraduands.map((g) => (
+                    <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
+                      <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{g.program_name}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{g.department_name}</td>
+                      <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{Number(g.cwa).toFixed(2)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="sm:hidden divide-y divide-border">
+              {paginatedGraduands.map((g) => (
+                <div key={g.id} className="px-4 py-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{g.first_name} {g.last_name}</p>
+                      <p className="text-xs font-mono text-muted-foreground mt-0.5">{g.index_number}</p>
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{g.program_name}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-foreground">{Number(g.cwa).toFixed(2)}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
+                    </div>
                   </div>
-                </td></tr>
-              ) : paginatedGraduands.map((g) => (
-                <tr key={g.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">{g.first_name} {g.last_name}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{g.index_number}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{g.program_name}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{g.department_name}</td>
-                  <td className="px-6 py-4 text-sm text-center font-semibold text-foreground">{Number(g.cwa).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${g.status === "Eligible" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>{g.status}</span>
-                  </td>
-                </tr>
+                </div>
               ))}
-              {!loading && paginatedGraduands.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-muted-foreground">
-                  No records found. Click "Generate Pass List" (Admin/Dean) or adjust filters.
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 px-2">
-          <div className="text-sm text-muted-foreground">
-            Showing page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} graduands)
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              First
-            </button>
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            
-            <div className="flex items-center gap-1">
-              {(() => {
-                const pages: (number | string)[] = [];
-                const showPages = 5;
-                
-                if (totalPages <= showPages + 2) {
-                  for (let i = 1; i <= totalPages; i++) pages.push(i);
-                } else {
-                  if (currentPage <= 3) {
-                    for (let i = 1; i <= showPages; i++) pages.push(i);
-                    pages.push('...');
-                    pages.push(totalPages);
-                  } else if (currentPage >= totalPages - 2) {
-                    pages.push(1);
-                    pages.push('...');
-                    for (let i = totalPages - showPages + 1; i <= totalPages; i++) pages.push(i);
-                  } else {
-                    pages.push(1);
-                    pages.push('...');
-                    for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-                    pages.push('...');
-                    pages.push(totalPages);
-                  }
-                }
-                
-                return pages.map((page, idx) => 
-                  typeof page === 'number' ? (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`min-w-[40px] h-[40px] rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'gradient-gold text-secondary-foreground'
-                          : 'border border-border text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ) : (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
-                  )
-                );
-              })()}
-            </div>
-            
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Last
-            </button>
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-3 px-2">
+          <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} graduands)</p>
+          <div className="flex items-center gap-1 flex-wrap justify-center">
+            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">First</button>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Prev</button>
+            <span className="px-3 py-2 text-sm text-muted-foreground">{currentPage} / {totalPages}</span>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Next</button>
+            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Last</button>
           </div>
         </div>
       )}

@@ -398,88 +398,15 @@ const ManageStudents = () => {
         </div>
       </div>
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 px-2">
-          <div className="text-sm text-muted-foreground">
-            Showing page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} students)
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              First
-            </button>
-            <button
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            
-            {/* Page Numbers */}
-            <div className="flex items-center gap-1">
-              {(() => {
-                const pages: (number | string)[] = [];
-                const showPages = 5;
-                
-                if (totalPages <= showPages + 2) {
-                  for (let i = 1; i <= totalPages; i++) pages.push(i);
-                } else {
-                  if (currentPage <= 3) {
-                    for (let i = 1; i <= showPages; i++) pages.push(i);
-                    pages.push('...');
-                    pages.push(totalPages);
-                  } else if (currentPage >= totalPages - 2) {
-                    pages.push(1);
-                    pages.push('...');
-                    for (let i = totalPages - showPages + 1; i <= totalPages; i++) pages.push(i);
-                  } else {
-                    pages.push(1);
-                    pages.push('...');
-                    for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
-                    pages.push('...');
-                    pages.push(totalPages);
-                  }
-                }
-                
-                return pages.map((page, idx) => 
-                  typeof page === 'number' ? (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`min-w-[40px] h-[40px] rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'gradient-gold text-secondary-foreground'
-                          : 'border border-border text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ) : (
-                    <span key={`ellipsis-${idx}`} className="px-2 text-muted-foreground">...</span>
-                  )
-                );
-              })()}
-            </div>
-            
-            <button
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Last
-            </button>
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-3 px-2">
+          <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} students)</p>
+          <div className="flex items-center gap-1 flex-wrap justify-center">
+            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">First</button>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Prev</button>
+            <span className="px-3 py-2 text-sm text-muted-foreground">{currentPage} / {totalPages}</span>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Next</button>
+            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Last</button>
           </div>
         </div>
       )}
