@@ -54,7 +54,7 @@ const buildSupervisorPrompt = (students) => {
 
 ## Your Assigned Students (live data)
 ${students.map((s, i) =>
-  `${i + 1}. ${s.name} | Index: ${s.index_number} | Programme: ${s.program_name || "N/A"} | Department: ${s.department_name || "N/A"} | Thesis: ${s.thesis_title || "Not submitted"} | Thesis Status: ${s.thesis_status || "None"} | Assigned: ${s.assigned_at ? new Date(s.assigned_at).toLocaleDateString() : "N/A"}`
+  `${i + 1}. ${s.name} | Index: ${s.index_number} | Programme: ${s.program_name || "N/A"} | Department: ${s.department_name || "N/A"} | Thesis Stage: ${s.stage || "Not submitted"} | Thesis File: ${s.file_name || "None"} | Thesis Status: ${s.thesis_status || "None"} | Assigned: ${s.assigned_at ? new Date(s.assigned_at).toLocaleDateString() : "N/A"}`
 ).join("\n")}
 
 When asked about your students, use ONLY the above data. Do not invent or assume any details.`;
@@ -97,7 +97,7 @@ exports.chat = async (req, res) => {
                LEFT JOIN programs p ON s.program_id = p.id
                LEFT JOIN departments d ON s.department_id = d.id
                LEFT JOIN LATERAL (
-                 SELECT title, status FROM thesis_submissions
+                 SELECT stage, file_name, status FROM thesis_submissions
                  WHERE student_id = s.id ORDER BY submitted_at DESC LIMIT 1
                ) ts ON true
                WHERE ss.supervisor_id = $1
