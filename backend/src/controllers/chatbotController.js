@@ -87,19 +87,20 @@ exports.chat = async (req, res) => {
           if (supRes.rows.length > 0) {
             const supId = supRes.rows[0].id;
             const stuRes = await db.query(
-              `SELECT s.id, CONCAT(u.first_name, ' ', u.last_name) AS name,
-                      s.index_number, p.name AS program_name, d.name AS department_name,
+              `SELECT s.id,
+                      CONCAT(u.first_name, ' ', u.last_name) AS name,
+                      s.index_number,
+                      p.name AS program_name,
+                      d.name AS department_name,
                       ss.assigned_at,
-                      ts.title AS thesis_title, ts.status AS thesis_status
+                      (SELECT stage FROM thesis_submissions WHERE student_id = s.id ORDER BY submitted_at DESC LIMIT 1) AS stage,
+                      (SELECT file_name FROM thesis_submissions WHERE student_id = s.id ORDER BY submitted_at DESC LIMIT 1) AS file_name,
+                      (SELECT status FROM thesis_submissions WHERE student_id = s.id ORDER BY submitted_at DESC LIMIT 1) AS thesis_status
                FROM student_supervisors ss
                JOIN students s ON ss.student_id = s.id
                JOIN users u ON s.user_id = u.id
                LEFT JOIN programs p ON s.program_id = p.id
                LEFT JOIN departments d ON s.department_id = d.id
-               LEFT JOIN LATERAL (
-                 SELECT stage, file_name, status FROM thesis_submissions
-                 WHERE student_id = s.id ORDER BY submitted_at DESC LIMIT 1
-               ) ts ON true
                WHERE ss.supervisor_id = $1
                ORDER BY u.last_name`,
               [supId]
@@ -113,6 +114,7 @@ exports.chat = async (req, res) => {
       }
       systemPrompt = buildSupervisorPrompt(students);
     }
+
     const groqUrl = "https://api.groq.com/openai/v1/chat/completions";
     const groqRes = await fetch(groqUrl, {
       method: "POST",
@@ -135,7 +137,6 @@ exports.chat = async (req, res) => {
       return res.status(500).json({ error: err?.error?.message || "AI service error" });
     }
 
-    // Groq uses OpenAI SSE format natively — pipe directly
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
