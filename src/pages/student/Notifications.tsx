@@ -2,7 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Bell, Banknote, FileText, Calendar, CheckCircle, Trash2, Loader2, Download } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE_URL } from "@/lib/api";
 
 interface Notification {
   id: string;
@@ -153,7 +153,7 @@ const Notifications = () => {
                         <p className="text-xs text-muted-foreground">{n.message}</p>
                         {n.download_url && (
                           <a
-                            href={n.download_url.startsWith("http") ? `/api/fees/download-schedule?url=${encodeURIComponent(n.download_url)}&name=fee-schedule.xlsx` : n.download_url}
+                            href={n.download_url.startsWith("http") ? `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(n.download_url)}&name=fee-schedule.xlsx` : n.download_url}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"

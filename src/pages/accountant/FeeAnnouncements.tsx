@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useDataStore } from "@/contexts/DataStoreContext";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, API_BASE_URL } from "@/lib/api";
 
 interface Announcement {
   id: string;
@@ -193,7 +193,7 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const proxyUrl = `/api/fees/download-schedule?url=${encodeURIComponent(saveResult.downloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
+        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(saveResult.downloadUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
         setScheduleDownloadUrl(proxyUrl);
 
         // Also parse for preview
@@ -217,7 +217,7 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const proxyUrl2 = `/api/fees/download-schedule?url=${encodeURIComponent(saveResult2.downloadUrl)}&name=${encodeURIComponent(saveResult2.fileName)}`;
+        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(saveResult2.downloadUrl)}&name=${encodeURIComponent(saveResult2.fileName)}`;
         setScheduleDownloadUrl(proxyUrl2);
 
         const reader = new FileReader();
@@ -405,7 +405,7 @@ const FeeAnnouncements = () => {
             <p className="text-sm text-muted-foreground mb-3 whitespace-pre-line">{a.message}</p>
             {a.downloadUrl && (
               <a
-                href={a.downloadUrl.startsWith("http") ? `/api/fees/download-schedule?url=${encodeURIComponent(a.downloadUrl)}&name=fee-schedule.xlsx` : a.downloadUrl}
+                href={a.downloadUrl.startsWith("http") ? `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(a.downloadUrl)}&name=fee-schedule.xlsx` : a.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 rounded-lg border border-border text-xs font-medium text-foreground hover:bg-muted transition-colors"

@@ -4,13 +4,13 @@ const { authenticate, authorize } = require("../middleware/auth");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
+router.get("/download-schedule", ctrl.downloadSchedule); // Proxy Cloudinary raw file download — no auth needed (direct browser link)
 router.use(authenticate);
 router.get("/student/:studentId", ctrl.getByStudent);
 router.get("/", ctrl.getAll); // All authenticated users can view fees
 router.get("/summary", ctrl.getSummary); // All authenticated users can view summary
 router.get("/filter-options", ctrl.getFilterOptions); // Distinct years/departments for filters
 router.get("/charts", ctrl.getCharts); // Chart data for analytics
-router.get("/download-schedule", ctrl.downloadSchedule); // Proxy Cloudinary raw file download
 router.post("/payment", authorize("Accountant", "AccountingAssistant"), ctrl.makePayment);
 router.put("/:id/clearance", authorize("Accountant", "AccountingAssistant"), ctrl.toggleClearance);
 router.post("/save-schedule", authorize("Accountant", "AccountingAssistant"), upload.single("file"), ctrl.saveSchedule);
