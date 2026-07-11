@@ -339,14 +339,17 @@ async function autoRegisterCourses(client, studentId, department, admissionCycle
 exports.getGraduandsCount = async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT COUNT(DISTINCT g.student_id)::INTEGER AS count
-       FROM grades g
-       JOIN students s ON g.student_id = s.id
-       WHERE s.status = 'Active'
-       GROUP BY g.student_id
-       HAVING AVG(g.marks) >= 50`
+      `SELECT COUNT(*) AS count
+       FROM (
+         SELECT g.student_id
+         FROM grades g
+         JOIN students s ON g.student_id = s.id
+         WHERE s.status = 'Active' AND g.marks IS NOT NULL
+         GROUP BY g.student_id
+         HAVING AVG(g.marks) >= 50
+       ) eligible`
     );
-    res.json({ count: result.rows.length });
+    res.json({ count: parseInt(result.rows[0].count) || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

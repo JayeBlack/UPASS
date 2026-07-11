@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useDataStore } from "@/contexts/DataStoreContext";
 import { useAdminDepartment } from "@/hooks/use-admin-department";
 import { apiFetch, API_BASE_URL } from "@/lib/api";
-import { resolveSafeAssetUrl } from "@/lib/safe-url";
 
 interface Announcement {
   id: string;
@@ -44,7 +43,7 @@ const FeeAnnouncements = () => {
   const [audience, setAudience] = useState("All Students");
   const [importedFeeList, setImportedFeeList] = useState<FeeListItem[]>([]);
   const [importLoading, setImportLoading] = useState(false);
-  const [scheduleDownloadUrl, setScheduleDownloadUrl] = useState<string | null>(null);
+  const [scheduleDownloadUrl, setScheduleDownloadUrl] = useState<string | null>(null); // raw file URL (/uploads/... or https://res.cloudinary.com/...)
   const [apiStudents, setApiStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [departments, setDepartments] = useState<string[]>([]);
@@ -198,11 +197,9 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const safeDownloadUrl = resolveSafeAssetUrl(saveResult.downloadUrl, window.location.origin);
-        if (!safeDownloadUrl && !saveResult.downloadUrl?.startsWith("/uploads/")) throw new Error("Invalid download URL from server");
-        const resolvedUrl = safeDownloadUrl ?? saveResult.downloadUrl;
-        const proxyUrl = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl)}&name=${encodeURIComponent(saveResult.fileName)}`;
-        setScheduleDownloadUrl(proxyUrl);
+        const rawUrl = saveResult.downloadUrl;
+        if (!rawUrl?.startsWith("/uploads/") && !rawUrl?.startsWith("https://res.cloudinary.com")) throw new Error("Invalid download URL from server");
+        setScheduleDownloadUrl(rawUrl);
 
         // Also parse for preview
         const parseForm = new FormData();
@@ -225,11 +222,9 @@ const FeeAnnouncements = () => {
           method: "POST",
           body: saveForm,
         });
-        const safeDownloadUrl2 = resolveSafeAssetUrl(saveResult2.downloadUrl, window.location.origin);
-        if (!safeDownloadUrl2 && !saveResult2.downloadUrl?.startsWith("/uploads/")) throw new Error("Invalid download URL from server");
-        const resolvedUrl2 = safeDownloadUrl2 ?? saveResult2.downloadUrl;
-        const proxyUrl2 = `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(resolvedUrl2)}&name=${encodeURIComponent(saveResult2.fileName)}`;
-        setScheduleDownloadUrl(proxyUrl2);
+        const rawUrl2 = saveResult2.downloadUrl;
+        if (!rawUrl2?.startsWith("/uploads/") && !rawUrl2?.startsWith("https://res.cloudinary.com")) throw new Error("Invalid download URL from server");
+        setScheduleDownloadUrl(rawUrl2);
 
         const reader = new FileReader();
         reader.onload = (ev) => {
@@ -262,6 +257,7 @@ const FeeAnnouncements = () => {
         method: "POST",
         body: JSON.stringify({ title: noticeTitle, message: noticeMessage, type: "fee", severity: "info", download_url: scheduleDownloadUrl }),
       });
+      const proxyHref = scheduleDownloadUrl ? `${API_BASE_URL}/fees/download-schedule?url=${encodeURIComponent(scheduleDownloadUrl)}&name=fee-schedule.xlsx` : undefined;
       setAnnouncements((prev) => [{
         id: `a${Date.now()}`,
         title: noticeTitle,
@@ -269,7 +265,7 @@ const FeeAnnouncements = () => {
         audience: "All Students",
         sentAt: new Date().toISOString().replace("T", " ").slice(0, 16),
         recipients: totalStudentCount,
-        downloadUrl: scheduleDownloadUrl,
+        downloadUrl: proxyHref,
       }, ...prev]);
       setImportedFeeList([]);
       setScheduleDownloadUrl(null);
@@ -400,7 +396,7 @@ const FeeAnnouncements = () => {
           <Users size={20} className="text-warning" />
           <div>
             <p className="text-xl font-bold font-display text-foreground">{totalGraduandCount}</p>
-            <p className="text-xs text-muted-foreground">Graduates</p>
+            <p className="text-xs text-muted-foreground">Graduands (Eligible)</p>
           </div>
         </div>
       </div>
