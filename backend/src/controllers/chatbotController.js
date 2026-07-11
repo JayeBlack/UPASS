@@ -82,7 +82,8 @@ exports.chat = async (req, res) => {
     if (!geminiRes.ok) {
       const err = await geminiRes.json().catch(() => ({}));
       const status = geminiRes.status;
-      if (status === 429) return res.status(429).json({ error: "Rate limit exceeded" });
+      console.error(`[Gemini] ${status} error:`, JSON.stringify(err));
+      if (status === 429) return res.status(429).json({ error: `Rate limit exceeded: ${err?.error?.message || "too many requests"}` });
       return res.status(500).json({ error: err?.error?.message || "Gemini API error" });
     }
 
