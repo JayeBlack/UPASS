@@ -354,7 +354,8 @@ exports.saveSchedule = async (req, res) => {
       const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/fee-schedules");
       // Force correct filename on download — include extension in fl_attachment flag
       const originalName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const attachUrl = result.secure_url.replace("/upload/", `/upload/fl_attachment:${originalName}/`);
+      const nameWithoutExt = originalName.replace(/\.[^.]+$/, "");
+      const attachUrl = result.secure_url.replace("/upload/", `/upload/fl_attachment:${nameWithoutExt}/`);
       downloadUrl = attachUrl;
     } else {
       const fs = require("fs");
