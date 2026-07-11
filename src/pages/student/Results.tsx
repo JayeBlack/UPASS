@@ -1,6 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { BarChart3, TrendingUp, TrendingDown, Minus, FileText, Loader, Download } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { BarChart3, TrendingUp, TrendingDown, Minus, Loader, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,12 +43,133 @@ const gradeColor = (grade: string) => {
 
 const Results = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [semesterData, setSemesterData] = useState<SemesterResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [downloadingTranscript, setDownloadingTranscript] = useState(false);
+
+  const handleDownloadTranscript = async () => {
+    if (semesterData.length === 0) return;
+    setDownloadingTranscript(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+
+      // Border
+      doc.setDrawColor(34, 87, 50);
+      doc.setLineWidth(1.2);
+      doc.rect(8, 8, pageW - 16, pageH - 16);
+      doc.setLineWidth(0.4);
+      doc.rect(11, 11, pageW - 22, pageH - 22);
+
+      // Logo
+      try {
+        const img = new Image(); img.crossOrigin = "anonymous"; img.src = umatLogo;
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+        doc.addImage(img, "PNG", pageW / 2 - 14, 15, 28, 28);
+      } catch { /* skip */ }
+
+      // Photo
+      try {
+        if (user?.avatarUrl) {
+          const ph = new Image(); ph.crossOrigin = "anonymous"; ph.src = user.avatarUrl;
+          await new Promise((res, rej) => { ph.onload = res; ph.onerror = rej; });
+          doc.addImage(ph, "JPEG", pageW - 45, 15, 28, 32);
+          doc.setDrawColor(34, 87, 50); doc.setLineWidth(0.5);
+          doc.rect(pageW - 45, 15, 28, 32);
+        }
+      } catch { /* skip */ }
+
+      doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(34, 87, 50);
+      doc.text("UNIVERSITY OF MINES AND TECHNOLOGY", pageW / 2, 50, { align: "center" });
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+      doc.text("Tarkwa, Ghana  |  www.umat.edu.gh", pageW / 2, 56, { align: "center" });
+      doc.text("School of Postgraduate Studies", pageW / 2, 62, { align: "center" });
+
+      // Title banner
+      doc.setFillColor(34, 87, 50);
+      doc.roundedRect(18, 67, pageW - 36, 11, 2, 2, "F");
+      doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
+      doc.text("OFFICIAL ACADEMIC TRANSCRIPT", pageW / 2, 74.5, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+
+      // Student info box
+      doc.setFillColor(248, 250, 248);
+      doc.roundedRect(18, 82, pageW - 36, 36, 2, 2, "F");
+      doc.setDrawColor(34, 87, 50); doc.setLineWidth(0.3);
+      doc.roundedRect(18, 82, pageW - 36, 36, 2, 2, "S");
+      const leftX = 24; const valX = 75; let iy = 91;
+      [["Student Name", user?.name || "N/A"], ["Index Number", user?.indexNumber || "N/A"],
+       ["Programme", user?.program || "N/A"], ["Department", user?.department || "N/A"]]
+        .forEach(([label, value]) => {
+          doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(80, 80, 80);
+          doc.text(`${label}:`, leftX, iy);
+          doc.setFont("helvetica", "normal"); doc.setTextColor(0, 0, 0);
+          doc.text(value, valX, iy); iy += 7;
+        });
+
+      // Overall CWA banner
+      const ocwaY = 122;
+      doc.setFillColor(48, 120, 70);
+      doc.roundedRect(18, ocwaY, pageW - 36, 9, 1, 1, "F");
+      doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
+      doc.text(`Overall Cumulative Weighted Average (CWA): ${overallCwa.toFixed(2)}%`, pageW / 2, ocwaY + 6, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+
+      let cursorY = ocwaY + 14;
+
+      // Each semester
+      for (const sem of semesterData) {
+        if (cursorY > pageH - 60) { doc.addPage(); cursorY = 20; }
+        doc.setFillColor(34, 87, 50);
+        doc.roundedRect(18, cursorY, pageW - 36, 8, 1, 1, "F");
+        doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(255, 255, 255);
+        doc.text(sem.label.toUpperCase(), leftX + 2, cursorY + 5.5);
+        doc.text(`CWA: ${sem.cwa.toFixed(2)}%`, pageW - 22, cursorY + 5.5, { align: "right" });
+        doc.setTextColor(0, 0, 0);
+
+        autoTable(doc, {
+          startY: cursorY + 10,
+          head: [["#", "Code", "Course Name", "Credits", "Grade", "Marks"]],
+          body: sem.courses.map((c, i) => [String(i + 1), c.code, c.name, String(c.credits), c.grade, `${c.marks}%`]),
+          theme: "grid",
+          headStyles: { fillColor: [34, 87, 50], textColor: 255, fontStyle: "bold", fontSize: 9, halign: "center" },
+          bodyStyles: { fontSize: 8.5, textColor: [30, 30, 30] },
+          columnStyles: {
+            0: { halign: "center", cellWidth: 10 }, 1: { halign: "center", cellWidth: 22 },
+            2: { halign: "left", cellWidth: "auto" }, 3: { halign: "center", cellWidth: 18 },
+            4: { halign: "center", cellWidth: 16 }, 5: { halign: "center", cellWidth: 18 },
+          },
+          alternateRowStyles: { fillColor: [245, 250, 245] },
+          margin: { left: 18, right: 18 },
+          tableLineColor: [200, 220, 200], tableLineWidth: 0.2,
+        });
+        cursorY = (doc as any).lastAutoTable.finalY + 8;
+      }
+
+      // Footer
+      const footY = pageH - 28;
+      doc.setDrawColor(34, 87, 50); doc.setLineWidth(0.5);
+      doc.line(18, footY, pageW - 18, footY);
+      doc.setFontSize(7.5); doc.setFont("helvetica", "italic"); doc.setTextColor(100, 100, 100);
+      doc.text("This is a computer-generated academic transcript from the UMaT School of Postgraduate Studies.", pageW / 2, footY + 5, { align: "center" });
+      doc.text(`Generated: ${new Date().toLocaleDateString("en-GB")} at ${new Date().toLocaleTimeString("en-GB")}`, pageW / 2, footY + 10, { align: "center" });
+      doc.setFontSize(7); doc.setFont("helvetica", "normal"); doc.setTextColor(160, 160, 160);
+      doc.text(`Ref: TRX-${Date.now().toString(36).toUpperCase()}`, pageW - 22, footY + 16, { align: "right" });
+
+      doc.save(`UMaT_Transcript_${user?.indexNumber || "student"}.pdf`);
+      toast({ title: "Transcript downloaded", description: "Your full academic transcript has been saved as PDF" });
+    } catch {
+      toast({ title: "Download failed", description: "Could not generate transcript PDF", variant: "destructive" });
+    } finally {
+      setDownloadingTranscript(false);
+    }
+  };
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -324,11 +444,12 @@ const Results = () => {
           <p className="text-muted-foreground mt-1">Performance overview across all semesters</p>
         </div>
         <button
-          onClick={() => navigate("/documents")}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity"
+          onClick={() => handleDownloadTranscript()}
+          disabled={downloadingTranscript}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-60"
         >
-          <FileText size={16} />
-          Request Official Transcript
+          {downloadingTranscript ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
+          Download Transcript
         </button>
       </div>
 
