@@ -225,17 +225,21 @@ exports.uploadAvatar = async (req, res) => {
 
     let avatarUrl;
     if (useCloudinary) {
-      const result = await uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/avatars");
+      // Run upload and delete in parallel for faster performance
+      const [result] = await Promise.all([
+        uploadToCloudinary(req.file.buffer, req.file.originalname, "upass/avatars"),
+        oldUrl && oldUrl.startsWith("http") ? deleteFromCloudinary(oldUrl) : Promise.resolve()
+      ]);
       avatarUrl = result.secure_url;
-      // Delete old Cloudinary avatar
-      if (oldUrl && oldUrl.startsWith("http")) await deleteFromCloudinary(oldUrl);
     } else {
       avatarUrl = `/uploads/general/${req.file.filename}`;
+      // Delete old local file asynchronously (non-blocking)
       if (oldUrl && oldUrl.startsWith("/uploads/general/")) {
         fs.unlink(path.join(__dirname, "../../..", oldUrl), () => {});
       }
     }
 
+    // Update DB with new avatar URL
     await db.query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2", [avatarUrl, req.user.id]);
     res.json({ avatar_url: avatarUrl });
   } catch (err) {
