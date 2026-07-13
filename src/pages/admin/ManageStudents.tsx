@@ -205,26 +205,30 @@ const ManageStudents = () => {
       </div>
 
       {showBulkUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setShowBulkUpload(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
               <h3 className="font-display text-lg font-bold text-foreground">Bulk Student Upload</h3>
-              <button onClick={() => setShowBulkUpload(false)} className="p-1 rounded hover:bg-muted"><X size={18} className="text-muted-foreground" /></button>
+              <p className="text-sm text-muted-foreground">Upload an Excel or CSV file containing student details.</p>
             </div>
-            <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing student details.</p>
-            <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Index Number, Email, Programme, Department, Cohort (optional: January or July)</p>
+            <button onClick={() => setShowBulkUpload(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">
+              Close
+            </button>
+          </div>
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">Expected columns: Name, Index Number, Email, Programme, Department, Cohort (optional: January or July)</p>
             <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
-            <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
+            <button type="button" onClick={() => fileRef.current?.click()} className="w-full border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
               <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-foreground font-medium">Click to upload file</p>
               <p className="text-xs text-muted-foreground mt-1">CSV or Excel (max 10MB)</p>
-            </div>
+            </button>
           </div>
         </div>
       )}
 
       {showEnrollForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setShowEnrollForm(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setShowEnrollForm(false)}>
           <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-display text-lg font-bold text-foreground">Enroll New Student</h3>
