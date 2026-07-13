@@ -131,14 +131,14 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-md animate-card-enter">
-        <div className="rounded-[28px] border border-white/70 bg-white/92 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.45)] overflow-hidden">
+        <div className="rounded-[28px] border border-white/70 bg-white shadow-[0_24px_80px_rgba(0,0,0,0.35)] overflow-hidden">
 
           {/* Green header bar */}
           <div className="relative px-7 pt-7 pb-5" style={{ background: "linear-gradient(135deg, hsl(145,62%,18%), hsl(145,55%,25%))" }}>
@@ -186,16 +186,16 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
                   <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(145,62%,20%), hsl(145,55%,27%))" }}>
                     <Sparkles size={26} className="text-yellow-300" />
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-gray-800 mb-2">
+                  <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">
                     Welcome, {user.name.split(" ")[0]}!
                   </h2>
-                  <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-3" style={{ background: "hsl(145,60%,22%,0.08)", color: "hsl(145,60%,22%)" }}>
+                  <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full mb-3" style={{ background: "hsl(145,60%,22%,0.1)", color: "hsl(145,60%,18%)" }}>
                     {user.role}
                   </span>
-                  <p className="text-sm text-gray-500 leading-relaxed">
+                  <p className="text-sm text-gray-700 leading-relaxed">
                     {roleDescriptions[user.role] ?? "Welcome to the UMaT Postgraduate Administrative Support System."}
                   </p>
-                  <p className="text-xs text-gray-400 mt-3">Let's take a quick tour of your key features.</p>
+                  <p className="text-xs text-gray-500 mt-3">Let's take a quick tour of your key features.</p>
                 </div>
               )}
 
@@ -204,12 +204,12 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
                   <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(145,62%,20%), hsl(145,55%,27%))" }}>
                     <span className="text-white">{currentFeature.icon}</span>
                   </div>
-                  <h2 className="font-display text-xl font-bold text-gray-800 mb-2">{currentFeature.title}</h2>
-                  <p className="text-sm text-gray-500 leading-relaxed mb-4">{currentFeature.description}</p>
+                  <h2 className="font-display text-xl font-bold text-gray-900 mb-2">{currentFeature.title}</h2>
+                  <p className="text-sm text-gray-700 leading-relaxed mb-4">{currentFeature.description}</p>
                   <button
                     onClick={() => handleGoTo(currentFeature.path)}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                    style={{ background: "hsl(145,60%,22%,0.08)", color: "hsl(145,60%,22%)" }}
+                    style={{ background: "hsl(145,60%,22%,0.1)", color: "hsl(145,60%,18%)" }}
                   >
                     Go there now <ArrowRight size={12} />
                   </button>
@@ -219,11 +219,11 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
               {isDone && (
                 <div className="text-center">
                   <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: "linear-gradient(135deg, hsl(48,95%,50%), hsl(45,85%,48%))" }}>
-                    <LayoutDashboard size={26} className="text-gray-800" />
+                    <LayoutDashboard size={26} className="text-gray-900" />
                   </div>
-                  <h2 className="font-display text-2xl font-bold text-gray-800 mb-2">You're all set!</h2>
-                  <p className="text-sm text-gray-500 leading-relaxed">
-                    You can revisit this guide anytime using the <strong className="text-gray-700">?</strong> button at the bottom-right of any page.
+                  <h2 className="font-display text-2xl font-bold text-gray-900 mb-2">You're all set!</h2>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    You can revisit this guide anytime using the <strong className="text-gray-900">?</strong> button at the bottom-right of any page.
                   </p>
                 </div>
               )}
@@ -235,7 +235,7 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
             <button
               onClick={() => go(step - 1, "back")}
               disabled={isWelcome}
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-600 disabled:opacity-0 disabled:pointer-events-none transition-colors"
+              className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800 disabled:opacity-0 disabled:pointer-events-none transition-colors"
             >
               <ArrowLeft size={15} /> Back
             </button>
@@ -276,7 +276,7 @@ const OnboardingModal = ({ user, onClose }: OnboardingModalProps) => {
           {/* Skip link */}
           {!isDone && (
             <div className="text-center pb-5 -mt-3">
-              <button onClick={onClose} className="text-xs text-gray-400 hover:text-gray-500 transition-colors">
+              <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
                 Skip tour
               </button>
             </div>

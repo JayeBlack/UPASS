@@ -94,13 +94,15 @@ const ChangePassword = () => {
             </button>
           </form>
 
-          <button
-            onClick={() => { logout(); navigate("/", { replace: true }); }}
-            className="mt-4 w-full text-xs text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Sign out
-          </button>
         </div>
+
+        {/* Sign out sits on the dark background — white text clearly visible */}
+        <button
+          onClick={() => { logout(); navigate("/", { replace: true }); }}
+          className="mt-5 w-full text-xs text-white/50 hover:text-white/80 transition-colors"
+        >
+          Sign out
+        </button>
       </main>
     </div>
   );
