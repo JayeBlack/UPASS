@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Search, Trash2, X, Upload, KeyRound, Loader2 } from "lucide-react";
+import { Search, Trash2, Upload, KeyRound, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -61,19 +61,13 @@ const ManageStudents = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch<any>("/students");
+      const [data, depts, progs] = await Promise.all([
+        apiFetch<any>("/students"),
+        apiFetch<Department[]>("/departments"),
+        apiFetch<Program[]>("/programs"),
+      ]);
       setStudents(Array.isArray(data) ? data : data?.data ?? []);
-      
-      // Fetch actual departments from database
-      const depts = await apiFetch<Department[]>("/departments");
-      console.log("Fetched departments:", depts);
-      const activeDepts = depts.sort((a, b) => a.name.localeCompare(b.name));
-      console.log("Active departments:", activeDepts);
-      setDbDepartments(activeDepts);
-      
-      // Fetch actual programs from database
-      const progs = await apiFetch<Program[]>("/programs");
-      console.log("Fetched programs:", progs);
+      setDbDepartments(depts.sort((a, b) => a.name.localeCompare(b.name)));
       setDbPrograms(progs);
     } catch (err) {
       console.error("Load error:", err);
@@ -228,80 +222,72 @@ const ManageStudents = () => {
       )}
 
       {showEnrollForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setShowEnrollForm(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-display text-lg font-bold text-foreground">Enroll New Student</h3>
-              <button onClick={() => setShowEnrollForm(false)} className="p-1 rounded hover:bg-muted"><X size={18} className="text-muted-foreground" /></button>
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-display text-lg font-bold text-foreground">Enroll New Student</h3>
+            <button onClick={() => setShowEnrollForm(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Kwame Mensah" />
             </div>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Kwame Mensah" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Index Number *</label>
-                  <input value={form.index} onChange={(e) => setForm({ ...form, index: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="UMaT/PG/0234/22" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Email *</label>
-                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="student@umat.edu.gh" />
-                </div>
+                <label className="text-xs font-medium text-muted-foreground">Index Number *</label>
+                <input value={form.index} onChange={(e) => setForm({ ...form, index: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="UMaT/PG/0234/22" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Admission Cohort *</label>
-                <select 
-                  value={form.cohort} 
-                  onChange={(e) => setForm({ ...form, cohort: e.target.value, program: "" })} 
+                <label className="text-xs font-medium text-muted-foreground">Email *</label>
+                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="student@umat.edu.gh" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Admission Cohort *</label>
+              <select
+                value={form.cohort}
+                onChange={(e) => setForm({ ...form, cohort: e.target.value, program: "" })}
+                className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
+              >
+                <option value="January">January - June</option>
+                <option value="July">July - December</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Department *</label>
+                <select
+                  value={form.department}
+                  onChange={(e) => setForm({ ...form, department: e.target.value, program: "" })}
                   className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
                 >
-                  <option value="January">January - June</option>
-                  <option value="July">July - December</option>
+                  <option value="">Select department</option>
+                  {dbDepartments.map((dept) => (
+                    <option key={dept.id} value={dept.name}>{dept.name}</option>
+                  ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Department *</label>
-                  <select 
-                    value={form.department} 
-                    onChange={(e) => setForm({ ...form, department: e.target.value, program: "" })} 
-                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
-                  >
-                    <option value="">Select department</option>
-                    {dbDepartments.map((dept) => (
-                      <option key={dept.id} value={dept.name}>{dept.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Programme *</label>
-                  <select 
-                    value={form.program} 
-                    onChange={(e) => setForm({ ...form, program: e.target.value })} 
-                    className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
-                    disabled={!form.department}
-                  >
-                    <option value="">Select programme</option>
-                    {filteredPrograms.map((prog) => (
-                      <option key={prog.id} value={prog.name}>
-                        {prog.name}
-                      </option>
-                    ))}
-                  </select>
-                  {!form.department && (
-                    <p className="text-xs text-muted-foreground mt-1">Select department first</p>
-                  )}
-                  {form.department && filteredPrograms.length === 0 && (
-                    <p className="text-xs text-amber-600 mt-1">No programmes found for this department</p>
-                  )}
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Programme *</label>
+                <select
+                  value={form.program}
+                  onChange={(e) => setForm({ ...form, program: e.target.value })}
+                  className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
+                  disabled={!form.department}
+                >
+                  <option value="">Select programme</option>
+                  {filteredPrograms.map((prog) => (
+                    <option key={prog.id} value={prog.name}>{prog.name}</option>
+                  ))}
+                </select>
+                {!form.department && <p className="text-xs text-muted-foreground mt-1">Select department first</p>}
+                {form.department && filteredPrograms.length === 0 && <p className="text-xs text-amber-600 mt-1">No programmes found for this department</p>}
               </div>
-              <Button onClick={handleEnroll} disabled={saving} className="w-full gradient-gold text-secondary-foreground hover:opacity-90">
-                {saving ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
-                Enroll Student
-              </Button>
             </div>
+            <Button onClick={handleEnroll} disabled={saving} className="w-full gradient-gold text-secondary-foreground hover:opacity-90">
+              {saving ? <Loader2 size={14} className="animate-spin mr-1.5" /> : null}
+              Enroll Student
+            </Button>
           </div>
         </div>
       )}

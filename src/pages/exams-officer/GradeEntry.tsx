@@ -342,7 +342,7 @@ const GradeEntry = () => {
         </div>
       </div>
 
-      {rows.length > 0 && rows.some(r => !r.valid) && (
+      {rows.length > 0 && (
         <div className="bg-card rounded-xl border border-border overflow-hidden mb-6">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -401,7 +401,7 @@ const GradeEntry = () => {
         </div>
       )}
 
-      {rows.length > 0 && rows.some(r => !r.valid) && (
+      {rows.length > 0 && (
         <div className="flex gap-3 mb-8 flex-wrap">
           <button onClick={calculateCWA} disabled={!allValid} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             Calculate CWA
