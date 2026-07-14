@@ -8,6 +8,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 
 interface Student {
   id: string;
+  user_id: string;
   name: string;
   first_name: string;
   last_name: string;
@@ -173,7 +174,7 @@ const ManageStudents = () => {
     try {
       const res = await apiFetch<{ default_password: string }>("/auth/admin/reset-password", { 
         method: "POST", 
-        body: JSON.stringify({ user_id: Number(s.id) }) 
+        body: JSON.stringify({ user_id: Number(s.user_id) }) 
       });
       toast({ title: "Password reset", description: `New password: ${res.default_password}` });
     } catch (err) {
