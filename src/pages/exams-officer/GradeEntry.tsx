@@ -151,9 +151,11 @@ const GradeEntry = () => {
       const invalidCount = newRows.filter((r) => !r.valid).length;
 
       if (invalidCount === 0) {
+        const results = computeCWA(newRows);
+        setCwaResults(results);
         toast({
           title: `${newRows.length} rows imported`,
-          description: "Rows are ready for manual review and CWA calculation.",
+          description: `CWA calculated for ${results.length} student(s). Ready to publish.`,
         });
       } else {
         toast({
@@ -168,13 +170,7 @@ const GradeEntry = () => {
     e.target.value = "";
   };
 
-  const calculateCWA = () => {
-    const validRows = rows.filter((r) => r.valid);
-    if (validRows.length === 0) {
-      toast({ title: "No valid grades", description: "Fix validation errors first", variant: "destructive" });
-      return;
-    }
-    
+  const computeCWA = (validRows: GradeRow[]): CWAResult[] => {
     const byStudent = validRows.reduce<Record<string, CWAResult>>((acc, r) => {
       if (!acc[r.indexNumber]) acc[r.indexNumber] = { index: r.indexNumber, name: r.studentName, cwa: 0, courses: [] };
       const marks = Number(r.marks);
@@ -182,11 +178,20 @@ const GradeEntry = () => {
       acc[r.indexNumber].courses.push({ courseName: r.courseName, credits, marks, grade: marksToGrade(marks) });
       return acc;
     }, {});
-    const results: CWAResult[] = Object.values(byStudent).map((s) => {
+    return Object.values(byStudent).map((s) => {
       const totalCredits = s.courses.reduce((sum, c) => sum + c.credits, 0);
       const weighted = s.courses.reduce((sum, c) => sum + c.marks * c.credits, 0);
       return { ...s, cwa: totalCredits > 0 ? weighted / totalCredits : 0 };
     });
+  };
+
+  const calculateCWA = () => {
+    const validRows = rows.filter((r) => r.valid);
+    if (validRows.length === 0) {
+      toast({ title: "No valid grades", description: "Fix validation errors first", variant: "destructive" });
+      return;
+    }
+    const results = computeCWA(validRows);
     setCwaResults(results);
     toast({ title: "CWA calculated", description: `Computed for ${results.length} student(s)` });
   };
@@ -384,17 +389,13 @@ const GradeEntry = () => {
         </div>
       )}
 
-      {rows.length > 0 && (
+      {rows.length > 0 && cwaResults.length === 0 && (
         <div className="flex gap-3 mb-8 flex-wrap">
           <button onClick={calculateCWA} disabled={!allValid} className="px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
             Calculate CWA
           </button>
-          <button onClick={publishResults} disabled={!allValid || cwaResults.length === 0 || status === "Published" || isPublishing} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">
-            {isPublishing && <Loader2 size={14} className="animate-spin" />}
-            {status === "Published" ? "Published" : "Publish Results"}
-          </button>
           <button onClick={deletePublished} disabled={isPublishing} className="px-5 py-2.5 rounded-lg border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50">
-            {status === "Published" ? "Delete Published Results" : "Clear Draft"}
+            Clear Draft
           </button>
         </div>
       )}
