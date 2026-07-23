@@ -1,7 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Navigate } from "react-router-dom";
 import { useEffect, useState, useRef } from "react";
-import { ShieldCheck, UserPlus, X, Trash2, Search, Power, KeyRound, Loader2, Eye, EyeOff, Upload } from "lucide-react";
+import { ShieldCheck, UserPlus, Trash2, Search, Power, KeyRound, Loader2, Eye, EyeOff, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -232,6 +232,99 @@ const ManageUsers = () => {
         </div>
       </div>
 
+      {showBulkUpload && (
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground">Bulk User Upload</h3>
+              <p className="text-sm text-muted-foreground">Upload an Excel or CSV file containing staff user details.</p>
+            </div>
+            <button onClick={() => setShowBulkUpload(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Email, Role, Department (optional), Phone (optional)</p>
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
+          <button type="button" onClick={() => fileRef.current?.click()} className="w-full border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
+            <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-foreground font-medium">Click to upload file</p>
+            <p className="text-xs text-muted-foreground mt-1">CSV or Excel (max 10MB)</p>
+          </button>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-display text-lg font-bold text-foreground">Add System User</h3>
+            <button onClick={() => setShowForm(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Dr. Ama Sarpong" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Email *</label>
+                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="user@umat.edu.gh" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Role *</label>
+                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as SystemRole })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
+                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Department</label>
+                <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
+                  <option value="">— Select —</option>
+                  {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="+233…" />
+              </div>
+              {form.role === "Admin" && (
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.isSuperAdmin} onChange={(e) => setForm({ ...form, isSuperAdmin: e.target.checked })} className="w-4 h-4 rounded border-input" />
+                    Grant Super Admin
+                  </label>
+                </div>
+              )}
+            </div>
+            {form.role === "Supervisor" && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Supervisor profile</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Title</label>
+                    <select value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
+                      {["Dr.", "Prof.", "Assoc Prof", "Mr.", "Mrs."].map((t) => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground">Staff ID</label>
+                    <input value={form.staffId} onChange={(e) => setForm({ ...form, staffId: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="UMaT/ST/123" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Specialization</label>
+                  <input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Machine Learning" />
+                </div>
+              </div>
+            )}
+            <Button onClick={handleCreate} disabled={saving} className="w-full gradient-gold text-secondary-foreground hover:opacity-90">
+              {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : null} Create User
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 mb-6 sm:flex-row">
         <div className="relative flex-1 min-w-0">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -314,101 +407,6 @@ const ManageUsers = () => {
           ))}
         </div>
       </div>
-
-      {showBulkUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setShowBulkUpload(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-lg font-bold text-foreground">Bulk User Upload</h3>
-              <button onClick={() => setShowBulkUpload(false)} className="p-1 rounded hover:bg-muted"><X size={18} className="text-muted-foreground" /></button>
-            </div>
-            <p className="text-sm text-muted-foreground mb-3">Upload an Excel or CSV file containing staff user details.</p>
-            <p className="text-xs text-muted-foreground mb-4 bg-muted p-3 rounded-lg">Expected columns: Name, Email, Role, Department (optional), Phone (optional)</p>
-            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleBulkUpload} />
-            <div onClick={() => fileRef.current?.click()} className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors">
-              <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-foreground font-medium">Click to upload file</p>
-              <p className="text-xs text-muted-foreground mt-1">CSV or Excel (max 10MB)</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-display text-lg font-bold text-foreground">Add System User</h3>
-              <button onClick={() => setShowForm(false)} className="p-1 rounded hover:bg-muted transition-colors"><X size={18} className="text-muted-foreground" /></button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Full Name *</label>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Dr. Ama Sarpong" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Email *</label>
-                  <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="user@umat.edu.gh" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Role *</label>
-                  <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as SystemRole })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                    {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Department</label>
-                  <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                    <option value="">— Select —</option>
-                    {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                  <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="+233…" />
-                </div>
-                {form.role === "Admin" && (
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                      <input type="checkbox" checked={form.isSuperAdmin} onChange={(e) => setForm({ ...form, isSuperAdmin: e.target.checked })} className="w-4 h-4 rounded border-input" />
-                      Grant Super Admin
-                    </label>
-                  </div>
-                )}
-              </div>
-              {form.role === "Supervisor" && (
-                <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Supervisor profile</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground">Title</label>
-                      <select value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                        {["Dr.", "Prof.", "Assoc Prof", "Mr.", "Mrs."].map((t) => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs font-medium text-muted-foreground">Staff ID</label>
-                      <input value={form.staffId} onChange={(e) => setForm({ ...form, staffId: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="UMaT/ST/123" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Specialization</label>
-                    <input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" placeholder="e.g. Machine Learning" />
-                  </div>
-                </div>
-              )}
-              <Button onClick={handleCreate} disabled={saving} className="w-full gradient-gold text-secondary-foreground hover:opacity-90">
-                {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : null} Create User
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setConfirmDelete(null)}>
