@@ -276,6 +276,7 @@ const GradeEntry = () => {
   };
 
   const allValid = rows.length > 0 && rows.every((r) => r.valid);
+  const manualEntryRows = rows.filter((r) => !r.id.startsWith("imp"));
 
   return (
     <DashboardLayout>
@@ -324,7 +325,7 @@ const GradeEntry = () => {
         </div>
       </div>
 
-      {rows.length > 0 && (
+      {manualEntryRows.length > 0 && (
         <div className="bg-card rounded-xl border border-border overflow-hidden mb-6">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -341,7 +342,7 @@ const GradeEntry = () => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => {
+                {manualEntryRows.map((r) => {
                   const marksNum = Number(r.marks);
                   const derivedGrade = r.marks !== "" && Number.isFinite(marksNum) && marksNum >= 0 && marksNum <= 100 ? marksToGrade(marksNum) : "—";
                   return (
