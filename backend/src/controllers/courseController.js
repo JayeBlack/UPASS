@@ -109,14 +109,15 @@ exports.register = async (req, res) => {
     const result = await db.query(
       `INSERT INTO course_registrations (student_id, course_id, semester, academic_year, status)
        VALUES ($1, $2, $3, $4, 'Registered')
-       ON CONFLICT (student_id, course_id, academic_year) DO NOTHING
+       ON CONFLICT (student_id, course_id, academic_year)
+       DO UPDATE SET
+         status = 'Registered',
+         semester = EXCLUDED.semester,
+         academic_year = EXCLUDED.academic_year,
+         registered_at = NOW()
        RETURNING *`,
       [student_id, courseId, semester, academic_year]
     );
-    
-    if (result.rows.length === 0) {
-      return res.status(409).json({ error: "Already registered for this course" });
-    }
     // Notify student
     const studentUser = await db.query('SELECT user_id FROM students WHERE id = $1', [student_id]);
     if (studentUser.rows.length > 0) {
