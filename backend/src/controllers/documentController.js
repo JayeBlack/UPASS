@@ -8,25 +8,42 @@ const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
 exports.downloadFile = async (req, res) => {
   try {
     const result = await db.query(
-      "SELECT file_url, doc_type FROM document_requests WHERE id = $1 AND status = 'Ready'",
+      `SELECT dr.file_url, dr.doc_type, du.file_name
+       FROM document_requests dr
+       LEFT JOIN document_uploads du ON dr.upload_id = du.id
+       WHERE dr.id = $1 AND dr.status = 'Ready'`,
       [req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: "File not found" });
-    const { file_url, doc_type } = result.rows[0];
+    const { file_url, doc_type, file_name } = result.rows[0];
     if (!file_url) return res.status(404).json({ error: "No file attached" });
 
-    // Cloudinary URL — redirect directly
+    // Use original filename if available, otherwise fall back to doc_type + extension
+    const safeOriginal = file_name
+      ? path.basename(file_name).replace(/[^a-zA-Z0-9 ._()-]/g, "_")
+      : `${doc_type.replace(/[^a-zA-Z0-9 ._-]/g, "_")}${path.extname(file_url) || ".pdf"}`;
+
+    // Cloudinary URL — proxy through so filename is preserved
     if (file_url.startsWith("http")) {
-      return res.redirect(file_url);
+      const https = require("https");
+      const http = require("http");
+      const client = file_url.startsWith("https") ? https : http;
+      res.setHeader("Content-Disposition", `attachment; filename="${safeOriginal}"`);
+      return client.get(file_url, (stream) => {
+        if (stream.statusCode !== 200) return res.status(404).json({ error: "File not available" });
+        const ct = stream.headers["content-type"];
+        if (ct) res.setHeader("Content-Type", ct);
+        stream.pipe(res);
+      }).on("error", () => res.status(500).json({ error: "Failed to fetch file" }));
     }
 
     // Local path — serve with path traversal guard
     const uploadsDir = path.resolve(__dirname, "..", "..", "uploads");
     const filePath = path.resolve(uploadsDir, file_url.replace(/^\/uploads\//, ""));
     if (!filePath.startsWith(uploadsDir)) return res.status(403).json({ error: "Access denied" });
-    const { access } = await fs.access(filePath).then(() => ({ access: true })).catch(() => ({ access: false }));
-    if (!access) return res.status(404).json({ error: "File not found on server" });
-    res.setHeader("Content-Disposition", `attachment; filename="${doc_type.replace(/[^a-zA-Z0-9 ._-]/g, "")}.pdf"`);
+    const accessible = await fs.access(filePath).then(() => true).catch(() => false);
+    if (!accessible) return res.status(404).json({ error: "File not found on server" });
+    res.setHeader("Content-Disposition", `attachment; filename="${safeOriginal}"`);
     res.sendFile(filePath);
   } catch (err) {
     res.status(500).json({ error: err.message });

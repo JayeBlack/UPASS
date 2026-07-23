@@ -14,6 +14,8 @@ interface DocRequest {
   purpose: string;
   requested_at: string;
   status: RequestStatus;
+  file_url?: string;
+  file_name?: string;
 }
 
 const statusConfig: Record<RequestStatus, { icon: React.ReactNode; className: string }> = {
@@ -182,7 +184,7 @@ const DocumentRequests = () => {
                 <tbody>
                   {requests.map((r) => {
                     const cfg = statusConfig[r.status] ?? statusConfig.Pending;
-                    const hasDownload = r.status === "Ready" && (r as any).file_url;
+                    const hasDownload = r.status === "Ready" && r.file_url;
                     return (
                       <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-4 text-sm font-mono font-medium text-foreground">#{r.id}</td>
@@ -220,9 +222,20 @@ const DocumentRequests = () => {
                 <div key={r.id} className="bg-card rounded-xl border border-border p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-foreground">{r.doc_type}</p>
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
-                      {cfg.icon}{r.status}
-                    </span>
+                    {r.status === "Ready" && r.file_url ? (
+                      <a
+                        href={`${API_BASE_URL}/documents/download/${r.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full gradient-gold text-secondary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+                      >
+                        <Download size={12} /> Download
+                      </a>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.className}`}>
+                        {cfg.icon}{r.status}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{r.purpose}</p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
