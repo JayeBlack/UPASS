@@ -149,29 +149,11 @@ const GradeEntry = () => {
       
       setRows((prev) => [...prev, ...newRows]);
       const invalidCount = newRows.filter((r) => !r.valid).length;
-      
-      // Auto-calculate CWA after successful upload
+
       if (invalidCount === 0) {
-        // Set rows silently
-        const validRows = newRows.filter((r) => r.valid);
-        const byStudent = validRows.reduce<Record<string, CWAResult>>((acc, r) => {
-          if (!acc[r.indexNumber]) acc[r.indexNumber] = { index: r.indexNumber, name: r.studentName, cwa: 0, courses: [] };
-          const marks = Number(r.marks);
-          const credits = Number(r.credits);
-          acc[r.indexNumber].courses.push({ courseName: r.courseName, credits, marks, grade: marksToGrade(marks) });
-          return acc;
-        }, {});
-        
-        const results: CWAResult[] = Object.values(byStudent).map((s) => {
-          const totalCredits = s.courses.reduce((sum, c) => sum + c.credits, 0);
-          const weighted = s.courses.reduce((sum, c) => sum + c.marks * c.credits, 0);
-          return { ...s, cwa: totalCredits > 0 ? weighted / totalCredits : 0 };
-        });
-        
-        setCwaResults(results);
         toast({
           title: `${newRows.length} rows imported`,
-          description: `Ready to publish for ${results.length} student(s)`,
+          description: "Rows are ready for manual review and CWA calculation.",
         });
       } else {
         toast({
