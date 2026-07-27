@@ -101,7 +101,6 @@ const students = [
 
 const rows = students.map(s => {
   const admYear = parseInt('20' + s.year);
-  const gradYear = admYear + 2;
   const programs = departments[s.dept];
   const program = programs[parseInt(s.idx) % 2];
   return [
@@ -111,12 +110,12 @@ const rows = students.map(s => {
     program,
     s.dept,
     s.cohort,
-    `${gradYear}/${gradYear + 1}`,
+    admYear,
   ];
 });
 
 const wsData = [
-  ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Academic Year'],
+  ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Admission Year'],
   ...rows,
 ];
 

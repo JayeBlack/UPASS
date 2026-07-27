@@ -694,6 +694,7 @@ exports.parseBulk = async (req, res) => {
       department: ["department", "dept", "departmentname"],
       cohort: ["cohort", "admissioncycle", "cycle", "intake"],
       academic_year: ["academicyear", "gradyear", "graduationyear", "year"],
+      admission_year: ["admissionyear", "admyear", "yearofadmission"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
       const idx = normalized.findIndex((h) => aliases.includes(h));
@@ -720,6 +721,7 @@ exports.parseBulk = async (req, res) => {
         const deptIdx = colMap.department ?? 4;
         const cohortIdx = colMap.cohort ?? 5;
         const academicYearIdx = colMap.academic_year ?? 6;
+        const admissionYearIdx = colMap.admission_year ?? -1;
         
         const cohortVal = (cols[cohortIdx] !== undefined && cols[cohortIdx] !== null) 
           ? String(cols[cohortIdx]).trim().toLowerCase() 
@@ -758,6 +760,7 @@ exports.parseBulk = async (req, res) => {
           department: (cols[deptIdx] !== undefined && cols[deptIdx] !== null) ? String(cols[deptIdx]).trim() : "",
           admission_cycle: cohort,
           academic_year: academicYear,
+          admission_year: admissionYearIdx >= 0 && cols[admissionYearIdx] ? parseInt(String(cols[admissionYearIdx])) || null : null,
         };
       })
       .filter((s) => s && s.name && s.index);
