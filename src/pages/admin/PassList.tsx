@@ -259,7 +259,7 @@ const PassList = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
           </div>
-        ) : paginatedGraduands.length === 0 ? renderEmptyState() : (
+        ) : generateError || paginatedGraduands.length === 0 ? renderEmptyState() : (
           <>
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
