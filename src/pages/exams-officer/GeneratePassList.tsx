@@ -28,7 +28,7 @@ const GeneratePassList = () => {
   const [generating, setGenerating] = useState(false);
   const [deptFilter, setDeptFilter] = useState("all");
   const [progFilter, setProgFilter] = useState("all");
-  const [yearFilter, setYearFilter] = useState("all");
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [minCwa, setMinCwa] = useState("50");
@@ -72,14 +72,15 @@ const GeneratePassList = () => {
 
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
-  const years = [...new Set(graduands.map((g) => g.academic_year).filter(Boolean))].sort().reverse();
+  const yearsInDb = new Set(graduands.map((g) => g.academic_year).filter(Boolean));
+  const selectedYearHasData = yearsInDb.has(academicYear);
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
     const matchesDept = effectiveDept === "all" || g.department_name === effectiveDept;
     return matchesDept &&
       (progFilter === "all" || g.program_name === progFilter) &&
-      (yearFilter === "all" || g.academic_year === yearFilter) &&
+      g.academic_year === academicYear &&
       (statusFilter === "all" || g.status === statusFilter);
   });
 
@@ -93,7 +94,7 @@ const GeneratePassList = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [deptFilter, progFilter, yearFilter, statusFilter]);
+  }, [deptFilter, progFilter, academicYear, statusFilter]);
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Status"];
@@ -127,7 +128,7 @@ const GeneratePassList = () => {
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
           <select
             value={academicYear}
-            onChange={(e) => setAcademicYear(e.target.value)}
+            onChange={(e) => { setAcademicYear(e.target.value); setCurrentPage(1); }}
             className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-36"
           >
             {yearOptions.map((y) => (
@@ -155,10 +156,6 @@ const GeneratePassList = () => {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Years</option>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
         <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Programmes</option>
           {programs.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -183,8 +180,10 @@ const GeneratePassList = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
           </div>
+        ) : !selectedYearHasData ? (
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No records found for <strong>{academicYear}</strong>. Click "Generate Pass List" to create one.</p>
         ) : paginatedGraduands.length === 0 ? (
-          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters. Click "Generate Pass List" to compute from grades.</p>
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No graduands match the selected filters for {academicYear}.</p>
         ) : (
           <>
             {/* Desktop table */}
