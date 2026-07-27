@@ -28,6 +28,31 @@ exports.getAll = async (req, res) => {
   }
 };
 
+// GET /api/passlist/valid-years
+// Returns graduation years derived from actual student admission years in the DB
+exports.getValidYears = async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT DISTINCT
+        (admission_year + 2) AS grad_year_start
+      FROM students
+      WHERE status = 'Active' AND admission_year IS NOT NULL
+      ORDER BY grad_year_start DESC
+    `);
+    const years = result.rows.map(r => {
+      const y = parseInt(r.grad_year_start);
+      return `${y}/${y + 1}`;
+    });
+    // Also include years that already have generated pass lists
+    const existing = await db.query(`SELECT DISTINCT academic_year FROM graduands ORDER BY academic_year DESC`);
+    const existingYears = existing.rows.map(r => r.academic_year);
+    const allYears = [...new Set([...years, ...existingYears])].sort().reverse();
+    res.json({ years: allYears });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // POST /api/passlist/generate
 exports.generate = async (req, res) => {
   try {
