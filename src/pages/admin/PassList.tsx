@@ -55,7 +55,7 @@ const PassList = () => {
       const data = await apiFetch<any[]>("/passlist");
       setGraduands(data || []);
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
+      toast({ title: "No records", description: err.message, variant: "destructive" });
     } finally {
       setGenerating(false);
     }

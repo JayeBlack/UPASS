@@ -55,11 +55,34 @@ exports.generate = async (req, res) => {
       });
     }
     
+    // Validate that the requested academic year has students with grades
+    // A student's graduation year = admission_year + 2 (e.g. admitted 2022 → graduates 2024/2025)
+    const yearStart = parseInt(year.split('/')[0]);
+    if (isNaN(yearStart)) {
+      return res.status(400).json({ error: "Invalid academic year format. Use YYYY/YYYY." });
+    }
+
+    // Check if any students are expected to graduate in this year
+    const studentCheck = await db.query(`
+      SELECT COUNT(*) as count FROM students s
+      INNER JOIN grades g ON g.student_id = s.id
+      WHERE s.status = 'Active'
+        AND g.marks IS NOT NULL AND g.marks > 0
+        AND (s.admission_year + 2) = $1
+    `, [yearStart]);
+
+    if (parseInt(studentCheck.rows[0].count) === 0) {
+      return res.status(404).json({
+        error: `No records found for ${year}`,
+        message: `No students with grades are expected to graduate in ${year}. Students admitted in ${yearStart - 2} would graduate in this year.`
+      });
+    }
+
     // Delete existing graduands for this academic year to regenerate fresh
     const deleteResult = await db.query(`DELETE FROM graduands WHERE academic_year = $1`, [year]);
     console.log(`Deleted ${deleteResult.rowCount} existing graduands for ${year}`);
     
-    // Auto-generate pass list from grades
+    // Auto-generate pass list — only for students graduating in this academic year
     const result = await db.query(`
       INSERT INTO graduands (student_id, academic_year, cwa, status)
       SELECT s.id, $1,
@@ -71,11 +94,14 @@ exports.generate = async (req, res) => {
       FROM students s
       INNER JOIN grades g ON g.student_id = s.id
       INNER JOIN courses c ON g.course_id = c.id
-      WHERE s.status = 'Active' AND g.marks IS NOT NULL AND g.marks > 0 AND c.credits > 0
+      WHERE s.status = 'Active'
+        AND g.marks IS NOT NULL AND g.marks > 0
+        AND c.credits > 0
+        AND (s.admission_year + 2) = $3
       GROUP BY s.id
       HAVING COUNT(g.id) > 0 AND SUM(c.credits) > 0
       RETURNING *
-    `, [year, minCwa]);
+    `, [year, minCwa, yearStart]);
 
     const eligible = result.rows.filter(r => r.status === 'Eligible').length;
     const ineligible = result.rows.filter(r => r.status === 'Ineligible').length;
