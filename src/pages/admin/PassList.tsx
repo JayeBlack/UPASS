@@ -17,7 +17,6 @@ const PassList = () => {
   const [deptFilter, setDeptFilter] = useState<string>("all");
   const [progFilter, setProgFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [yearFilter, setYearFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [minCwa, setMinCwa] = useState("50");
   const currentYear = new Date().getFullYear();
@@ -64,13 +63,14 @@ const PassList = () => {
 
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
-  const years = [...new Set(graduands.map((g: any) => g.academic_year).filter(Boolean))].sort().reverse();
+  const yearsInDb = new Set(graduands.map((g: any) => g.academic_year).filter(Boolean));
+  const selectedYearHasData = yearsInDb.has(academicYear);
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
     const matchesDept = effectiveDept === "all" || g.department_name === effectiveDept;
     const matchesProg = progFilter === "all" || g.program_name === progFilter;
-    const matchesYear = yearFilter === "all" || g.academic_year === yearFilter;
+    const matchesYear = g.academic_year === academicYear;
     const matchesStatus = statusFilter === "all" || g.status === statusFilter;
     return matchesDept && matchesProg && matchesYear && matchesStatus;
   });
@@ -82,7 +82,7 @@ const PassList = () => {
   const endIndex = startIndex + itemsPerPage;
   const paginatedGraduands = filtered.slice(startIndex, endIndex);
 
-  useEffect(() => { setCurrentPage(1); }, [deptFilter, progFilter, yearFilter, statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [deptFilter, progFilter, academicYear, statusFilter]);
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Eligibility"];
@@ -94,10 +94,10 @@ const PassList = () => {
       Number(g.cwa).toFixed(2), 
       g.status
     ]);
-    const suffix = `${yearFilter !== "all" ? `_${yearFilter}` : ""}${deptFilter !== "all" ? `_${deptFilter.replace(/\s+/g, "_")}` : ""}`;
+    const suffix = `_${academicYear}${deptFilter !== "all" ? `_${deptFilter.replace(/\s+/g, "_")}` : ""}`;
     exportData({
       title: "Pass List",
-      subtitle: `Academic Year: ${yearFilter !== "all" ? yearFilter : "All Years"}`,
+      subtitle: `Academic Year: ${academicYear}`,
       headers,
       rows,
       fileName: `UMaT_Pass_List${suffix}`,
@@ -125,7 +125,7 @@ const PassList = () => {
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
             <select
               value={academicYear}
-              onChange={(e) => { setAcademicYear(e.target.value); setYearFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => { setAcademicYear(e.target.value); setCurrentPage(1); }}
               className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-36"
             >
               {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -151,10 +151,6 @@ const PassList = () => {
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Years</option>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
         <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Programmes</option>
           {programs.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -179,8 +175,10 @@ const PassList = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             <Loader2 size={18} className="animate-spin" /> Loading pass list...
           </div>
+        ) : !selectedYearHasData ? (
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No records found for <strong>{academicYear}</strong>. {canGenerate ? "Click \"Generate Pass List\" to create one." : "Contact your administrator."}</p>
         ) : paginatedGraduands.length === 0 ? (
-          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No records found. Click "Generate Pass List" (Admin/Dean) or adjust filters.</p>
+          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No graduands match the selected filters for {academicYear}.</p>
         ) : (
           <>
             {/* Desktop table */}
