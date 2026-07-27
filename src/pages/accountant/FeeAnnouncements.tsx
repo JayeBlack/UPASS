@@ -297,33 +297,29 @@ const FeeAnnouncements = () => {
       </div>
 
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowImport(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-bold text-foreground mb-2">Import School Fees Schedule</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              Upload a CSV or Excel (.xlsx) file containing the school fees schedule. Once imported, you can send it as a notice to all students.
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              Expected columns: <strong>Programme</strong>, <strong>Level</strong>, <strong>Amount</strong>
-            </p>
-            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImport} />
-            <div
-              onClick={() => !importLoading && fileRef.current?.click()}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
-            >
-              {importLoading ? (
-                <div className="text-muted-foreground text-sm">Processing file...</div>
-              ) : (
-                <>
-                  <FileSpreadsheet size={32} className="mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-foreground font-medium">Click to upload</p>
-                  <p className="text-xs text-muted-foreground mt-1">Accepts .csv and .xlsx files</p>
-                </>
-              )}
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground">Import School Fees Schedule</h3>
+              <p className="text-sm text-muted-foreground mt-1">Upload a CSV or Excel (.xlsx) file. Once imported, you can send it as a notice to all students.</p>
+              <p className="text-xs text-muted-foreground mt-1">Expected columns: <strong>Programme</strong>, <strong>Level</strong>, <strong>Amount</strong></p>
             </div>
-            <button onClick={() => setShowImport(false)} className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Cancel
-            </button>
+            <button onClick={() => setShowImport(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+          </div>
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImport} />
+          <div
+            onClick={() => !importLoading && fileRef.current?.click()}
+            className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
+          >
+            {importLoading ? (
+              <div className="text-muted-foreground text-sm">Processing file...</div>
+            ) : (
+              <>
+                <FileSpreadsheet size={32} className="mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-foreground font-medium">Click to upload</p>
+                <p className="text-xs text-muted-foreground mt-1">Accepts .csv and .xlsx files</p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -348,33 +344,33 @@ const FeeAnnouncements = () => {
       )}
 
       {showCompose && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowCompose(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-bold text-foreground mb-4">Compose Fee Notice</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Title</label>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Fee Payment Deadline Reminder" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Audience</label>
-                <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
-                  <option value="All Students">All Students</option>
-                  <option value="Students with Outstanding Fees">Students with Outstanding Fees</option>
-                  {departments.map((dept) => (
-                    <option key={dept} value={dept}>{dept} Students</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Message</label>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Type your notification message..." className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none resize-none" />
-              </div>
-              <button onClick={handleSend} className="w-full py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
-                Send Notice
-              </button>
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display text-lg font-bold text-foreground">Compose Fee Notice</h3>
+            <button onClick={() => setShowCompose(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Title</label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Fee Payment Deadline Reminder" className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none" />
             </div>
-            <button onClick={() => setShowCompose(false)} className="w-full mt-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Audience</label>
+              <select value={audience} onChange={(e) => setAudience(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none">
+                <option value="All Students">All Students</option>
+                <option value="Students with Outstanding Fees">Students with Outstanding Fees</option>
+                {departments.map((dept) => (
+                  <option key={dept} value={dept}>{dept} Students</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Message</label>
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Type your notification message..." className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none resize-none" />
+            </div>
+            <button onClick={handleSend} className="w-full py-2.5 rounded-lg gradient-gold text-secondary-foreground font-medium text-sm hover:opacity-90 transition-opacity">
+              Send Notice
+            </button>
           </div>
         </div>
       )}
