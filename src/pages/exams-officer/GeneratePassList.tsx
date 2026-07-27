@@ -72,7 +72,7 @@ const GeneratePassList = () => {
       toast({ title: "Pass list generated", description: res.message });
       await reload();
     } catch (err: any) {
-      toast({ title: "No records", description: err.message, variant: "destructive" });
+      toast({ title: "Could not generate", description: err.message });
     } finally {
       setGenerating(false);
     }

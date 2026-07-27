@@ -60,7 +60,7 @@ const PassList = () => {
       setValidYears(yearsRes.years || []);
       setGraduands(data || []);
     } catch (err: any) {
-      toast({ title: "No records", description: err.message, variant: "destructive" });
+      toast({ title: "Could not generate", description: err.message });
     } finally {
       setGenerating(false);
     }
