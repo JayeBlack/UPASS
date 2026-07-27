@@ -259,7 +259,15 @@ const PassList = () => {
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
           </div>
-        ) : generateError || paginatedGraduands.length === 0 ? renderEmptyState() : (
+        ) : generateError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+              <AlertCircle size={26} className="text-amber-500" />
+            </div>
+            <p className="text-base font-semibold text-foreground mb-1">No graduating students for this year</p>
+            <p className="text-sm text-muted-foreground max-w-sm">{generateError} Please select a different year.</p>
+          </div>
+        ) : paginatedGraduands.length === 0 ? renderEmptyState() : (
           <>
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
