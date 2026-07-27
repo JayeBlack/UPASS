@@ -28,6 +28,7 @@ const GeneratePassList = () => {
   const [generating, setGenerating] = useState(false);
   const [validYears, setValidYears] = useState<string[]>([]);
   const [academicYear, setAcademicYear] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [deptFilter, setDeptFilter] = useState("all");
   const [progFilter, setProgFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -64,6 +65,7 @@ const GeneratePassList = () => {
   const handleGenerate = async () => {
     if (!academicYear) return;
     setGenerating(true);
+    setGenerateError(null);
     try {
       const res = await apiFetch<{ message: string }>("/passlist/generate", {
         method: "POST",
@@ -72,7 +74,7 @@ const GeneratePassList = () => {
       toast({ title: "Pass list generated", description: res.message });
       await reload();
     } catch (err: any) {
-      toast({ title: "Could not generate", description: err.message });
+      setGenerateError(err.message);
     } finally {
       setGenerating(false);
     }
@@ -81,7 +83,7 @@ const GeneratePassList = () => {
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
   const yearsInDb = new Set(graduands.map((g) => g.academic_year).filter(Boolean));
-  const selectedYearHasData = academicYear ? yearsInDb.has(academicYear) : false;
+  const selectedYearHasData = academicYear ? (yearsInDb.has(academicYear) && !generateError) : false;
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
@@ -95,6 +97,9 @@ const GeneratePassList = () => {
 
   const hasActiveFilters = progFilter !== "all" || deptFilter !== "all" || statusFilter !== "all";
   const clearFilters = () => { setProgFilter("all"); setDeptFilter("all"); setStatusFilter("all"); };
+
+  // Clear error when year changes
+  useEffect(() => { setGenerateError(null); }, [academicYear]);
 
   const itemsPerPage = 50;
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -134,18 +139,25 @@ const GeneratePassList = () => {
       <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
         <AlertCircle size={26} className="text-amber-500" />
       </div>
-      <p className="text-base font-semibold text-foreground mb-1">Pass list not yet generated for {academicYear}</p>
-      <p className="text-sm text-muted-foreground max-w-sm mb-4">
-        Students admitted in {parseInt(academicYear) - 2} are due to graduate this year, but no pass list has been generated yet.
+      <p className="text-base font-semibold text-foreground mb-1">
+        {generateError ? "No graduating students for this year" : `Pass list not yet generated for ${academicYear}`}
       </p>
-      <button
-        onClick={handleGenerate}
-        disabled={generating}
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
-      >
-        {generating && <Loader2 size={14} className="animate-spin" />}
-        Generate Now
-      </button>
+      <p className="text-sm text-muted-foreground max-w-sm mb-4">
+        {generateError
+          ? `${generateError} Please select a different year.`
+          : `Students admitted in ${parseInt(academicYear) - 2} are due to graduate this year, but no pass list has been generated yet.`
+        }
+      </p>
+      {!generateError && (
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {generating && <Loader2 size={14} className="animate-spin" />}
+          Generate Now
+        </button>
+      )}
     </div>
   );
 

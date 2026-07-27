@@ -21,6 +21,7 @@ const PassList = () => {
   const [minCwa, setMinCwa] = useState("50");
   const [validYears, setValidYears] = useState<string[]>([]);
   const [academicYear, setAcademicYear] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const { toast } = useToast();
   const { isSuperAdmin, adminDepartment } = useAdminDepartment();
 
@@ -47,6 +48,7 @@ const PassList = () => {
   const handleGenerate = async () => {
     if (!academicYear) return;
     setGenerating(true);
+    setGenerateError(null);
     try {
       const res = await apiFetch<{ message: string; data: any }>("/passlist/generate", {
         method: "POST",
@@ -60,7 +62,7 @@ const PassList = () => {
       setValidYears(yearsRes.years || []);
       setGraduands(data || []);
     } catch (err: any) {
-      toast({ title: "Could not generate", description: err.message });
+      setGenerateError(err.message);
     } finally {
       setGenerating(false);
     }
@@ -69,7 +71,7 @@ const PassList = () => {
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
   const yearsInDb = new Set(graduands.map((g: any) => g.academic_year).filter(Boolean));
-  const selectedYearHasData = academicYear ? yearsInDb.has(academicYear) : false;
+  const selectedYearHasData = academicYear ? (yearsInDb.has(academicYear) && !generateError) : false;
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
@@ -84,6 +86,9 @@ const PassList = () => {
   const hasActiveFilters = progFilter !== "all" || deptFilter !== "all" || statusFilter !== "all";
 
   const clearFilters = () => { setProgFilter("all"); setDeptFilter("all"); setStatusFilter("all"); };
+
+  // Clear error when year changes
+  useEffect(() => { setGenerateError(null); }, [academicYear]);
 
   const itemsPerPage = 50;
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
@@ -118,11 +123,16 @@ const PassList = () => {
       <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
         <AlertCircle size={26} className="text-amber-500" />
       </div>
-      <p className="text-base font-semibold text-foreground mb-1">Pass list not yet generated for {academicYear}</p>
-      <p className="text-sm text-muted-foreground max-w-sm mb-4">
-        Students admitted in {parseInt(academicYear) - 2} are due to graduate this year, but no pass list has been generated yet.
+      <p className="text-base font-semibold text-foreground mb-1">
+        {generateError ? "No graduating students for this year" : `Pass list not yet generated for ${academicYear}`}
       </p>
-      {canGenerate && (
+      <p className="text-sm text-muted-foreground max-w-sm mb-4">
+        {generateError
+          ? `${generateError} Please select a different year.`
+          : `Students admitted in ${parseInt(academicYear) - 2} are due to graduate this year, but no pass list has been generated yet.`
+        }
+      </p>
+      {!generateError && canGenerate && (
         <button
           onClick={handleGenerate}
           disabled={generating}
@@ -132,7 +142,7 @@ const PassList = () => {
           Generate Now
         </button>
       )}
-      {!canGenerate && <p className="text-xs text-muted-foreground">Contact your Admin or Dean to generate the pass list.</p>}
+      {!generateError && !canGenerate && <p className="text-xs text-muted-foreground">Contact your Admin or Dean to generate the pass list.</p>}
     </div>
   );
 
