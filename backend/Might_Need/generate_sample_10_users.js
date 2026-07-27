@@ -1,18 +1,18 @@
 const XLSX = require('xlsx');
 const path = require('path');
 
-// 10 users — one per key role, referencing the same structure as sample_bulk_users.xlsx
+// 10 users — one per key role, all names/emails distinct from sample_bulk_users.xlsx
 const users = [
-  { Name: 'Dr. John Mensah',      Email: 'john.mensah@umat.edu.gh',      Role: 'Supervisor',           Department: 'Computer Science and Engineering',    Phone: '0244123456' },
-  { Name: 'Prof. Grace Asante',   Email: 'grace.asante@umat.edu.gh',     Role: 'Supervisor',           Department: 'Electrical and Electronic Engineering', Phone: '0244123457' },
-  { Name: 'Kwesi Adjei',          Email: 'kwesi.adjei@umat.edu.gh',      Role: 'Admin',                Department: 'School of Postgraduate Studies',       Phone: '0244123464' },
-  { Name: 'Efua Mensah',          Email: 'efua.mensah@umat.edu.gh',      Role: 'Registrar',            Department: 'School of Postgraduate Studies',       Phone: '0244123465' },
-  { Name: 'Peter Bonsu',          Email: 'peter.bonsu@umat.edu.gh',      Role: 'ExamsOfficer',         Department: 'School of Postgraduate Studies',       Phone: '0244123466' },
-  { Name: 'Adwoa Kwarteng',       Email: 'adwoa.kwarteng@umat.edu.gh',   Role: 'Accountant',           Department: 'School of Postgraduate Studies',       Phone: '0244123467' },
-  { Name: 'Daniel Frimpong',      Email: 'daniel.frimpong@umat.edu.gh',  Role: 'AccountingAssistant',  Department: 'School of Postgraduate Studies',       Phone: '0244123484' },
-  { Name: 'Prof. Kojo Nkrumah',   Email: 'kojo.nkrumah@umat.edu.gh',    Role: 'Dean',                 Department: 'Computer Science and Engineering',    Phone: '0244123468' },
-  { Name: 'Dr. Akua Sarpong',     Email: 'akua.sarpong@umat.edu.gh',    Role: 'ViceDean',             Department: 'Electrical and Electronic Engineering', Phone: '0244123469' },
-  { Name: 'Francis Ofosu',        Email: 'francis.ofosu@umat.edu.gh',   Role: 'AdminAssistant',       Department: 'School of Postgraduate Studies',       Phone: '0244123470' },
+  { Name: 'Dr. Nana Wiredu',       Email: 'nana.wiredu@umat.edu.gh',      Role: 'Supervisor',          Department: 'Computer Science and Engineering',       Phone: '0244200101' },
+  { Name: 'Prof. Esi Turkson',     Email: 'esi.turkson@umat.edu.gh',      Role: 'Supervisor',          Department: 'Electrical and Electronic Engineering',  Phone: '0244200102' },
+  { Name: 'Mansa Darko',           Email: 'mansa.darko@umat.edu.gh',      Role: 'Admin',               Department: 'School of Postgraduate Studies',         Phone: '0244200103' },
+  { Name: 'Kakra Tetteh',          Email: 'kakra.tetteh@umat.edu.gh',     Role: 'Registrar',           Department: 'School of Postgraduate Studies',         Phone: '0244200104' },
+  { Name: 'Serwa Quaye',           Email: 'serwa.quaye@umat.edu.gh',      Role: 'ExamsOfficer',        Department: 'School of Postgraduate Studies',         Phone: '0244200105' },
+  { Name: 'Ato Gyasi',             Email: 'ato.gyasi@umat.edu.gh',        Role: 'Accountant',          Department: 'School of Postgraduate Studies',         Phone: '0244200106' },
+  { Name: 'Araba Acquah',          Email: 'araba.acquah@umat.edu.gh',     Role: 'AccountingAssistant', Department: 'School of Postgraduate Studies',         Phone: '0244200107' },
+  { Name: 'Prof. Kodwo Poku',      Email: 'kodwo.poku@umat.edu.gh',       Role: 'Dean',                Department: 'Mining Engineering',                    Phone: '0244200108' },
+  { Name: 'Dr. Panyin Asiedu',     Email: 'panyin.asiedu@umat.edu.gh',    Role: 'ViceDean',            Department: 'Geological Engineering',                Phone: '0244200109' },
+  { Name: 'Ebo Nyarko',            Email: 'ebo.nyarko@umat.edu.gh',       Role: 'AdminAssistant',      Department: 'School of Postgraduate Studies',         Phone: '0244200110' },
 ];
 
 const wb = XLSX.utils.book_new();
