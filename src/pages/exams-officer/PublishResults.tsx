@@ -90,8 +90,7 @@ const PublishResults = () => {
   return (
     <DashboardLayout>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold font-display text-foreground">Publish Results</h1>
-        <p className="text-muted-foreground mt-1">Review and publish result batches to student portals</p>
+        <h1 className="text-3xl font-bold font-display text-foreground">Published Results</h1>
       </div>
 
       {deleteConfirm && (
