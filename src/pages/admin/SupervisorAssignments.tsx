@@ -53,7 +53,6 @@ const SupervisorAssignments = () => {
   const PAGE_SIZE = 20;
   const [saving, setSaving] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
-  const [supervisorSearch, setSupervisorSearch] = useState("");
 
   if (!user?.isSuperAdmin) return <Navigate to="/dashboard" replace />;
 
@@ -131,7 +130,6 @@ const svArray = Array.isArray(supervisorsData)
       setStudentId("");
       setSupervisorId("");
       setStudentSearch("");
-      setSupervisorSearch("");
       setIsPrimary(true);
       setOpen(false);
       load();
@@ -195,7 +193,7 @@ const svArray = Array.isArray(supervisorsData)
         <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-display text-lg font-bold text-foreground">New Supervisor Assignment</h3>
-            <button onClick={() => { setOpen(false); setStudentSearch(""); setSupervisorSearch(""); setStudentId(""); setSupervisorId(""); }} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
+            <button onClick={() => { setOpen(false); setStudentSearch(""); setStudentId(""); setSupervisorId(""); }} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
           </div>
           <div className="space-y-4">
             <div>
@@ -232,34 +230,18 @@ const svArray = Array.isArray(supervisorsData)
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Supervisor *</label>
-              <input
-                value={supervisorSearch}
-                onChange={(e) => { setSupervisorSearch(e.target.value); setSupervisorId(""); }}
-                placeholder="Search by name or department..."
+              <select
+                value={supervisorId}
+                onChange={(e) => setSupervisorId(e.target.value)}
                 className="w-full mt-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-ring outline-none"
-              />
-              {supervisorSearch && !supervisorId && (
-                <div className="mt-1 max-h-48 overflow-y-auto rounded-lg border border-border bg-card shadow-md">
-                  {(() => {
-                    const q = supervisorSearch.toLowerCase();
-                    const filtered = supervisors.filter((sv) =>
-                      `${sv.first_name} ${sv.last_name}`.toLowerCase().includes(q) || sv.department_name?.toLowerCase().includes(q)
-                    ).slice(0, 20);
-                    return filtered.length === 0
-                      ? <p className="px-4 py-3 text-sm text-muted-foreground">No supervisors found</p>
-                      : filtered.map((sv) => (
-                        <button key={sv.id} type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => { setSupervisorId(sv.id); setSupervisorSearch(`${sv.first_name} ${sv.last_name} · ${sv.department_name}`); }}
-                          className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors"
-                        >
-                          <span className="font-medium text-foreground">{sv.first_name} {sv.last_name}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">{sv.department_name}</span>
-                        </button>
-                      ));
-                  })()}
-                </div>
-              )}
+              >
+                <option value="">Select a supervisor...</option>
+                {supervisors.map((sv) => (
+                  <option key={sv.id} value={sv.id}>
+                    {sv.first_name} {sv.last_name} · {sv.department_name}
+                  </option>
+                ))}
+              </select>
               {supervisorId && <p className="mt-1 text-xs text-success">✓ Supervisor selected</p>}
             </div>
             <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
