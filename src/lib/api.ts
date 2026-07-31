@@ -74,7 +74,10 @@ export async function apiFetch<T = unknown>(
   const data = contentType.includes("application/json") ? await res.json().catch(() => ({})) : await res.text();
 
   if (!res.ok) {
-    const msg = (typeof data === "object" && data && "error" in data && (data as { error?: string }).error) || res.statusText;
+    const msg =
+      (typeof data === "object" && data && "message" in data && (data as { message?: string }).message) ||
+      (typeof data === "object" && data && "error" in data && (data as { error?: string }).error) ||
+      res.statusText;
     throw new ApiError(String(msg), res.status);
   }
   

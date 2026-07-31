@@ -260,30 +260,31 @@ const FeesStatus = () => {
         )}
       </div>
 
-      {/* Import Modal */}
+      {/* Import Panel */}
       {showImport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30 backdrop-blur-sm p-4" onClick={() => setShowImport(false)}>
-          <div className="bg-card rounded-2xl border border-border p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-lg font-bold text-foreground mb-2">Import Manual Payments</h3>
-            <p className="text-sm text-muted-foreground mb-4">Upload a CSV or Excel file containing the list of students who made bank payments. The file must include Academic Year and Semester for each student.</p>
-            <p className="text-xs text-muted-foreground mb-4">Required columns: Index Number, Student Name, Total Amount, Amount Paid, Academic Year, Semester</p>
-
-            <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportFile} disabled={uploading} />
-            <div
-              onClick={() => !uploading && fileRef.current?.click()}
-              className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
-            >
-              <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-foreground font-medium">{uploading ? "Processing..." : "Click to upload CSV or Excel file"}</p>
-              <p className="text-xs text-muted-foreground mt-1">Accepted: .csv, .xlsx, .xls</p>
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-display text-lg font-bold text-foreground">Import Manual Payments</h3>
+              <p className="text-sm text-muted-foreground mt-1">Upload a CSV or Excel file containing the list of students who made bank payments. The file must include Academic Year and Semester for each student.</p>
+              <p className="text-xs text-muted-foreground mt-1">Required columns: Index Number, Student Name, Total Amount, Amount Paid, Academic Year, Semester</p>
             </div>
-            {uploading && (
-              <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
-                <Loader2 size={16} className="animate-spin" /> Parsing and importing records...
-              </div>
-            )}
-            <button onClick={() => setShowImport(false)} className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+            <button onClick={() => setShowImport(false)} className="p-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted transition-colors">Close</button>
           </div>
+          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleImportFile} disabled={uploading} />
+          <div
+            onClick={() => !uploading && fileRef.current?.click()}
+            className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-secondary/50 transition-colors"
+          >
+            <Upload size={28} className="mx-auto text-muted-foreground mb-2" />
+            <p className="text-sm text-foreground font-medium">{uploading ? "Processing..." : "Click to upload CSV or Excel file"}</p>
+            <p className="text-xs text-muted-foreground mt-1">Accepted: .csv, .xlsx, .xls</p>
+          </div>
+          {uploading && (
+            <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+              <Loader2 size={16} className="animate-spin" /> Parsing and importing records...
+            </div>
+          )}
         </div>
       )}
 

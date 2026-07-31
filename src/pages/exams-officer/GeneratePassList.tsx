@@ -5,7 +5,7 @@ import { useAdminDepartment } from "@/hooks/use-admin-department";
 import ExportDropdown from "@/components/ExportDropdown";
 import { exportData } from "@/lib/exportUtils";
 import { apiFetch } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, GraduationCap, AlertCircle, SlidersHorizontal } from "lucide-react";
 
 interface Graduand {
   id: string;
@@ -26,45 +26,55 @@ const GeneratePassList = () => {
   const [graduands, setGraduands] = useState<Graduand[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [validYears, setValidYears] = useState<string[]>([]);
+  const [academicYear, setAcademicYear] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [deptFilter, setDeptFilter] = useState("all");
   const [progFilter, setProgFilter] = useState("all");
-  const [yearFilter, setYearFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [minCwa, setMinCwa] = useState("50");
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 6 }, (_, i) => {
-    const y = currentYear - 2 + i;
-    return `${y}/${y + 1}`;
-  });
 
-  const [academicYear, setAcademicYear] = useState(`${currentYear}/${currentYear + 1}`);
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      try {
+        const [yearsRes, data] = await Promise.all([
+          apiFetch<{ years: string[] }>("/passlist/valid-years"),
+          apiFetch<Graduand[]>("/passlist"),
+        ]);
+        const years = yearsRes.years || [];
+        setValidYears(years);
+        setAcademicYear(years[0] || "");
+        setGraduands(data || []);
+      } catch {}
+      finally { setLoading(false); }
+    };
+    init();
+  }, []);
 
-  const load = async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const data = await apiFetch<Graduand[]>("/passlist");
-      setGraduands(data || []);
-    } catch {
-      // backend offline
-    } finally {
-      if (!silent) setLoading(false);
-    }
+  const reload = async () => {
+    const [yearsRes, data] = await Promise.all([
+      apiFetch<{ years: string[] }>("/passlist/valid-years"),
+      apiFetch<Graduand[]>("/passlist"),
+    ]);
+    setValidYears(yearsRes.years || []);
+    setGraduands(data || []);
   };
 
-  useEffect(() => { load(); }, []);
-
   const handleGenerate = async () => {
+    if (!academicYear) return;
     setGenerating(true);
+    setGenerateError(null);
     try {
       const res = await apiFetch<{ message: string }>("/passlist/generate", {
         method: "POST",
         body: JSON.stringify({ academic_year: academicYear, min_cwa: Number(minCwa) }),
       });
       toast({ title: "Pass list generated", description: res.message });
-      load();
+      await reload();
     } catch (err: any) {
-      toast({ title: "Failed", description: err.message, variant: "destructive" });
+      setGenerateError(err.message);
     } finally {
       setGenerating(false);
     }
@@ -72,28 +82,30 @@ const GeneratePassList = () => {
 
   const departments = [...new Set(graduands.map((g) => g.department_name).filter(Boolean))];
   const programs = [...new Set(graduands.map((g) => g.program_name).filter(Boolean))];
-  const years = [...new Set(graduands.map((g) => g.academic_year).filter(Boolean))].sort().reverse();
+  const yearsInDb = new Set(graduands.map((g) => g.academic_year).filter(Boolean));
+  const selectedYearHasData = academicYear ? (yearsInDb.has(academicYear) && !generateError) : false;
 
   const filtered = graduands.filter((g) => {
     const effectiveDept = isSuperAdmin ? deptFilter : (adminDepartment || "all");
-    const matchesDept = effectiveDept === "all" || g.department_name === effectiveDept;
-    return matchesDept &&
+    return (
+      (effectiveDept === "all" || g.department_name === effectiveDept) &&
       (progFilter === "all" || g.program_name === progFilter) &&
-      (yearFilter === "all" || g.academic_year === yearFilter) &&
-      (statusFilter === "all" || g.status === statusFilter);
+      g.academic_year === academicYear &&
+      (statusFilter === "all" || g.status === statusFilter)
+    );
   });
 
-  // Pagination
+  const hasActiveFilters = progFilter !== "all" || deptFilter !== "all" || statusFilter !== "all";
+  const clearFilters = () => { setProgFilter("all"); setDeptFilter("all"); setStatusFilter("all"); };
+
+  // Clear error when year changes
+  useEffect(() => { setGenerateError(null); }, [academicYear]);
+
   const itemsPerPage = 50;
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedGraduands = filtered.slice(startIndex, endIndex);
+  const paginatedGraduands = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [deptFilter, progFilter, yearFilter, statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [deptFilter, progFilter, academicYear, statusFilter]);
 
   const handleExport = (format: "csv" | "pdf") => {
     const headers = ["Name", "Index Number", "Programme", "Department", "CWA", "Status"];
@@ -103,12 +115,69 @@ const GeneratePassList = () => {
     ]);
     exportData({
       title: "Pass List — Exams Office",
-      subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+      subtitle: `Academic Year: ${academicYear}`,
       headers, rows,
-      fileName: "UMaT_Pass_List_ExamsOffice",
+      fileName: `UMaT_Pass_List_ExamsOffice_${academicYear}`,
       format,
     });
     toast({ title: `${format.toUpperCase()} exported`, description: "Pass list downloaded" });
+  };
+
+  // ── Empty states ──────────────────────────────────────────────────────────
+  const EmptyNoYear = () => (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+        <GraduationCap size={26} className="text-muted-foreground" />
+      </div>
+      <p className="text-base font-semibold text-foreground mb-1">No graduating students found</p>
+      <p className="text-sm text-muted-foreground max-w-sm">There are no students whose graduation year can be determined. Enroll students first.</p>
+    </div>
+  );
+
+  const EmptyNotGenerated = () => (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+        <AlertCircle size={26} className="text-amber-500" />
+      </div>
+      <p className="text-base font-semibold text-foreground mb-1">
+        {generateError ? "No graduating students for this year" : `Pass list not yet generated for ${academicYear}`}
+      </p>
+      <p className="text-sm text-muted-foreground max-w-sm mb-4">
+        {generateError
+          ? `${generateError} Please select a different year.`
+          : `Students admitted in ${parseInt(academicYear) - 2} are due to graduate this year, but no pass list has been generated yet.`
+        }
+      </p>
+      {!generateError && (
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {generating && <Loader2 size={14} className="animate-spin" />}
+          Generate Now
+        </button>
+      )}
+    </div>
+  );
+
+  const EmptyFiltered = () => (
+    <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+      <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+        <SlidersHorizontal size={26} className="text-muted-foreground" />
+      </div>
+      <p className="text-base font-semibold text-foreground mb-1">No graduands match your filters</p>
+      <p className="text-sm text-muted-foreground max-w-sm mb-4">Try adjusting or clearing the filters to see more results.</p>
+      <button onClick={clearFilters} className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors">
+        Clear Filters
+      </button>
+    </div>
+  );
+
+  const renderEmptyState = () => {
+    if (!academicYear || validYears.length === 0) return <EmptyNoYear />;
+    if (!selectedYearHasData) return <EmptyNotGenerated />;
+    return <EmptyFiltered />;
   };
 
   return (
@@ -127,12 +196,14 @@ const GeneratePassList = () => {
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Academic Year</label>
           <select
             value={academicYear}
-            onChange={(e) => setAcademicYear(e.target.value)}
+            onChange={(e) => { setAcademicYear(e.target.value); setCurrentPage(1); }}
             className="px-4 py-2.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring w-36"
+            disabled={loading || validYears.length === 0}
           >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+            {validYears.length === 0
+              ? <option value="">No years available</option>
+              : validYears.map((y) => <option key={y} value={y}>{y}</option>)
+            }
           </select>
         </div>
         <div>
@@ -145,7 +216,7 @@ const GeneratePassList = () => {
         </div>
         <button
           onClick={handleGenerate}
-          disabled={generating}
+          disabled={generating || !academicYear}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg gradient-gold text-secondary-foreground text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
         >
           {generating ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -155,10 +226,6 @@ const GeneratePassList = () => {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-          <option value="all">All Years</option>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
         <select value={progFilter} onChange={(e) => setProgFilter(e.target.value)} className="px-4 py-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring">
           <option value="all">All Programmes</option>
           {programs.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -174,20 +241,32 @@ const GeneratePassList = () => {
           <option value="Eligible">Eligible</option>
           <option value="Ineligible">Ineligible</option>
         </select>
+        {hasActiveFilters && (
+          <button onClick={clearFilters} className="px-4 py-3 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            Clear Filters
+          </button>
+        )}
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">Showing {paginatedGraduands.length} of {filtered.length} students {filtered.length !== graduands.length ? `(filtered from ${graduands.length} total)` : ""}</p>
+      {!loading && filtered.length > 0 && (
+        <p className="text-sm text-muted-foreground mb-4">Showing {paginatedGraduands.length} of {filtered.length} students {filtered.length !== graduands.length ? `(filtered from ${graduands.length} total)` : ""}</p>
+      )}
 
       <div className="bg-card rounded-xl border border-border overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
             <Loader2 size={18} className="animate-spin mr-2" /> Loading pass list...
           </div>
-        ) : paginatedGraduands.length === 0 ? (
-          <p className="px-6 py-12 text-center text-sm text-muted-foreground">No results match the selected filters. Click "Generate Pass List" to compute from grades.</p>
-        ) : (
+        ) : generateError ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4">
+              <AlertCircle size={26} className="text-amber-500" />
+            </div>
+            <p className="text-base font-semibold text-foreground mb-1">No graduating students for this year</p>
+            <p className="text-sm text-muted-foreground max-w-sm">{generateError} Please select a different year.</p>
+          </div>
+        ) : paginatedGraduands.length === 0 ? renderEmptyState() : (
           <>
-            {/* Desktop table */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -216,7 +295,6 @@ const GeneratePassList = () => {
                 </tbody>
               </table>
             </div>
-            {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-border">
               {paginatedGraduands.map((g) => (
                 <div key={g.id} className="px-4 py-4">
@@ -237,6 +315,19 @@ const GeneratePassList = () => {
           </>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-6 gap-3 px-2">
+          <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} ({filtered.length.toLocaleString()} graduands)</p>
+          <div className="flex items-center gap-1 flex-wrap justify-center">
+            <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">First</button>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Prev</button>
+            <span className="px-3 py-2 text-sm text-muted-foreground">{currentPage} / {totalPages}</span>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Next</button>
+            <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50">Last</button>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
