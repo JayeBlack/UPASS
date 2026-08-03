@@ -1,5 +1,6 @@
 const db = require("../db");
 const { uploadToCloudinary, useCloudinary } = require("../middleware/upload");
+const { sendSMS } = require("../utils/sms");
 
 // GET /api/thesis/student/:studentId
 exports.getByStudent = async (req, res) => {
@@ -131,6 +132,19 @@ exports.addRemark = async (req, res) => {
       `UPDATE thesis_submissions SET feedback = $1 WHERE id = $2`,
       [remark_text, req.params.id]
     );
+
+    // Notify student via SMS
+    const subRes = await db.query(
+      `SELECT s.user_id, u.phone_number FROM thesis_submissions ts
+       JOIN students s ON ts.student_id = s.id
+       JOIN users u ON s.user_id = u.id
+       WHERE ts.id = $1`,
+      [req.params.id]
+    );
+    if (subRes.rows.length > 0) {
+      sendSMS(subRes.rows[0].phone_number, `UMaT-PG: Your supervisor has left feedback on your thesis submission. Log in to review it.`);
+    }
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });

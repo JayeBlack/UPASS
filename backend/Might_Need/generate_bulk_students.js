@@ -63,8 +63,18 @@ const departments = {
   ],
 };
 
+const CE_PHONES = ['0531399032', '0548329408', '0592826345', '0595799116'];
+let cePhoneIndex = 0;
+
 function randomChoice(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function randomGhanaPhone() {
+  const prefixes = ['024', '054', '055', '059', '020', '050', '026', '056', '027', '057'];
+  const prefix = randomChoice(prefixes);
+  const number = String(Math.floor(Math.random() * 9000000) + 1000000);
+  return prefix + number;
 }
 
 function generateStudents(count) {
@@ -89,9 +99,11 @@ function generateStudents(count) {
     const dept = randomChoice(deptNames);
     const program = randomChoice(departments[dept]);
     const cohort = Math.random() > 0.5 ? 'January' : 'July';
-    const academicYear = '2024/2025'; // 2022 + 2 years = 2024 graduation
+    const academicYear = '2024/2025';
     
     if (!usedIndexes.has(indexNumber) && !usedEmails.has(email)) {
+      const isCE = dept === 'Computer Science and Engineering' && cePhoneIndex < 4;
+      const phone = isCE ? CE_PHONES[cePhoneIndex++] : randomGhanaPhone();
       students.push({
         name: `${firstName} ${lastName}`,
         indexNumber,
@@ -99,7 +111,8 @@ function generateStudents(count) {
         program,
         department: dept,
         cohort,
-        academicYear
+        academicYear,
+        phone
       });
       usedIndexes.add(indexNumber);
       usedEmails.add(email);
@@ -116,9 +129,11 @@ function generateStudents(count) {
     const dept = randomChoice(deptNames);
     const program = randomChoice(departments[dept]);
     const cohort = Math.random() > 0.5 ? 'January' : 'July';
-    const academicYear = '2026/2027'; // 2024 + 2 years = 2026 graduation
+    const academicYear = '2026/2027';
     
     if (!usedIndexes.has(indexNumber) && !usedEmails.has(email)) {
+      const isCE = dept === 'Computer Science and Engineering' && cePhoneIndex < 4;
+      const phone = isCE ? CE_PHONES[cePhoneIndex++] : randomGhanaPhone();
       students.push({
         name: `${firstName} ${lastName}`,
         indexNumber,
@@ -126,7 +141,8 @@ function generateStudents(count) {
         program,
         department: dept,
         cohort,
-        academicYear
+        academicYear,
+        phone
       });
       usedIndexes.add(indexNumber);
       usedEmails.add(email);
@@ -144,7 +160,7 @@ function createExcelFile() {
   
   // Create worksheet data
   const wsData = [
-    ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Academic Year'],
+    ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Academic Year', 'Phone Number'],
     ...students.map(s => [
       s.name,
       s.indexNumber,
@@ -152,7 +168,8 @@ function createExcelFile() {
       s.program,
       s.department,
       s.cohort,
-      s.academicYear
+      s.academicYear,
+      s.phone
     ])
   ];
 
@@ -168,6 +185,7 @@ function createExcelFile() {
     { wch: 40 },  // Department
     { wch: 12 },  // Cohort
     { wch: 15 },  // Academic Year
+    { wch: 15 },  // Phone Number
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Students');

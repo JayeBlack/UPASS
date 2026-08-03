@@ -1,4 +1,5 @@
 const db = require("../db");
+const { sendSMS } = require("../utils/sms");
 
 // Helper function to create notification
 async function createNotification(userId, type, title, message, severity = 'info') {
@@ -336,6 +337,27 @@ exports.broadcast = async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [req.user.id, title, message, type, userIds.length, download_url || null, audienceLabel]
     ).catch(() => {});
+
+    // SMS the same audience
+    let phoneQuery;
+    if (department && department !== "All Students" && department !== "Students with Outstanding Fees") {
+      phoneQuery = await db.query(
+        `SELECT u.phone_number FROM students s
+         JOIN departments d ON s.department_id = d.id
+         JOIN users u ON s.user_id = u.id
+         WHERE u.phone_number IS NOT NULL AND d.name = $1`,
+        [department]
+      );
+    } else {
+      phoneQuery = await db.query(
+        `SELECT u.phone_number FROM students s
+         JOIN users u ON s.user_id = u.id
+         WHERE u.phone_number IS NOT NULL`
+      );
+    }
+    const phones = phoneQuery.rows.map(r => r.phone_number);
+    const preview = message.length > 120 ? message.substring(0, 117) + '...' : message;
+    if (phones.length > 0) sendSMS(phones, `UMaT-PG: ${preview}`);
 
     res.status(201).json({ sent: userIds.length, message: `Notification sent to ${userIds.length} students` });
   } catch (err) {

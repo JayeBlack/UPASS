@@ -695,6 +695,7 @@ exports.parseBulk = async (req, res) => {
       cohort: ["cohort", "admissioncycle", "cycle", "intake"],
       academic_year: ["academicyear", "gradyear", "graduationyear", "year"],
       admission_year: ["admissionyear", "admyear", "yearofadmission"],
+      phone: ["phone", "phonenumber", "telephone", "mobile", "contact"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
       const idx = normalized.findIndex((h) => aliases.includes(h));
@@ -752,6 +753,7 @@ exports.parseBulk = async (req, res) => {
           }
         }
         
+        const phoneIdx = colMap.phone ?? -1;
         return {
           name: (cols[nameIdx] !== undefined && cols[nameIdx] !== null) ? String(cols[nameIdx]).trim() : "",
           index: (cols[indexIdx] !== undefined && cols[indexIdx] !== null) ? String(cols[indexIdx]).trim() : "",
@@ -761,6 +763,7 @@ exports.parseBulk = async (req, res) => {
           admission_cycle: cohort,
           academic_year: academicYear,
           admission_year: admissionYearIdx >= 0 && cols[admissionYearIdx] ? parseInt(String(cols[admissionYearIdx])) || null : null,
+          phone_number: phoneIdx >= 0 && cols[phoneIdx] ? String(cols[phoneIdx]).trim() : null,
         };
       })
       .filter((s) => s && s.name && s.index);
@@ -860,10 +863,10 @@ exports.enrollBulk = async (req, res) => {
           const hash = hashes[i];
 
           const userInsert = await client.query(
-            `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change)
-             VALUES ($1, $2, 'Student', $3, $4, TRUE, NOW())
+            `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change, phone_number)
+             VALUES ($1, $2, 'Student', $3, $4, TRUE, NOW(), $5)
              RETURNING id, email`,
-            [emailLower, hash, first_name, last_name]
+            [emailLower, hash, first_name, last_name, validStudents[i].phone_number || null]
           );
           const userId = userInsert.rows[0].id;
 

@@ -4,6 +4,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const { createNotification } = require("./notificationController");
+const { sendSMS } = require("../utils/sms");
 
 // GET /api/fees/student/:studentId — accepts user_id or student_id
 exports.getByStudent = async (req, res) => {
@@ -141,6 +142,11 @@ exports.makePayment = async (req, res) => {
       const studentUser = await db.query('SELECT user_id FROM students WHERE id = $1', [fee.student_id]);
       if (studentUser.rows.length > 0) {
         const isPaid = fee.status === 'Paid';
+        const smsMsg = isPaid
+          ? `UMaT-PG: Your fees for ${fee.academic_year} Sem ${fee.semester} are fully paid. Thank you.`
+          : `UMaT-PG: Payment of GHS ${parseFloat(fee.amount_paid).toLocaleString()} received for ${fee.academic_year} Sem ${fee.semester}. Outstanding: GHS ${(fee.total_amount - fee.amount_paid).toLocaleString()}.`;
+        const phoneRes = await db.query('SELECT phone_number FROM users WHERE id = $1', [studentUser.rows[0].user_id]);
+        sendSMS(phoneRes.rows[0]?.phone_number, smsMsg);
         await createNotification(
           studentUser.rows[0].user_id, 'fee',
           isPaid ? 'Fees Fully Paid' : 'Payment Received',

@@ -1,5 +1,6 @@
 const db = require("../db");
 const { createNotification } = require("./notificationController");
+const { sendSMS } = require("../utils/sms");
 
 // Which roles may approve which clearance step departments
 const STEP_OWNERS = {
@@ -112,10 +113,12 @@ exports.approve = async (req, res) => {
       [req.user.email, req.params.id]
     );
 
-    const studentQuery = await db.query("SELECT user_id FROM students WHERE id = $1", [step.student_id]);
+    const studentQuery = await db.query("SELECT s.user_id, u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
     if (studentQuery.rows.length > 0) {
+      const { user_id, phone_number } = studentQuery.rows[0];
+      sendSMS(phone_number, `UMaT-PG: Your ${step.department} clearance step has been approved.`);
       await createNotification(
-        studentQuery.rows[0].user_id, "clearance",
+        user_id, "clearance",
         "Clearance Step Approved",
         `Your ${step.department} clearance has been approved!`,
         "success"
@@ -142,10 +145,12 @@ exports.reject = async (req, res) => {
       [reason, req.params.id]
     );
 
-    const studentQuery = await db.query("SELECT user_id FROM students WHERE id = $1", [step.student_id]);
-    if (studentQuery.rows.length > 0) {
+    const studentQuery2 = await db.query("SELECT s.user_id, u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
+    if (studentQuery2.rows.length > 0) {
+      const { user_id, phone_number } = studentQuery2.rows[0];
+      sendSMS(phone_number, `UMaT-PG: Your ${step.department} clearance requires attention. Reason: ${reason}`);
       await createNotification(
-        studentQuery.rows[0].user_id, "clearance",
+        user_id, "clearance",
         "Clearance Requires Attention",
         `Your ${step.department} clearance needs attention: ${reason}`,
         "warning"
