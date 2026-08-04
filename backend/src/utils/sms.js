@@ -10,25 +10,25 @@ async function sendSMS(to, message) {
     return;
   }
 
-  const recipients = (Array.isArray(to) ? to : [to])
+  const numbers = (Array.isArray(to) ? to : [to])
     .filter(Boolean)
     .map(n => {
       let num = String(n).trim().replace(/\s+/g, '');
-      // Convert local Ghanaian format (0XXXXXXXXX) to international (233XXXXXXXXX)
       if (num.startsWith('0') && num.length === 10) num = '233' + num.slice(1);
-      return { to: num };
+      return num;
     });
 
-  console.log('[SMS] Attempting send to:', recipients, '| message:', message);
-  console.log('[SMS] Using API key prefix:', API_KEY.substring(0, 6) + '...' + ' | sender:', SENDER_ID);
-  if (recipients.length === 0) { console.warn('[SMS] No valid recipients'); return; }
+  if (numbers.length === 0) { console.warn('[SMS] No valid recipients'); return; }
 
+  // SMSOnlineGH v5 payload — to is array of { to: "number" }
   const payload = JSON.stringify({
     text: message,
     type: 0,
-    to: recipients,
+    to: numbers.map(n => ({ to: n })),
     sender: SENDER_ID,
   });
+
+  console.log('[SMS] Sending | key prefix:', API_KEY.substring(0, 8), '| to:', numbers, '| payload:', payload);
 
   return new Promise((resolve) => {
     const req = https.request(
@@ -39,7 +39,7 @@ async function sendSMS(to, message) {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `key ${API_KEY}`,
+          'Authorization': `key ${API_KEY.trim()}`,
           'Content-Length': Buffer.byteLength(payload),
         },
       },
@@ -47,16 +47,16 @@ async function sendSMS(to, message) {
         let data = '';
         res.on('data', chunk => { data += chunk; });
         res.on('end', () => {
-          console.log('[SMS] HTTP status:', res.statusCode, '| headers:', JSON.stringify(res.headers), '| raw response:', data);
+          console.log('[SMS] Status:', res.statusCode, '| headers:', JSON.stringify(res.headers), '| body:', data);
           try {
             const parsed = JSON.parse(data);
             if (parsed?.handshake?.label !== 'HSHK_OK') {
-              console.warn('[SMS] Delivery issue:', parsed?.handshake?.label, '| to:', to);
+              console.warn('[SMS] Failed:', parsed?.handshake?.label);
             } else {
-              console.log('[SMS] Sent successfully to:', to);
+              console.log('[SMS] Success to:', numbers);
             }
           } catch {
-            console.warn('[SMS] Could not parse response as JSON. Raw:', data);
+            console.warn('[SMS] Non-JSON response:', data);
           }
           resolve();
         });
