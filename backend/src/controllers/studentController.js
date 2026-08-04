@@ -695,7 +695,7 @@ exports.parseBulk = async (req, res) => {
       cohort: ["cohort", "admissioncycle", "cycle", "intake"],
       academic_year: ["academicyear", "gradyear", "graduationyear", "year"],
       admission_year: ["admissionyear", "admyear", "yearofadmission"],
-      phone: ["phone", "phonenumber", "telephone", "mobile", "contact"],
+      phone: ["phone", "phonenumber", "telephone", "mobile", "contact", "phone_number"],
     };
     for (const [field, aliases] of Object.entries(knownCols)) {
       const idx = normalized.findIndex((h) => aliases.includes(h));
@@ -863,7 +863,7 @@ exports.enrollBulk = async (req, res) => {
           const hash = hashes[i];
 
           const userInsert = await client.query(
-            `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change, phone_number)
+            `INSERT INTO users (email, password_hash, role, first_name, last_name, must_change_password, last_password_change, phone)
              VALUES ($1, $2, 'Student', $3, $4, TRUE, NOW(), $5)
              RETURNING id, email`,
             [emailLower, hash, first_name, last_name, validStudents[i].phone_number || null]

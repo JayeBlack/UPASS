@@ -135,14 +135,14 @@ exports.addRemark = async (req, res) => {
 
     // Notify student via SMS
     const subRes = await db.query(
-      `SELECT s.user_id, u.phone_number FROM thesis_submissions ts
+      `SELECT s.user_id, u.phone FROM thesis_submissions ts
        JOIN students s ON ts.student_id = s.id
        JOIN users u ON s.user_id = u.id
        WHERE ts.id = $1`,
       [req.params.id]
     );
     if (subRes.rows.length > 0) {
-      sendSMS(subRes.rows[0].phone_number, `UMaT-PG: Your supervisor has left feedback on your thesis submission. Log in to review it.`);
+      sendSMS(subRes.rows[0].phone, `UMaT-PG: Your supervisor has left feedback on your thesis submission. Log in to review it.`);
     }
 
     res.status(201).json(result.rows[0]);

@@ -268,12 +268,12 @@ exports.batchUpload = async (req, res) => {
       
       for (const studentId of studentIds) {
         const studentRes = await db.query(
-          "SELECT s.user_id, u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1",
+          "SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1",
           [studentId]
         );
         if (studentRes.rows.length > 0) {
-          const { user_id, phone_number } = studentRes.rows[0];
-          sendSMS(phone_number, `UMaT-PG: Your Semester ${semesterNum} results for ${academicYear} are now available. Log in to view them.`);
+          const { user_id, phone } = studentRes.rows[0];
+          sendSMS(phone, `UMaT-PG: Your Semester ${semesterNum} results for ${academicYear} are now available. Log in to view them.`);
           await createNotification(
             user_id,
             'exam',
@@ -445,8 +445,8 @@ exports.publishBatch = async (req, res) => {
     );
     
     for (const student of studentsQuery.rows) {
-      const phoneRes = await db.query('SELECT phone_number FROM users WHERE id = $1', [student.user_id]);
-      sendSMS(phoneRes.rows[0]?.phone_number, `UMaT-PG: Your ${batch.semester} results for ${batch.academic_year} are now available. Log in to view them.`);
+      const phoneRes = await db.query('SELECT phone FROM users WHERE id = $1', [student.user_id]);
+      sendSMS(phoneRes.rows[0]?.phone, `UMaT-PG: Your ${batch.semester} results for ${batch.academic_year} are now available. Log in to view them.`);
       await createNotification(
         student.user_id,
         'exam',

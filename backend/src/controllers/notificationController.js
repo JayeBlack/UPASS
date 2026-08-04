@@ -342,20 +342,20 @@ exports.broadcast = async (req, res) => {
     let phoneQuery;
     if (department && department !== "All Students" && department !== "Students with Outstanding Fees") {
       phoneQuery = await db.query(
-        `SELECT u.phone_number FROM students s
+        `SELECT u.phone FROM students s
          JOIN departments d ON s.department_id = d.id
          JOIN users u ON s.user_id = u.id
-         WHERE u.phone_number IS NOT NULL AND d.name = $1`,
+         WHERE u.phone IS NOT NULL AND d.name = $1`,
         [department]
       );
     } else {
       phoneQuery = await db.query(
-        `SELECT u.phone_number FROM students s
+        `SELECT u.phone FROM students s
          JOIN users u ON s.user_id = u.id
-         WHERE u.phone_number IS NOT NULL`
+         WHERE u.phone IS NOT NULL`
       );
     }
-    const phones = phoneQuery.rows.map(r => r.phone_number);
+    const phones = phoneQuery.rows.map(r => r.phone);
     const preview = message.length > 120 ? message.substring(0, 117) + '...' : message;
     if (phones.length > 0) sendSMS(phones, `UMaT-PG: ${preview}`);
 

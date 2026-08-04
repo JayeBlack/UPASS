@@ -145,8 +145,8 @@ exports.makePayment = async (req, res) => {
         const smsMsg = isPaid
           ? `UMaT-PG: Your fees for ${fee.academic_year} Sem ${fee.semester} are fully paid. Thank you.`
           : `UMaT-PG: Payment of GHS ${parseFloat(fee.amount_paid).toLocaleString()} received for ${fee.academic_year} Sem ${fee.semester}. Outstanding: GHS ${(fee.total_amount - fee.amount_paid).toLocaleString()}.`;
-        const phoneRes = await db.query('SELECT phone_number FROM users WHERE id = $1', [studentUser.rows[0].user_id]);
-        sendSMS(phoneRes.rows[0]?.phone_number, smsMsg);
+        const phoneRes = await db.query('SELECT phone FROM users WHERE id = $1', [studentUser.rows[0].user_id]);
+        sendSMS(phoneRes.rows[0]?.phone, smsMsg);
         await createNotification(
           studentUser.rows[0].user_id, 'fee',
           isPaid ? 'Fees Fully Paid' : 'Payment Received',
@@ -715,10 +715,10 @@ exports.uploadBulk = async (req, res) => {
 
           // SMS student about their fee record
           const studentUserRes = await client.query(
-            `SELECT u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1`,
+            `SELECT u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1`,
             [studentId]
           );
-          const phone = studentUserRes.rows[0]?.phone_number;
+          const phone = studentUserRes.rows[0]?.phone;
           if (phone && rawPaid > 0) {
             const isPaid = status === 'Paid' || (existing && existing.newStatus === 'Paid');
             const smsMsg = isPaid

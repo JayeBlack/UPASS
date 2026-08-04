@@ -113,10 +113,10 @@ exports.approve = async (req, res) => {
       [req.user.email, req.params.id]
     );
 
-    const studentQuery = await db.query("SELECT s.user_id, u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
+    const studentQuery = await db.query("SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
     if (studentQuery.rows.length > 0) {
-      const { user_id, phone_number } = studentQuery.rows[0];
-      sendSMS(phone_number, `UMaT-PG: Your ${step.department} clearance step has been approved.`);
+      const { user_id, phone } = studentQuery.rows[0];
+      sendSMS(phone, `UMaT-PG: Your ${step.department} clearance step has been approved.`);
       await createNotification(
         user_id, "clearance",
         "Clearance Step Approved",
@@ -145,10 +145,10 @@ exports.reject = async (req, res) => {
       [reason, req.params.id]
     );
 
-    const studentQuery2 = await db.query("SELECT s.user_id, u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
+    const studentQuery2 = await db.query("SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
     if (studentQuery2.rows.length > 0) {
-      const { user_id, phone_number } = studentQuery2.rows[0];
-      sendSMS(phone_number, `UMaT-PG: Your ${step.department} clearance requires attention. Reason: ${reason}`);
+      const { user_id, phone } = studentQuery2.rows[0];
+      sendSMS(phone, `UMaT-PG: Your ${step.department} clearance requires attention. Reason: ${reason}`);
       await createNotification(
         user_id, "clearance",
         "Clearance Requires Attention",
