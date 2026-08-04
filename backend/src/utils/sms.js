@@ -47,7 +47,7 @@ async function sendSMS(to, message) {
         let data = '';
         res.on('data', chunk => { data += chunk; });
         res.on('end', () => {
-          console.log('[SMS] HTTP status:', res.statusCode, '| raw response:', data);
+          console.log('[SMS] HTTP status:', res.statusCode, '| headers:', JSON.stringify(res.headers), '| raw response:', data);
           try {
             const parsed = JSON.parse(data);
             if (parsed?.handshake?.label !== 'HSHK_OK') {
