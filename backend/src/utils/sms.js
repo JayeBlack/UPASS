@@ -1,8 +1,39 @@
 const https = require('https');
+const querystring = require('querystring');
 
 const API_KEY = process.env.SMSONLINEGH_API_KEY;
 const SENDER_ID = process.env.SMS_SENDER_ID || 'UMATPG';
-const BASE_URL = 'api.smsonlinegh.com';
+const PORTAL_HOST = 'portal.smsonlinegh.com';
+
+function portalPost(path, body) {
+  return new Promise((resolve, reject) => {
+    const payload = querystring.stringify(body);
+    const req = https.request(
+      {
+        hostname: PORTAL_HOST,
+        path,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Content-Length': Buffer.byteLength(payload),
+          // Portal uses session cookie auth — we use the API key as Bearer for portal endpoints
+          'Authorization': `key ${API_KEY}`,
+        },
+      },
+      (res) => {
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
+          catch { resolve({ status: res.statusCode, body: data }); }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.write(payload);
+    req.end();
+  });
+}
 
 async function sendSMS(to, message) {
   if (!API_KEY) {
@@ -20,58 +51,38 @@ async function sendSMS(to, message) {
 
   if (numbers.length === 0) { console.warn('[SMS] No valid recipients'); return; }
 
-  // SMSOnlineGH v5 payload — to is array of { to: "number" }
-  const payload = JSON.stringify({
-    text: message,
-    type: 0,
-    to: numbers.map(n => ({ to: n })),
-    sender: SENDER_ID,
-  });
-
-  console.log('[SMS] Sending | key prefix:', API_KEY.substring(0, 8), '| key length:', API_KEY.trim().length, '| to:', numbers, '| payload:', payload);
-
-  return new Promise((resolve) => {
-    // Try v5 endpoint
-    const path = '/v5/message/sms/send';
-    console.log('[SMS] POST https://' + BASE_URL + path);
-    const req = https.request(
-      {
-        hostname: BASE_URL,
-        path,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Authorization': `key ${API_KEY.trim()}`,
-          'Content-Length': Buffer.byteLength(payload),
-        },
-      },
-      (res) => {
-        let data = '';
-        res.on('data', chunk => { data += chunk; });
-        res.on('end', () => {
-          console.log('[SMS] Status:', res.statusCode, '| headers:', JSON.stringify(res.headers), '| body:', data);
-          try {
-            const parsed = JSON.parse(data);
-            if (parsed?.handshake?.label !== 'HSHK_OK') {
-              console.warn('[SMS] Failed:', parsed?.handshake?.label);
-            } else {
-              console.log('[SMS] Success to:', numbers);
-            }
-          } catch {
-            console.warn('[SMS] Non-JSON response:', data);
-          }
-          resolve();
-        });
-      }
-    );
-    req.on('error', (err) => {
-      console.error('[SMS] Request error:', err.message);
-      resolve();
+  try {
+    // Step 1: Save message
+    const saveRes = await portalPost('/async/message/save', {
+      category: 1, mv: 0, tplId: '', type: 0,
+      message, isPsnd: 0, url: '', sender: SENDER_ID,
+      varstr: '', scheduled: 0, writeClose: 1,
     });
-    req.write(payload);
-    req.end();
-  });
+    console.log('[SMS] Save response:', JSON.stringify(saveRes));
+
+    const msgid = saveRes.body?.msgid;
+    if (!msgid) { console.warn('[SMS] No msgid returned from save'); return; }
+
+    // Step 2: Add destinations
+    const destRes = await portalPost('/async/message/destinations/add', {
+      phone: JSON.stringify(numbers),
+      dialcode: 233,
+      tplId: msgid,
+    });
+    console.log('[SMS] Destinations response:', JSON.stringify(destRes));
+
+    // Step 3: Submit
+    const submitRes = await portalPost('/async/message/submit', { tplId: msgid });
+    console.log('[SMS] Submit response:', JSON.stringify(submitRes));
+
+    if (submitRes.body?.code === 1) {
+      console.log('[SMS] Sent successfully to:', numbers);
+    } else {
+      console.warn('[SMS] Submit failed:', JSON.stringify(submitRes.body));
+    }
+  } catch (err) {
+    console.error('[SMS] Error:', err.message);
+  }
 }
 
 module.exports = { sendSMS };
