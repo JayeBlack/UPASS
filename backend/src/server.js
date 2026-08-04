@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const https = require("https");
 require("dotenv").config();
 
 const userRoutes = require("./routes/userRoutes");
@@ -57,6 +58,11 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // ── Rate Limiting ──
 app.get("/api/health", (req, res) => res.json({ status: "ok", timestamp: new Date().toISOString() }));
+app.get("/api/myip", async (req, res) => {
+  https.get('https://api.ipify.org?format=json', (r) => {
+    let d = ''; r.on('data', c => d += c); r.on('end', () => res.json(JSON.parse(d)));
+  }).on('error', e => res.json({ error: e.message }));
+});
 // General: 300 req/15min per IP
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false }));
 // Auth: 20 login attempts per 15min per IP
