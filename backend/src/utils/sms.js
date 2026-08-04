@@ -31,10 +31,13 @@ async function sendSMS(to, message) {
   console.log('[SMS] Sending | key prefix:', API_KEY.substring(0, 8), '| to:', numbers, '| payload:', payload);
 
   return new Promise((resolve) => {
+    // Try v5 endpoint
+    const path = '/v5/message/sms/send';
+    console.log('[SMS] POST https://' + BASE_URL + path);
     const req = https.request(
       {
         hostname: BASE_URL,
-        path: '/v5/message/sms/send',
+        path,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
