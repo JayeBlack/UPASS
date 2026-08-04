@@ -1,87 +1,106 @@
 const https = require('https');
 const querystring = require('querystring');
 
-const API_KEY = process.env.SMSONLINEGH_API_KEY;
+const PROVIDER = process.env.SMS_PROVIDER || 'smsonlinegh'; // 'smsonlinegh' | 'arkesel'
 const SENDER_ID = process.env.SMS_SENDER_ID || 'UMATPG';
-const PORTAL_HOST = 'portal.smsonlinegh.com';
 
-function portalPost(path, body) {
-  return new Promise((resolve, reject) => {
-    const payload = querystring.stringify(body);
-    const req = https.request(
-      {
-        hostname: PORTAL_HOST,
-        path,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'Content-Length': Buffer.byteLength(payload),
-          // Portal uses session cookie auth — we use the API key as Bearer for portal endpoints
-          'Authorization': `key ${API_KEY}`,
-        },
+// SMSOnlineGH v5
+const SMSONLINEGH_API_KEY = process.env.SMSONLINEGH_API_KEY;
+
+// Arkesel (fallback)
+const ARKESEL_API_KEY = process.env.ARKESEL_API_KEY;
+
+function normalizeGhanaPhone(n) {
+  let num = String(n).trim().replace(/\s+/g, '');
+  if (num.startsWith('0') && num.length === 10) num = '233' + num.slice(1);
+  return num;
+}
+
+async function sendViaSMSOnlineGH(numbers, message) {
+  const payload = JSON.stringify({
+    text: message,
+    type: 0,
+    to: numbers.map(n => ({ to: n })),
+    sender: SENDER_ID,
+  });
+
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'api.smsonlinegh.com',
+      path: '/v5/message/sms/send',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `key ${SMSONLINEGH_API_KEY.trim()}`,
+        'Content-Length': Buffer.byteLength(payload),
       },
-      (res) => {
-        let data = '';
-        res.on('data', chunk => { data += chunk; });
-        res.on('end', () => {
-          try { resolve({ status: res.statusCode, body: JSON.parse(data) }); }
-          catch { resolve({ status: res.statusCode, body: data }); }
-        });
-      }
-    );
-    req.on('error', reject);
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        console.log('[SMS] SMSOnlineGH status:', res.statusCode, '| body:', data);
+        resolve();
+      });
+    });
+    req.on('error', err => { console.error('[SMS] SMSOnlineGH error:', err.message); resolve(); });
+    req.write(payload);
+    req.end();
+  });
+}
+
+async function sendViaArkesel(numbers, message) {
+  const payload = JSON.stringify({
+    action: 'send-sms',
+    api_key: ARKESEL_API_KEY,
+    to: numbers,
+    from: SENDER_ID,
+    sms: message,
+  });
+
+  return new Promise((resolve) => {
+    const req = https.request({
+      hostname: 'sms.arkesel.com',
+      path: '/api/v2/sms/send',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': ARKESEL_API_KEY,
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        console.log('[SMS] Arkesel status:', res.statusCode, '| body:', data);
+        resolve();
+      });
+    });
+    req.on('error', err => { console.error('[SMS] Arkesel error:', err.message); resolve(); });
     req.write(payload);
     req.end();
   });
 }
 
 async function sendSMS(to, message) {
-  if (!API_KEY) {
-    console.warn('[SMS] SMSONLINEGH_API_KEY not set — skipping SMS');
-    return;
-  }
-
   const numbers = (Array.isArray(to) ? to : [to])
     .filter(Boolean)
-    .map(n => {
-      let num = String(n).trim().replace(/\s+/g, '');
-      if (num.startsWith('0') && num.length === 10) num = '233' + num.slice(1);
-      return num;
-    });
+    .map(normalizeGhanaPhone);
 
   if (numbers.length === 0) { console.warn('[SMS] No valid recipients'); return; }
 
+  console.log('[SMS] Sending to:', numbers, '| provider:', PROVIDER);
+
   try {
-    // Step 1: Save message
-    const saveRes = await portalPost('/async/message/save', {
-      category: 1, mv: 0, tplId: '', type: 0,
-      message, isPsnd: 0, url: '', sender: SENDER_ID,
-      varstr: '', scheduled: 0, writeClose: 1,
-    });
-    console.log('[SMS] Save response:', JSON.stringify(saveRes));
-
-    const msgid = saveRes.body?.msgid;
-    if (!msgid) { console.warn('[SMS] No msgid returned from save'); return; }
-
-    // Step 2: Add destinations
-    const destRes = await portalPost('/async/message/destinations/add', {
-      phone: JSON.stringify(numbers),
-      dialcode: 233,
-      tplId: msgid,
-    });
-    console.log('[SMS] Destinations response:', JSON.stringify(destRes));
-
-    // Step 3: Submit
-    const submitRes = await portalPost('/async/message/submit', { tplId: msgid });
-    console.log('[SMS] Submit response:', JSON.stringify(submitRes));
-
-    if (submitRes.body?.code === 1) {
-      console.log('[SMS] Sent successfully to:', numbers);
+    if (PROVIDER === 'arkesel' && ARKESEL_API_KEY) {
+      await sendViaArkesel(numbers, message);
+    } else if (SMSONLINEGH_API_KEY) {
+      await sendViaSMSOnlineGH(numbers, message);
     } else {
-      console.warn('[SMS] Submit failed:', JSON.stringify(submitRes.body));
+      console.warn('[SMS] No API key configured');
     }
   } catch (err) {
-    console.error('[SMS] Error:', err.message);
+    console.error('[SMS] Unexpected error:', err.message);
   }
 }
 
