@@ -28,7 +28,7 @@ async function sendSMS(to, message) {
     sender: SENDER_ID,
   });
 
-  console.log('[SMS] Sending | key prefix:', API_KEY.substring(0, 8), '| to:', numbers, '| payload:', payload);
+  console.log('[SMS] Sending | key prefix:', API_KEY.substring(0, 8), '| key length:', API_KEY.trim().length, '| to:', numbers, '| payload:', payload);
 
   return new Promise((resolve) => {
     // Try v5 endpoint
