@@ -20,7 +20,8 @@ async function sendSMS(to, message) {
     .filter(Boolean)
     .map(n => ({ to: String(n).trim() }));
 
-  if (recipients.length === 0) return;
+  console.log('[SMS] Attempting send to:', recipients, '| message:', message);
+  if (recipients.length === 0) { console.warn('[SMS] No valid recipients'); return; }
 
   const payload = JSON.stringify({
     text: message,

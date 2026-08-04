@@ -719,6 +719,7 @@ exports.uploadBulk = async (req, res) => {
             [studentId]
           );
           const phone = studentUserRes.rows[0]?.phone;
+          console.log(`[SMS-DEBUG] index=${index_number} studentId=${studentId} phone=${phone} rawPaid=${rawPaid}`);
           if (phone && rawPaid > 0) {
             const isPaid = status === 'Paid' || (existing && existing.newStatus === 'Paid');
             const smsMsg = isPaid
