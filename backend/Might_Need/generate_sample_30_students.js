@@ -60,6 +60,11 @@ const departments = {
   ],
 };
 
+function randomGhanaPhone() {
+  const prefixes = ['024', '054', '055', '059', '020', '050', '026', '056', '027', '057'];
+  return prefixes[Math.floor(Math.random() * prefixes.length)] + String(Math.floor(Math.random() * 9000000) + 1000000);
+}
+
 const deptNames = Object.keys(departments);
 
 // Fixed 30 students — indexes start at 0301 to avoid clashing with sample_bulk_students.xlsx (0001-0300)
@@ -112,18 +117,19 @@ const rows = students.map(s => {
     s.dept,
     s.cohort,
     admYear,
+    randomGhanaPhone(),
   ];
 });
 
 const wsData = [
-  ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Admission Year'],
+  ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Admission Year', 'Phone Number'],
   ...rows,
 ];
 
 const wb = XLSX.utils.book_new();
 const ws = XLSX.utils.aoa_to_sheet(wsData);
 ws['!cols'] = [
-  { wch: 22 }, { wch: 18 }, { wch: 38 }, { wch: 45 }, { wch: 40 }, { wch: 12 }, { wch: 15 },
+  { wch: 22 }, { wch: 18 }, { wch: 38 }, { wch: 45 }, { wch: 40 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
 ];
 
 XLSX.utils.book_append_sheet(wb, ws, 'Students');

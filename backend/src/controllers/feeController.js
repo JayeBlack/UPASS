@@ -712,6 +712,20 @@ exports.uploadBulk = async (req, res) => {
             // Update map for subsequent records
             feeRecordMap[key] = { id: feeRecordId, student_id: studentId, academic_year: year, semester: sem };
           }
+
+          // SMS student about their fee record
+          const studentUserRes = await client.query(
+            `SELECT u.phone_number FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1`,
+            [studentId]
+          );
+          const phone = studentUserRes.rows[0]?.phone_number;
+          if (phone && rawPaid > 0) {
+            const isPaid = status === 'Paid' || (existing && existing.newStatus === 'Paid');
+            const smsMsg = isPaid
+              ? `UMaT-PG: Your fees for ${year} Sem ${sem} are fully paid. Thank you.`
+              : `UMaT-PG: Payment of GHS ${rawPaid.toLocaleString()} received for ${year} Sem ${sem}. Outstanding: GHS ${Math.max(total_amount - rawPaid, 0).toLocaleString()}.`;
+            sendSMS(phone, smsMsg);
+          }
         } catch (err) {
           errors.push(`Row ${i + 1}: ${err.message}`);
         }
