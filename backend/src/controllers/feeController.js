@@ -128,31 +128,39 @@ exports.makePayment = async (req, res) => {
       [amount, fee_record_id]
     );
 
-    // Auto-update status
+    // Auto-update status — re-fetch fresh totals after amount_paid was updated
     const updated = await db.query(
       `UPDATE fee_records SET
         status = CASE WHEN amount_paid >= total_amount THEN 'Paid' ELSE 'Partial' END,
         is_cleared = (amount_paid >= total_amount),
         outstanding = total_amount - amount_paid
-       WHERE id = $1 RETURNING student_id, status, academic_year, semester, amount_paid, total_amount`,
+       WHERE id = $1 RETURNING student_id, status, academic_year, semester, amount_paid, total_amount, credit_balance`,
       [fee_record_id]
     );
     if (updated.rows.length > 0) {
       const fee = updated.rows[0];
+      const amountPaid = parseFloat(fee.amount_paid);
+      const totalAmount = parseFloat(fee.total_amount);
+      const creditBalance = parseFloat(fee.credit_balance) || 0;
+      const outstanding = Math.max(totalAmount - amountPaid, 0);
       const studentUser = await db.query('SELECT user_id FROM students WHERE id = $1', [fee.student_id]);
       if (studentUser.rows.length > 0) {
         const isPaid = fee.status === 'Paid';
         const smsMsg = isPaid
-          ? `UMaT-PG: Your fees for ${fee.academic_year} Sem ${fee.semester} are fully paid. Thank you.`
-          : `UMaT-PG: Payment of GHS ${parseFloat(fee.amount_paid).toLocaleString()} received for ${fee.academic_year} Sem ${fee.semester}. Outstanding: GHS ${(fee.total_amount - fee.amount_paid).toLocaleString()}.`;
+          ? creditBalance > 0
+            ? `UMaT-PG: Your fees for ${fee.academic_year} Sem ${fee.semester} are fully paid. Credit balance: GHS ${creditBalance.toLocaleString()}. Thank you.`
+            : `UMaT-PG: Your fees for ${fee.academic_year} Sem ${fee.semester} are fully paid. Thank you.`
+          : `UMaT-PG: Payment of GHS ${parseFloat(amount).toLocaleString()} received for ${fee.academic_year} Sem ${fee.semester}. Outstanding: GHS ${outstanding.toLocaleString()}.`;
         const phoneRes = await db.query('SELECT phone FROM users WHERE id = $1', [studentUser.rows[0].user_id]);
         sendSMS(phoneRes.rows[0]?.phone, smsMsg);
         await createNotification(
           studentUser.rows[0].user_id, 'fee',
           isPaid ? 'Fees Fully Paid' : 'Payment Received',
           isPaid
-            ? `Your fees for ${fee.academic_year} ${fee.semester} are fully paid.`
-            : `Payment of GHS ${parseFloat(fee.amount_paid).toLocaleString()} received for ${fee.academic_year} ${fee.semester}. Outstanding: GHS ${(fee.total_amount - fee.amount_paid).toLocaleString()}.`,
+            ? creditBalance > 0
+              ? `Your fees for ${fee.academic_year} ${fee.semester} are fully paid. Credit balance: GHS ${creditBalance.toLocaleString()}.`
+              : `Your fees for ${fee.academic_year} ${fee.semester} are fully paid.`
+            : `Payment of GHS ${parseFloat(amount).toLocaleString()} received for ${fee.academic_year} ${fee.semester}. Outstanding: GHS ${outstanding.toLocaleString()}.`,
           isPaid ? 'success' : 'info'
         );
       }
@@ -721,10 +729,21 @@ exports.uploadBulk = async (req, res) => {
           const phone = studentUserRes.rows[0]?.phone;
           console.log(`[SMS-DEBUG] index=${index_number} studentId=${studentId} phone=${phone} rawPaid=${rawPaid}`);
           if (phone && rawPaid > 0) {
-            const isPaid = status === 'Paid' || (existing && existing.newStatus === 'Paid');
-            const smsMsg = isPaid
-              ? `UMaT-PG: Your fees for ${year} Sem ${sem} are fully paid. Thank you.`
-              : `UMaT-PG: Payment of GHS ${rawPaid.toLocaleString()} received for ${year} Sem ${sem}. Outstanding: GHS ${Math.max(total_amount - rawPaid, 0).toLocaleString()}.`;
+            // For existing records, use the updated totals; for new records use computed values
+            const smsTotalAmount = existing ? parseFloat(existing.total_amount) : total_amount;
+            const smsAmountPaid = existing
+              ? Math.min(parseFloat(existing.amount_paid) + rawPaid, smsTotalAmount)
+              : Math.min(rawPaid, total_amount);
+            const smsCredit = existing
+              ? Math.max((parseFloat(existing.amount_paid) + rawPaid) - smsTotalAmount, 0)
+              : credit_balance;
+            const smsOutstanding = Math.max(smsTotalAmount - smsAmountPaid, 0);
+            const smsIsPaid = smsAmountPaid >= smsTotalAmount;
+            const smsMsg = smsIsPaid
+              ? smsCredit > 0
+                ? `UMaT-PG: Your fees for ${year} Sem ${sem} are fully paid. Credit balance: GHS ${smsCredit.toLocaleString()}. Thank you.`
+                : `UMaT-PG: Your fees for ${year} Sem ${sem} are fully paid. Thank you.`
+              : `UMaT-PG: Payment of GHS ${rawPaid.toLocaleString()} received for ${year} Sem ${sem}. Outstanding: GHS ${smsOutstanding.toLocaleString()}.`;
             sendSMS(phone, smsMsg);
           }
         } catch (err) {
