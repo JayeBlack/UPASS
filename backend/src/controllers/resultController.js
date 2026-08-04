@@ -268,18 +268,17 @@ exports.batchUpload = async (req, res) => {
       
       for (const studentId of studentIds) {
         const studentRes = await db.query(
-          "SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1",
+          "SELECT user_id FROM students WHERE id = $1",
           [studentId]
         );
         if (studentRes.rows.length > 0) {
-          const { user_id, phone } = studentRes.rows[0];
-          sendSMS(phone, `UMaT-PG: Your Semester ${semesterNum} results for ${academicYear} are now available. Log in to view them.`);
+          const { user_id } = studentRes.rows[0];
           await createNotification(
             user_id,
             'exam',
-            'Results Published',
-            `Your Semester ${semesterNum} results for ${academicYear} are now available!`,
-            'success'
+            'Results Uploaded',
+            `Your Semester ${semesterNum} results for ${academicYear} have been recorded and are pending release.`,
+            'info'
           );
         }
       }
