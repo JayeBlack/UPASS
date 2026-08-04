@@ -12,7 +12,12 @@ async function sendSMS(to, message) {
 
   const recipients = (Array.isArray(to) ? to : [to])
     .filter(Boolean)
-    .map(n => ({ to: String(n).trim() }));
+    .map(n => {
+      let num = String(n).trim().replace(/\s+/g, '');
+      // Convert local Ghanaian format (0XXXXXXXXX) to international (233XXXXXXXXX)
+      if (num.startsWith('0') && num.length === 10) num = '233' + num.slice(1);
+      return { to: num };
+    });
 
   console.log('[SMS] Attempting send to:', recipients, '| message:', message);
   if (recipients.length === 0) { console.warn('[SMS] No valid recipients'); return; }
