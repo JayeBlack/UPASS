@@ -51,11 +51,9 @@ async function sendViaSMSOnlineGH(numbers, message) {
 
 async function sendViaArkesel(numbers, message) {
   const payload = JSON.stringify({
-    action: 'send-sms',
-    api_key: ARKESEL_API_KEY,
-    to: numbers,
-    from: SENDER_ID,
-    sms: message,
+    sender: SENDER_ID,
+    message,
+    recipients: numbers,
   });
 
   return new Promise((resolve) => {
