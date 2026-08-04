@@ -4,12 +4,6 @@ const API_KEY = process.env.SMSONLINEGH_API_KEY;
 const SENDER_ID = process.env.SMS_SENDER_ID || 'UMATPG';
 const BASE_URL = 'api.smsonlinegh.com';
 
-/**
- * Send an SMS via SMSOnlineGH v5
- * @param {string|string[]} to - phone number(s)
- * @param {string} message
- * @returns {Promise<void>} — resolves silently, never throws (fire-and-forget safe)
- */
 async function sendSMS(to, message) {
   if (!API_KEY) {
     console.warn('[SMS] SMSONLINEGH_API_KEY not set — skipping SMS');
@@ -47,13 +41,16 @@ async function sendSMS(to, message) {
         let data = '';
         res.on('data', chunk => { data += chunk; });
         res.on('end', () => {
+          console.log('[SMS] HTTP status:', res.statusCode, '| raw response:', data);
           try {
             const parsed = JSON.parse(data);
             if (parsed?.handshake?.label !== 'HSHK_OK') {
               console.warn('[SMS] Delivery issue:', parsed?.handshake?.label, '| to:', to);
+            } else {
+              console.log('[SMS] Sent successfully to:', to);
             }
           } catch {
-            console.warn('[SMS] Could not parse response');
+            console.warn('[SMS] Could not parse response as JSON. Raw:', data);
           }
           resolve();
         });
