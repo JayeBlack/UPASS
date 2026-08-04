@@ -6,7 +6,7 @@ const path = require('path');
 // All payments via Bank Transfer
 function generateBulkPayments() {
   // First, load student names from sample_bulk_students.xlsx
-  const studentsFilePath = path.join(__dirname, 'excel-files', 'sample_bulk_students.xlsx');
+  const studentsFilePath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_students.xlsx');
   const studentsWb = XLSX.readFile(studentsFilePath);
   const studentsWs = studentsWb.Sheets[studentsWb.SheetNames[0]];
   const students = XLSX.utils.sheet_to_json(studentsWs);
@@ -87,7 +87,7 @@ function generateBulkPayments() {
   XLSX.utils.book_append_sheet(wb, ws, 'Bulk Payments');
   
   // Save to excel-files directory
-  const filePath = path.join(__dirname, 'excel-files', 'sample_bulk_payments.xlsx');
+  const filePath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_payments.xlsx');
   XLSX.writeFile(wb, filePath);
   
   // Calculate statistics

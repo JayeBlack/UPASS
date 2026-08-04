@@ -7,13 +7,13 @@ const path = require('path');
 // Student 2 (UMaT/PG/0002/22 - Kodwo Agyemang): Will pay exact remainder
 function generatePaymentUpdates() {
   // First, load student names from sample_bulk_students.xlsx
-  const studentsFilePath = path.join(__dirname, 'excel-files', 'sample_bulk_students.xlsx');
+  const studentsFilePath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_students.xlsx');
   const studentsWb = XLSX.readFile(studentsFilePath);
   const studentsWs = studentsWb.Sheets[studentsWb.SheetNames[0]];
   const students = XLSX.utils.sheet_to_json(studentsWs);
   
   // Also load the bulk payments to get accurate outstanding balances
-  const paymentsFilePath = path.join(__dirname, 'excel-files', 'sample_bulk_payments.xlsx');
+  const paymentsFilePath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_payments.xlsx');
   const paymentsWb = XLSX.readFile(paymentsFilePath);
   const paymentsWs = paymentsWb.Sheets[paymentsWb.SheetNames[0]];
   const payments = XLSX.utils.sheet_to_json(paymentsWs);
@@ -70,7 +70,7 @@ function generatePaymentUpdates() {
   XLSX.utils.book_append_sheet(wb, ws, 'Payment Updates');
   
   // Save to excel-files directory
-  const filePath = path.join(__dirname, 'excel-files', 'sample_payment_updates.xlsx');
+  const filePath = path.join(__dirname, '..', 'excel-files', 'sample_payment_updates.xlsx');
   XLSX.writeFile(wb, filePath);
   
   console.log('✅ Generated sample_payment_updates.xlsx');
