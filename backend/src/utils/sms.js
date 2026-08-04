@@ -20,6 +20,7 @@ async function sendSMS(to, message) {
     });
 
   console.log('[SMS] Attempting send to:', recipients, '| message:', message);
+  console.log('[SMS] Using API key prefix:', API_KEY.substring(0, 6) + '...' + ' | sender:', SENDER_ID);
   if (recipients.length === 0) { console.warn('[SMS] No valid recipients'); return; }
 
   const payload = JSON.stringify({
