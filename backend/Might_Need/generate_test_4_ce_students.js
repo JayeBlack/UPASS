@@ -1,35 +1,34 @@
 const XLSX = require('xlsx');
 const path = require('path');
 
-// Read the 4 CE students with real phone numbers from sample_bulk_students.xlsx
-const studentsPath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_students.xlsx');
-const wb = XLSX.readFile(studentsPath);
-const ws = wb.Sheets[wb.SheetNames[0]];
-const all = XLSX.utils.sheet_to_json(ws);
-
 const CE_PHONES = ['0531399032', '0548329408', '0592826345', '0595799116'];
 
-const ceStudents = all.filter(s => s['Phone Number'] && CE_PHONES.includes(s['Phone Number']));
+// Load the 4 CE students from bulk students file
+const studentsPath = path.join(__dirname, '..', 'excel-files', 'sample_bulk_students.xlsx');
+const studentsWb = XLSX.readFile(studentsPath);
+const studentsWs = studentsWb.Sheets[studentsWb.SheetNames[0]];
+const allStudents = XLSX.utils.sheet_to_json(studentsWs);
+const ceStudents = allStudents.filter(s => CE_PHONES.includes(s['Phone Number']));
 
-const wsData = [
-  ['Name', 'Index Number', 'Email', 'Programme', 'Department', 'Cohort', 'Academic Year', 'Phone Number'],
-  ...ceStudents.map(s => [
-    s['Name'], s['Index Number'], s['Email'], s['Programme'],
-    s['Department'], s['Cohort'], s['Academic Year'], s['Phone Number'],
-  ]),
+const payments = ceStudents.map(s => ({
+  'Index Number': s['Index Number'],
+  'Student Name': s['Name'],
+  'Total Amount': 8000,
+  'Amount Paid': 5000,
+  'Academic Year': '2024/2025',
+  'Semester': 'First',
+}));
+
+const ws = XLSX.utils.json_to_sheet(payments);
+ws['!cols'] = [
+  { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
 ];
 
-const outWb = XLSX.utils.book_new();
-const outWs = XLSX.utils.aoa_to_sheet(wsData);
-outWs['!cols'] = [
-  { wch: 20 }, { wch: 18 }, { wch: 35 }, { wch: 45 },
-  { wch: 40 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
-];
-XLSX.utils.book_append_sheet(outWb, outWs, 'Students');
+const wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, 'Fees');
 
 const outputPath = path.join(__dirname, '..', 'excel-files', 'test_4_ce_students.xlsx');
-XLSX.writeFile(outWb, outputPath);
+XLSX.writeFile(wb, outputPath);
 
-console.log(`✅ Generated test_4_ce_students.xlsx`);
-console.log(`📁 Saved to: ${outputPath}`);
-ceStudents.forEach(s => console.log(`   • ${s['Name']} | ${s['Index Number']} | ${s['Phone Number']}`));
+console.log('✅ Generated test_4_ce_students.xlsx (fee records for 4 CE students)');
+ceStudents.forEach((s, i) => console.log(`   • ${s['Name']} | ${s['Index Number']} | GHS 5000 of 8000 paid`));
