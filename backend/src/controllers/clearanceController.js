@@ -116,11 +116,15 @@ exports.approve = async (req, res) => {
     const studentQuery = await db.query("SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
     if (studentQuery.rows.length > 0) {
       const { user_id, phone } = studentQuery.rows[0];
-      sendSMS(phone, `UMaT-PG: Your ${step.department} clearance step has been approved.`);
+      const isFinal = step.department === "Dean of Postgraduate";
+      const smsMsg = isFinal
+        ? `UMaT-PG: Congratulations! Your graduation clearance has been fully approved by the Dean of Postgraduate Studies. You are cleared for graduation.`
+        : `UMaT-PG: Your ${step.department} clearance step has been approved.`;
+      sendSMS(phone, smsMsg);
       await createNotification(
         user_id, "clearance",
-        "Clearance Step Approved",
-        `Your ${step.department} clearance has been approved!`,
+        isFinal ? "Graduation Clearance Fully Approved" : "Clearance Step Approved",
+        isFinal ? "Congratulations! Your graduation clearance has been fully approved by the Dean." : `Your ${step.department} clearance has been approved!`,
         "success"
       );
     }
@@ -196,12 +200,18 @@ exports.bulkApprove = async (req, res) => {
           [req.user.email, id]
         );
 
-        const studentQuery = await db.query("SELECT user_id FROM students WHERE id = $1", [step.student_id]);
+        const studentQuery = await db.query("SELECT s.user_id, u.phone FROM students s JOIN users u ON s.user_id = u.id WHERE s.id = $1", [step.student_id]);
         if (studentQuery.rows.length > 0) {
+          const { user_id, phone } = studentQuery.rows[0];
+          const isFinal = step.department === "Dean of Postgraduate";
+          const smsMsg = isFinal
+            ? `UMaT-PG: Congratulations! Your graduation clearance has been fully approved by the Dean of Postgraduate Studies. You are cleared for graduation.`
+            : `UMaT-PG: Your ${step.department} clearance step has been approved.`;
+          sendSMS(phone, smsMsg);
           await createNotification(
-            studentQuery.rows[0].user_id, "clearance",
-            "Clearance Step Approved",
-            `Your ${step.department} clearance has been approved!`,
+            user_id, "clearance",
+            isFinal ? "Graduation Clearance Fully Approved" : "Clearance Step Approved",
+            isFinal ? "Congratulations! Your graduation clearance has been fully approved by the Dean." : `Your ${step.department} clearance has been approved!`,
             "success"
           );
         }
