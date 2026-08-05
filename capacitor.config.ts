@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'UPASS',
   webDir: 'dist',
   server: {
-    url: 'https://upass.vercel.app',
+    url: 'https://testing-upass.vercel.app',
     cleartext: false,
   },
   android: {
